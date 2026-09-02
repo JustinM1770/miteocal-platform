@@ -6,6 +6,11 @@ MiTeocal es la plataforma digital del municipio de Teocaltiche, Jalisco. Conecta
 vecinos con los servicios públicos, el comercio local y las noticias de su colonia en
 tiempo real, e incluye un canal dedicado para los paisanos que viven en el extranjero.
 
+Está construida como **plataforma multi-municipio**: un solo código base atiende a varios
+ayuntamientos, cada uno con su identidad, sus colonias y los módulos que haya contratado.
+Teocaltiche es el primer despliegue, no el único posible. Ver
+[`docs/arquitectura-multimunicipio.md`](./docs/arquitectura-multimunicipio.md).
+
 El diseño de referencia vive en Figma:
 [MiTeocal — Prototipo v1](https://www.figma.com/proto/6YEhEL4EGCltEQod7LzVza/MiTeocal-%E2%80%94-Prototipo-v1?node-id=2-243)
 
@@ -16,6 +21,7 @@ El diseño de referencia vive en Figma:
 - [El problema](#el-problema)
 - [Módulos del producto](#módulos-del-producto)
 - [Arquitectura](#arquitectura)
+- [Multi-municipio](#multi-municipio)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Stack tecnológico](#stack-tecnológico)
 - [Puesta en marcha](#puesta-en-marcha)
@@ -103,6 +109,27 @@ aceptan pago en dólares.
 El backend concentra la lógica de negocio y la validación; la app y el panel nunca escriben
 directo a Firestore en colecciones sensibles. Las notificaciones de agua, basura y cierres
 salen desde Cloud Functions hacia FCM segmentadas por colonia.
+
+---
+
+## Multi-municipio
+
+Ningún dato de negocio vive suelto: todo cuelga de `municipios/{municipioId}`, y el
+`municipioId` de cada persona viaja en un *custom claim* de Firebase Auth, nunca en un
+parámetro que mande el cliente. Las reglas de Firestore usan ese claim para impedir que un
+municipio lea los datos de otro.
+
+Nada específico de Teocaltiche —nombre, escudo, colores, colonias, teléfonos de
+emergencia— está escrito en el código: todo sale del documento de configuración del
+municipio. Dar de alta un ayuntamiento nuevo es llenar ese documento y capacitar a su
+personal, no clonar el repositorio.
+
+Cada módulo (`agua`, `basura`, `reportes`, `comercio`, `noticias`, `escuelas`, `feria`,
+`paisanos`) se enciende o apaga por municipio, lo que además define los paquetes
+comerciales.
+
+El detalle completo, incluidas las reglas de seguridad y el checklist de revisión de PRs,
+está en [`docs/arquitectura-multimunicipio.md`](./docs/arquitectura-multimunicipio.md).
 
 ---
 
