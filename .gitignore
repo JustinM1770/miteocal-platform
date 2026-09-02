@@ -1,0 +1,224 @@
+# ==========================================================
+# MiTeocal Platform — .gitignore
+# Stack: Flutter (mobile_app) · Node.js (backend) · React/Vite (admin_panel) · Firebase
+# ==========================================================
+
+# ----------------------------------------------------------
+# 1. SECRETOS Y CREDENCIALES  (nunca subir al repositorio)
+# ----------------------------------------------------------
+# Variables de entorno
+.env
+.env.*
+!.env.example
+!.env.template
+*.env
+
+# Llaves de servicio de Firebase / Google Cloud
+serviceAccount*.json
+service-account*.json
+*serviceAccountKey*.json
+*-firebase-adminsdk-*.json
+*firebase-adminsdk*.json
+firebase-key.json
+gcloud-key.json
+google-credentials.json
+application_default_credentials.json
+
+# Configuración generada por FlutterFire / SDKs de Firebase
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+firebase-config.js
+firebase-config.ts
+
+# Cualquier JSON dentro de carpetas de secretos
+**/secrets/
+**/credentials/
+**/keys/
+**/*.secret.json
+**/*.private.json
+
+# Certificados y llaves criptográficas
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.cer
+*.der
+*.keystore
+*.jks
+key.properties
+
+# Excepciones: archivos de configuración públicos que SÍ se versionan
+!package.json
+!package-lock.json
+!tsconfig.json
+!firebase.json
+!.firebaserc
+!firestore.indexes.json
+!database.rules.json
+!eslintrc.json
+!.eslintrc.json
+!composer.json
+!analysis_options.yaml
+
+# ----------------------------------------------------------
+# 2. FIREBASE
+# ----------------------------------------------------------
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+ui-debug.log
+dataconnect-debug.log
+*.log.firebase
+emulator-data/
+.runtimeconfig.json
+
+# ----------------------------------------------------------
+# 3. NODE.JS  (backend / admin_panel)
+# ----------------------------------------------------------
+node_modules/
+jspm_packages/
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Builds y salidas
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.vite/
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# Cobertura y pruebas
+coverage/
+.nyc_output/
+*.lcov
+.jest-cache/
+
+# Misceláneos de herramientas
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.serverless/
+
+# ----------------------------------------------------------
+# 4. FLUTTER / DART  (mobile_app)
+# ----------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+generated_plugin_registrant.*
+*.lock.dart
+doc/api/
+
+# Archivos generados por build_runner / freezed / json_serializable
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.config.dart
+*.mocks.dart
+
+# Android
+mobile_app/android/.gradle/
+mobile_app/android/captures/
+mobile_app/android/local.properties
+mobile_app/android/key.properties
+mobile_app/android/app/debug/
+mobile_app/android/app/profile/
+mobile_app/android/app/release/
+mobile_app/android/**/gradle-wrapper.jar
+*.iml
+*.jks
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# iOS / macOS
+mobile_app/ios/Pods/
+mobile_app/ios/.symlinks/
+mobile_app/ios/Flutter/App.framework
+mobile_app/ios/Flutter/Flutter.framework
+mobile_app/ios/Flutter/Flutter.podspec
+mobile_app/ios/Flutter/Generated.xcconfig
+mobile_app/ios/Flutter/flutter_export_environment.sh
+mobile_app/ios/Runner/GeneratedPluginRegistrant.*
+mobile_app/ios/ServiceDefinitions.json
+*.ipa
+*.dSYM.zip
+*.dSYM
+Podfile.lock
+xcuserdata/
+**/*.xcworkspace/xcuserdata/
+DerivedData/
+
+# Web / Linux / Windows (targets de escritorio de Flutter)
+mobile_app/web/build/
+mobile_app/linux/flutter/ephemeral/
+mobile_app/windows/flutter/ephemeral/
+mobile_app/macos/Flutter/ephemeral/
+mobile_app/macos/Pods/
+
+# ----------------------------------------------------------
+# 5. EDITORES E IDEs
+# ----------------------------------------------------------
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+.history/
+.fleet/
+
+# ----------------------------------------------------------
+# 6. SISTEMA OPERATIVO
+# ----------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ----------------------------------------------------------
+# 7. TEMPORALES Y RESPALDOS
+# ----------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.bak
+*.old
+*.orig
+*.rej
+*.pid
+*.seed
+*.swn
