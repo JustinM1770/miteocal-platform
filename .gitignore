@@ -222,3 +222,13 @@ temp/
 *.pid
 *.seed
 *.swn
+
+# Firebase — emulador y artefactos locales
+*-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+database-debug.log
+.firebase/
+backend/seed/.datos/

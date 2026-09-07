@@ -1,0 +1,19 @@
+{
+  "name": "miteocal-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reglas de seguridad, Cloud Functions y semillas de MiTeocal",
+  "scripts": {
+    "emu": "firebase emulators:start --import=./seed/.datos --export-on-exit=./seed/.datos",
+    "emu:limpio": "firebase emulators:start",
+    "sembrar": "node seed/sembrar.js",
+    "reglas:desplegar": "firebase deploy --only firestore:rules,storage",
+    "reglas:probar": "firebase emulators:exec --only firestore 'echo reglas cargadas OK'"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}

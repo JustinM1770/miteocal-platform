@@ -1,0 +1,142 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore — MiTeocal / plataforma multi-municipio.
+//
+// Principio: el municipio de una persona SIEMPRE se lee del custom claim del
+// token, nunca de un parámetro que mande el cliente. Ver
+// docs/arquitectura-multimunicipio.md §4 y §5.
+//
+// Recordatorio al editar: cuando varios bloques `match` coinciden con la misma
+// ruta, Firestore concede el acceso si CUALQUIERA lo permite. Por eso aquí no
+// hay comodines de lectura abierta: cada colección pública se enumera a mano.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Ayudas ────────────────────────────────────────────────────────────
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // .get(clave, default) evita que la regla truene cuando el claim no existe
+    // todavía — por ejemplo, entre que alguien se registra y la Function le
+    // asigna su municipio.
+    function claim(nombre) {
+      return autenticado() ? request.auth.token.get(nombre, '') : '';
+    }
+
+    function delMunicipio(mid) {
+      return claim('municipioId') == mid;
+    }
+
+    function esFuncionario(mid) {
+      return delMunicipio(mid) && claim('rol') in ['funcionario', 'admin'];
+    }
+
+    function esAdmin(mid) {
+      return delMunicipio(mid) && claim('rol') == 'admin';
+    }
+
+    // Único rol que cruza municipios. Somos nosotros.
+    function esPlataforma() {
+      return claim('rol') == 'plataforma';
+    }
+
+    function esDuenoDe(datos) {
+      return autenticado() && datos.uid == request.auth.uid;
+    }
+
+    // ─── Municipios ────────────────────────────────────────────────────────
+
+    match /municipios/{mid} {
+
+      // Público a propósito: la app necesita nombre, escudo y tema ANTES de
+      // que alguien inicie sesión.
+      allow read:  if true;
+      allow write: if esPlataforma();
+
+      // Colonias y directorio de emergencias.
+      match /config/{doc} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      // ── Contenido público del municipio ──
+      // Se enumera colección por colección. NO agregar un comodín aquí: uno
+      // solo con `allow read: if true` volvería públicos los reportes.
+
+      match /agua/{fecha} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /rutasBasura/{rutaId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /noticias/{noticiaId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /comercios/{comercioId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /obras/{obraId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /eventos/{eventoId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      // ── Reportes ciudadanos ──
+      // Un vecino ve los suyos; el funcionario ve los de su municipio.
+
+      match /reportes/{folio} {
+        allow create: if delMunicipio(mid)
+                      && esDuenoDe(request.resource.data)
+                      && request.resource.data.estado == 'recibido';
+
+        allow read:   if esFuncionario(mid)
+                      || (delMunicipio(mid) && esDuenoDe(resource.data));
+
+        // El vecino no edita su reporte una vez enviado; lo atiende el municipio.
+        allow update: if esFuncionario(mid);
+
+        // Un reporte es evidencia: se cierra, no se desaparece.
+        allow delete: if false;
+      }
+    }
+
+    // ─── Usuarios ──────────────────────────────────────────────────────────
+    // Vive en la raíz, no dentro del municipio: una persona puede mudarse y
+    // Firebase Auth ya es global. El vínculo lo lleva el campo municipioId.
+
+    match /usuarios/{uid} {
+
+      allow read: if autenticado()
+                  && (request.auth.uid == uid || esAdmin(resource.data.municipioId));
+
+      // `rol` y `municipioId` NUNCA los escribe el cliente: son espejo de los
+      // custom claims y solo los pone una Cloud Function con el Admin SDK.
+      // Sin esto, cualquiera se asciende a admin editando su propio perfil.
+      allow create: if autenticado()
+                    && request.auth.uid == uid
+                    && !request.resource.data.keys().hasAny(['rol', 'municipioId']);
+
+      allow update: if autenticado()
+                    && request.auth.uid == uid
+                    && !request.resource.data.diff(resource.data)
+                          .affectedKeys().hasAny(['rol', 'municipioId']);
+
+      allow delete: if false;
+    }
+  }
+}
