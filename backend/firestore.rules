@@ -131,10 +131,12 @@ service cloud.firestore {
                     && request.auth.uid == uid
                     && !request.resource.data.keys().hasAny(['rol', 'municipioId']);
 
+      // Lista blanca a proposito, no lista negra: si manana alguien agrega un
+      // campo sensible al perfil, queda cerrado por omision en vez de abierto.
       allow update: if autenticado()
                     && request.auth.uid == uid
-                    && !request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['rol', 'municipioId']);
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['nombre', 'telefono', 'colonia', 'fcmTokens']);
 
       allow delete: if false;
     }

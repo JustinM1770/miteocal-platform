@@ -1,0 +1,77 @@
+/* Tokens de docs/sistema-de-diseno.md. Misma fuente de verdad que el tema
+   de Flutter: si cambia alla, cambia aqui. */
+:root {
+  --brand-primary: #1552E0;
+  --brand-soft: #EDF2FE;
+
+  --texto-primario: #0E1116;
+  --texto-secundario: #6B7280;
+  --texto-inverso: #FFFFFF;
+
+  --fondo-tarjeta: #FFFFFF;
+  --fondo-pantalla: #F5F6F8;
+  --fondo-inverso: #0E1116;
+
+  --borde: #E8EAEE;
+
+  --exito: #12A150;
+  --exito-suave: #E6F6EE;
+  --peligro: #D93A3A;
+
+  --radio-lista: 12px;
+  --radio-tarjeta: 16px;
+
+  --e4: 4px;  --e8: 8px;   --e12: 12px;
+  --e16: 16px; --e20: 20px; --e24: 24px;
+
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--texto-primario);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--fondo-pantalla);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+h1 { font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.3px; margin: 0; }
+h2 { font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.2px; margin: 0; }
+
+label { display: block; font-size: 13px; line-height: 18px; font-weight: 600; margin-bottom: var(--e4); }
+
+input, select {
+  width: 100%;
+  padding: 10px var(--e12);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lista);
+  font: inherit;
+  background: var(--fondo-tarjeta);
+}
+input:focus, select:focus { outline: 2px solid var(--brand-primary); outline-offset: -1px; }
+
+button {
+  padding: 10px var(--e20);
+  border: none;
+  border-radius: var(--radio-lista);
+  background: var(--brand-primary);
+  color: var(--texto-inverso);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tarjeta {
+  background: var(--fondo-tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-tarjeta);
+  padding: var(--e20);
+}
+
+.aviso { padding: var(--e12); border-radius: var(--radio-lista); font-size: 13px; line-height: 18px; }
+.aviso-exito { background: var(--exito-suave); color: var(--exito); }
+.aviso-error { background: #FDECEC; color: var(--peligro); }
+.secundario { color: var(--texto-secundario); }

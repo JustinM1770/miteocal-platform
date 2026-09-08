@@ -232,3 +232,4 @@ pubsub-debug.log
 database-debug.log
 .firebase/
 backend/seed/.datos/
+node_modules/
