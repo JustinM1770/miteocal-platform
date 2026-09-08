@@ -1,8 +1,23 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+
+// Credenciales de firma. El archivo key.properties NO se versiona: lo genera
+// cada quien en su maquina siguiendo android/FIRMA.md. Si no existe, la
+// compilacion de release cae a la llave de depuracion (solo para pruebas
+// locales; Google Play rechaza un AAB firmado asi).
+val propsFirma = Properties()
+val archivoFirma = rootProject.file("key.properties")
+val hayFirma = archivoFirma.exists()
+if (hayFirma) {
+    propsFirma.load(FileInputStream(archivoFirma))
 }
 
 android {
@@ -30,11 +45,30 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (hayFirma) {
+                keyAlias = propsFirma.getProperty("keyAlias")
+                keyPassword = propsFirma.getProperty("keyPassword")
+                storeFile = propsFirma.getProperty("storeFile")?.let { file(it) }
+                storePassword = propsFirma.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hayFirma) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
