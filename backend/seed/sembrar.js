@@ -21,7 +21,7 @@ if (!aProduccion && !process.env.FIRESTORE_EMULATOR_HOST) {
 }
 
 admin.initializeApp({
-  projectId: process.env.FIREBASE_PROJECT_ID || 'miteocal-dev',
+  projectId: process.env.FIREBASE_PROJECT_ID || 'miteocal',
 });
 
 const db = admin.firestore();
