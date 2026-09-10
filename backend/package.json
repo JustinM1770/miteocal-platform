@@ -9,7 +9,8 @@
     "sembrar": "node seed/sembrar.js",
     "reglas:desplegar": "firebase deploy --only firestore:rules,storage",
     "reglas:probar": "firebase emulators:exec --only firestore 'echo reglas cargadas OK'",
-    "probar:reglas": "firebase emulators:exec --only firestore --project demo-miteocal \"node pruebas/reglas.test.mjs\""
+    "probar:reglas": "firebase emulators:exec --only firestore --project demo-miteocal \"node pruebas/reglas.test.mjs\"",
+    "crear:funcionario": "node seed/crear-funcionario.js"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0"
