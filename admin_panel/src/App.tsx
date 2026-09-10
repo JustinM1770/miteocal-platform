@@ -1,9 +1,14 @@
 import { useSesion, puedeAdministrar } from './firebase/sesion';
 import { Entrar } from './paginas/Entrar';
 import { Agua } from './paginas/Agua';
+import { Importar } from './paginas/Importar';
+import { useState } from 'react';
+
+type Seccion = 'agua' | 'importar';
 
 export default function App() {
   const { usuario, municipioId, rol, cargando, salir } = useSesion();
+  const [seccion, setSeccion] = useState<Seccion>('agua');
 
   if (cargando) {
     return <main style={{ padding: 'var(--e20)' }} className="secundario">Cargando...</main>;
@@ -44,8 +49,24 @@ export default function App() {
         </button>
       </header>
 
+      <nav style={{
+        display: 'flex', gap: 'var(--e4)', padding: 'var(--e12) var(--e20) 0',
+        background: 'var(--fondo-tarjeta)', borderBottom: '1px solid var(--borde)',
+      }}>
+        {([['agua', 'Agua'], ['importar', 'Cargar datos']] as const).map(([id, texto]) => (
+          <button key={id} onClick={() => setSeccion(id)} style={{
+            background: 'transparent',
+            color: seccion === id ? 'var(--brand-primary)' : 'var(--texto-secundario)',
+            borderBottom: `2px solid ${seccion === id ? 'var(--brand-primary)' : 'transparent'}`,
+            borderRadius: 0, paddingBottom: 'var(--e12)',
+          }}>
+            {texto}
+          </button>
+        ))}
+      </nav>
+
       <main style={{ padding: 'var(--e24) var(--e20)' }}>
-        <Agua />
+        {seccion === 'agua' ? <Agua /> : <Importar />}
       </main>
     </div>
   );
