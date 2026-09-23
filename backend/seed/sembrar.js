@@ -37,6 +37,27 @@ async function main() {
   const config = leer('config.json');
   const raiz = db.collection('municipios').doc(MUNICIPIO_ID);
 
+  // En produccion nunca se escribe un marcador. Un telefono de emergencia
+  // que diga "TODO" es peor que no tener la seccion, y los datos reales los
+  // carga el municipio desde el panel.
+  const esMarcador = (v) => typeof v === 'string' && v.trim().toUpperCase().startsWith('TODO');
+  const sinMarcadores = (lista) => lista.filter((x) => !Object.values(x).some(esMarcador));
+
+  if (aProduccion) {
+    // Arranca apagado: se enciende cuando el contenido real este cargado.
+    municipio.activo = false;
+    for (const [k, v] of Object.entries(municipio.contacto || {})) {
+      if (esMarcador(v)) delete municipio.contacto[k];
+    }
+    const quitadas = config.colonias.lista.length + config.emergencias.lista.length;
+    config.colonias.lista = sinMarcadores(config.colonias.lista);
+    config.emergencias.lista = sinMarcadores(config.emergencias.lista);
+    const restantes = config.colonias.lista.length + config.emergencias.lista.length;
+    if (quitadas !== restantes) {
+      console.log(`  (omiti ${quitadas - restantes} renglon(es) con marcadores TODO)`);
+    }
+  }
+
   await raiz.set(municipio, { merge: true });
   await raiz.collection('config').doc('colonias').set(config.colonias);
   await raiz.collection('config').doc('emergencias').set(config.emergencias);

@@ -1,17 +1,27 @@
+import { useState } from 'react';
+import { Layout, Menu, Button, Result, Typography, Tag, Spin } from 'antd';
+import {
+  CloudOutlined, UploadOutlined, LogoutOutlined,
+} from '@ant-design/icons';
 import { useSesion, puedeAdministrar } from './firebase/sesion';
 import { Entrar } from './paginas/Entrar';
 import { Agua } from './paginas/Agua';
 import { Importar } from './paginas/Importar';
-import { useState } from 'react';
 
-type Seccion = 'agua' | 'importar';
+const { Header, Content, Sider } = Layout;
+const { Text } = Typography;
+
+const SECCIONES = [
+  { key: 'agua', icon: <CloudOutlined />, label: 'Agua', componente: <Agua /> },
+  { key: 'importar', icon: <UploadOutlined />, label: 'Cargar datos', componente: <Importar /> },
+];
 
 export default function App() {
   const { usuario, municipioId, rol, cargando, salir } = useSesion();
-  const [seccion, setSeccion] = useState<Seccion>('agua');
+  const [seccion, setSeccion] = useState('agua');
 
   if (cargando) {
-    return <main style={{ padding: 'var(--e20)' }} className="secundario">Cargando...</main>;
+    return <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}><Spin size="large" /></div>;
   }
 
   if (!usuario) return <Entrar />;
@@ -20,54 +30,46 @@ export default function App() {
   // todavia no los tiene: los escribe la Cloud Function asignarMunicipio.
   if (!puedeAdministrar(rol) || !municipioId) {
     return (
-      <main style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 'var(--e20)' }}>
-        <div className="tarjeta" style={{ maxWidth: 420, display: 'grid', gap: 'var(--e12)' }}>
-          <h2>Tu cuenta todavia no tiene acceso</h2>
-          <p className="secundario" style={{ margin: 0, fontSize: 13 }}>
-            Un administrador de tu municipio tiene que asignarte un rol antes de
-            que puedas entrar al panel.
-          </p>
-          <button onClick={salir}>Salir</button>
-        </div>
-      </main>
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
+        <Result
+          status="403"
+          title="Tu cuenta todavía no tiene acceso"
+          subTitle="Un administrador de tu municipio tiene que asignarte un rol antes de que puedas entrar al panel."
+          extra={<Button onClick={salir}>Salir</Button>}
+        />
+      </div>
     );
   }
 
   return (
-    <div>
-      <header style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: 'var(--e16) var(--e20)', background: 'var(--fondo-tarjeta)',
-        borderBottom: '1px solid var(--borde)',
+    <Layout style={{ minHeight: '100vh' }}>
+      <Header style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        borderBottom: '1px solid var(--borde)', padding: '0 20px',
       }}>
-        <div>
-          <strong>Panel · {municipioId}</strong>
-          <span className="secundario" style={{ fontSize: 13, marginLeft: 8 }}>{rol}</span>
-        </div>
-        <button onClick={salir} style={{ background: 'transparent', color: 'var(--texto-secundario)' }}>
-          Salir
-        </button>
-      </header>
+        <span>
+          <Text strong>MiTeocal</Text>
+          <Text type="secondary" style={{ marginLeft: 8 }}>{municipioId}</Text>
+          <Tag color="blue" style={{ marginLeft: 8 }}>{rol}</Tag>
+        </span>
+        <Button type="text" icon={<LogoutOutlined />} onClick={salir}>Salir</Button>
+      </Header>
 
-      <nav style={{
-        display: 'flex', gap: 'var(--e4)', padding: 'var(--e12) var(--e20) 0',
-        background: 'var(--fondo-tarjeta)', borderBottom: '1px solid var(--borde)',
-      }}>
-        {([['agua', 'Agua'], ['importar', 'Cargar datos']] as const).map(([id, texto]) => (
-          <button key={id} onClick={() => setSeccion(id)} style={{
-            background: 'transparent',
-            color: seccion === id ? 'var(--brand-primary)' : 'var(--texto-secundario)',
-            borderBottom: `2px solid ${seccion === id ? 'var(--brand-primary)' : 'transparent'}`,
-            borderRadius: 0, paddingBottom: 'var(--e12)',
-          }}>
-            {texto}
-          </button>
-        ))}
-      </nav>
+      <Layout>
+        <Sider width={200} theme="light" breakpoint="lg" collapsedWidth={0}>
+          <Menu
+            mode="inline"
+            selectedKeys={[seccion]}
+            onSelect={({ key }) => setSeccion(key)}
+            style={{ height: '100%', borderInlineEnd: 0 }}
+            items={SECCIONES.map(({ key, icon, label }) => ({ key, icon, label }))}
+          />
+        </Sider>
 
-      <main style={{ padding: 'var(--e24) var(--e20)' }}>
-        {seccion === 'agua' ? <Agua /> : <Importar />}
-      </main>
-    </div>
+        <Content style={{ padding: 24 }}>
+          {SECCIONES.find((s) => s.key === seccion)?.componente}
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

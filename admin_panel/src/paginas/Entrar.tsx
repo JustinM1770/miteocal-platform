@@ -1,61 +1,63 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { Button, Card, Form, Input, Alert, Typography } from 'antd';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, usandoEmuladores } from '../firebase/cliente';
 
+const { Title, Text } = Typography;
+
 export function Entrar() {
-  const [correo, setCorreo] = useState('');
-  const [clave, setClave] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  async function alEnviar(e: FormEvent) {
-    e.preventDefault();
+  async function alEnviar(valores: { correo: string; clave: string }) {
     setError(null);
     setEnviando(true);
     try {
-      await signInWithEmailAndPassword(auth, correo, clave);
+      await signInWithEmailAndPassword(auth, valores.correo, valores.clave);
     } catch {
-      // Mensaje generico a proposito: no revelar si el correo existe.
-      setError('Correo o contrasena incorrectos.');
+      // Generico a proposito: no revelar si el correo existe.
+      setError('Correo o contraseña incorrectos.');
     } finally {
       setEnviando(false);
     }
   }
 
   return (
-    <main style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 'var(--e20)' }}>
-      <form className="tarjeta" onSubmit={alEnviar} style={{ width: 360, display: 'grid', gap: 'var(--e16)' }}>
-        <div>
-          <h1>Panel del municipio</h1>
-          <p className="secundario" style={{ margin: '4px 0 0' }}>
-            Acceso para personal autorizado.
-          </p>
-        </div>
+    <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 20 }}>
+      <Card style={{ width: 380 }}>
+        <Title level={4} style={{ marginTop: 0 }}>Panel del municipio</Title>
+        <Text type="secondary">Acceso para personal autorizado.</Text>
 
-        <div>
-          <label htmlFor="correo">Correo</label>
-          <input id="correo" type="email" required autoComplete="username"
-                 value={correo} onChange={(e) => setCorreo(e.target.value)} />
-        </div>
+        <Form layout="vertical" onFinish={alEnviar} style={{ marginTop: 20 }} requiredMark={false}>
+          <Form.Item
+            label="Correo"
+            name="correo"
+            rules={[{ required: true, type: 'email', message: 'Escribe un correo válido.' }]}
+          >
+            <Input autoComplete="username" size="large" />
+          </Form.Item>
 
-        <div>
-          <label htmlFor="clave">Contrasena</label>
-          <input id="clave" type="password" required autoComplete="current-password"
-                 value={clave} onChange={(e) => setClave(e.target.value)} />
-        </div>
+          <Form.Item
+            label="Contraseña"
+            name="clave"
+            rules={[{ required: true, message: 'Escribe tu contraseña.' }]}
+          >
+            <Input.Password autoComplete="current-password" size="large" />
+          </Form.Item>
 
-        {error && <div className="aviso aviso-error">{error}</div>}
+          {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
 
-        <button type="submit" disabled={enviando}>
-          {enviando ? 'Entrando...' : 'Entrar'}
-        </button>
+          <Button type="primary" htmlType="submit" loading={enviando} block size="large">
+            Entrar
+          </Button>
+        </Form>
 
         {usandoEmuladores && (
-          <p className="secundario" style={{ fontSize: 11, margin: 0 }}>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 12 }}>
             Conectado a los emuladores locales.
-          </p>
+          </Text>
         )}
-      </form>
-    </main>
+      </Card>
+    </div>
   );
 }
