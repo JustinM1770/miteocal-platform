@@ -1,11 +1,17 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:miteocal/main.dart';
+import 'package:miteocal/datos/repositorio.dart';
+import 'package:miteocal/navegacion/concha_principal.dart';
 
 void main() {
-  testWidgets('la app arranca con las cuatro pestanas', (tester) async {
-    await tester.pumpWidget(const AppMiTeocal());
+  testWidgets('la concha muestra las cuatro pestanas', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: ConchaPrincipal(repositorio: Repositorio(bd: FakeFirebaseFirestore())),
+    ));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Inicio'), findsWidgets);
+    expect(find.text('Inicio'), findsOneWidget);
     expect(find.text('Noticias'), findsOneWidget);
     expect(find.text('Comercio'), findsOneWidget);
     expect(find.text('Servicios'), findsOneWidget);
@@ -13,12 +19,14 @@ void main() {
 
   testWidgets('cambiar de pestana muestra la pantalla correspondiente',
       (tester) async {
-    await tester.pumpWidget(const AppMiTeocal());
+    await tester.pumpWidget(MaterialApp(
+      home: ConchaPrincipal(repositorio: Repositorio(bd: FakeFirebaseFirestore())),
+    ));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Comercio'));
     await tester.pumpAndSettle();
 
-    // El titulo de la pantalla y la etiqueta de la pestana: dos coincidencias.
-    expect(find.text('Comercio'), findsNWidgets(2));
+    expect(find.text('Comercio'), findsNWidgets(2)); // pestana y titulo
   });
 }

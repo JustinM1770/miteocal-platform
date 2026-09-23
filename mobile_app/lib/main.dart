@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'nucleo/firebase/arranque.dart';
 import 'navegacion/concha_principal.dart';
 import 'nucleo/tema/tema.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await arrancarFirebase();
   runApp(const AppMiTeocal());
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../nucleo/tema/tema.dart';
+import '../datos/repositorio.dart';
 import '../pantallas/inicio_pagina.dart';
 import '../pantallas/noticias_pagina.dart';
 import '../pantallas/comercio_pagina.dart';
@@ -11,7 +12,10 @@ import '../pantallas/servicios_pagina.dart';
 /// contra el mapa `modulos`. Un municipio sin comercio contratado no debe ver
 /// esa pestana. Ver docs/arquitectura-multimunicipio.md seccion 3.
 class ConchaPrincipal extends StatefulWidget {
-  const ConchaPrincipal({super.key});
+  const ConchaPrincipal({super.key, this.repositorio});
+
+  /// Se inyecta en las pruebas para no depender de Firebase.
+  final Repositorio? repositorio;
 
   @override
   State<ConchaPrincipal> createState() => _ConchaPrincipalState();
@@ -20,11 +24,11 @@ class ConchaPrincipal extends StatefulWidget {
 class _ConchaPrincipalState extends State<ConchaPrincipal> {
   int _indice = 0;
 
-  static const _paginas = <Widget>[
-    InicioPagina(),
-    NoticiasPagina(),
-    ComercioPagina(),
-    ServiciosPagina(),
+  late final List<Widget> _paginas = [
+    InicioPagina(repositorio: widget.repositorio),
+    const NoticiasPagina(),
+    const ComercioPagina(),
+    const ServiciosPagina(),
   ];
 
   static const _destinos = <_Destino>[
