@@ -1,0 +1,152 @@
+rules_version = '2';
+
+// Nodex · reglas de Firestore
+// - El personal del ayuntamiento tiene documento en `usuarios/{uid}` con su
+//   municipio, rol y área. Solo ve y escribe datos de SU municipio.
+// - La app ciudadana (vecinos con cuenta verificada por SMS) lee lo público
+//   y crea lo suyo: reportes, votos, compras, calificaciones.
+// - Nada de la bitácora ni de las publicaciones se edita o se borra.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() { return request.auth != null; }
+    function perfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function esPersonal() {
+      return autenticado()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+    function esAdmin() { return esPersonal() && perfil().rol == 'admin'; }
+
+    // El documento que se lee / el que se escribe es del municipio del usuario
+    function delMunicipio() { return esPersonal() && resource.data.municipioId == perfil().municipioId; }
+    function alMunicipio() { return esPersonal() && request.resource.data.municipioId == perfil().municipioId; }
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    }
+
+    match /publicaciones/{id} {
+      // La app ciudadana solo ve lo público y ya publicado
+      allow read: if resource.data.canal == 'publico' && resource.data.publicarEn <= request.time;
+      allow read: if delMunicipio();
+      allow create: if alMunicipio();
+      allow update, delete: if false;     // una corrección es una publicación nueva
+    }
+
+    match /auditoria/{id} {
+      allow read: if delMunicipio();
+      allow create: if alMunicipio();
+      allow update, delete: if false;     // la bitácora no se toca
+    }
+
+    match /reportes/{id} {
+      allow create: if autenticado() && request.resource.data.vecinoUid == request.auth.uid;
+      allow read: if delMunicipio()
+                  || (autenticado() && resource.data.vecinoUid == request.auth.uid);
+      allow update: if delMunicipio() && soloCambia(['estado', 'respuesta', 'actualizadoEn']);
+      allow create: if esAdmin() && alMunicipio();   // datos de ejemplo
+      allow delete: if false;
+    }
+
+    // ── Feria ──
+    match /eventos/{id} {
+      allow read: if resource.data.publicado == true || delMunicipio();
+      allow create, update: if alMunicipio();
+      allow delete: if esAdmin() && delMunicipio();
+    }
+    match /candidatas/{id} {
+      allow read: if true;
+      allow create, update: if alMunicipio();
+      allow delete: if esAdmin() && delMunicipio();
+    }
+    match /certamenes/{id} {
+      allow read: if true;
+      allow create, update: if alMunicipio();
+    }
+    // Un voto por vecino y certamen: el id es `<municipio>_<certamen>_<uid>`
+    match /votos/{id} {
+      allow create: if autenticado()
+                    && id == request.resource.data.municipioId + '_' + request.resource.data.certamen + '_' + request.auth.uid
+                    && request.resource.data.vecinoId == request.auth.uid;
+      allow create: if esAdmin() && alMunicipio();   // datos de ejemplo
+      allow read: if delMunicipio() || (autenticado() && resource.data.vecinoId == request.auth.uid);
+      allow update, delete: if false;
+    }
+    match /transmisiones/{id} {
+      allow read: if true;
+      allow create, update: if alMunicipio();
+    }
+    match /registrosPaisanos/{id} {
+      allow create: if autenticado() && request.resource.data.vecinoId == request.auth.uid;
+      allow create: if esAdmin() && alMunicipio();
+      allow read: if delMunicipio() || (autenticado() && resource.data.vecinoId == request.auth.uid);
+      allow update, delete: if false;
+    }
+
+    // ── Pagos (simulados por ahora; con pasarela real los crea una Cloud Function) ──
+    match /pagos/{id} {
+      allow read: if delMunicipio() || (autenticado() && resource.data.vecinoId == request.auth.uid);
+      allow create: if alMunicipio();                // taquilla y datos de ejemplo
+      allow update: if delMunicipio() && soloCambia(['usado', 'usadoEn', 'estado']);
+      allow delete: if false;
+    }
+
+    // ── Vecinos (CRM) ──
+    match /vecinos/{uid} {
+      allow create, update: if autenticado() && uid == request.auth.uid;
+      allow read: if delMunicipio() || (autenticado() && uid == request.auth.uid);
+      allow create: if esAdmin() && alMunicipio();
+      allow delete: if false;
+    }
+    match /calificaciones/{id} {
+      allow create: if autenticado() && request.resource.data.vecinoId == request.auth.uid;
+      allow create: if esAdmin() && alMunicipio();
+      allow read: if delMunicipio();
+      allow update: if delMunicipio() && soloCambia(['respuesta']);
+      allow delete: if false;
+    }
+
+    // ── Rutas del camión de basura ──
+    match /rutasBasura/{id} {
+      allow read: if true;                           // la app calcula a qué hora pasa por cada calle
+      allow create, update: if alMunicipio();
+      allow delete: if false;                        // se suspenden con activa = false
+    }
+
+    // ── Trámites y citas ──
+    match /tramites/{id} {
+      allow read: if resource.data.activo == true || delMunicipio();
+      allow create, update: if alMunicipio();
+      allow delete: if false;                        // se ocultan con activo = false
+    }
+    match /agendas/{id} {
+      allow read: if true;                           // la app calcula los horarios libres
+      allow create, update: if alMunicipio();
+    }
+    match /solicitudes/{id} {
+      allow create: if autenticado() && request.resource.data.vecinoId == request.auth.uid
+                    && request.resource.data.estado == 'recibida';
+      allow create: if alMunicipio();                // ventanilla
+      allow read: if delMunicipio() || (autenticado() && resource.data.vecinoId == request.auth.uid);
+      allow update: if delMunicipio()
+                    && soloCambia(['estado', 'documentos', 'notas', 'pago', 'cita', 'actualizadoEn']);
+      // el vecino solo puede volver a subir documentos cuando se los piden
+      allow update: if autenticado() && resource.data.vecinoId == request.auth.uid
+                    && resource.data.estado == 'falta_documento'
+                    && soloCambia(['documentos', 'estado', 'actualizadoEn'])
+                    && request.resource.data.estado == 'recibida';
+      allow delete: if false;
+    }
+
+    // ── Administración ──
+    match /colonias/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+    match /usuarios/{uid} {
+      allow read: if autenticado() && (request.auth.uid == uid || esAdmin());
+      allow write: if esAdmin() && request.resource.data.municipioId == perfil().municipioId;
+    }
+  }
+}
