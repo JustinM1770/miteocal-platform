@@ -1,36 +1,108 @@
 {
   "colonias": {
-    "_todo": "PLACEHOLDER. Reemplazar con el listado real y sus centroides antes de publicar.",
+    "_todo": "Faltan los centroides (lat/lng): se marcan en el panel, Administración → Colonias y barrios.",
     "lista": [
       {
-        "id": "centro",
-        "nombre": "Centro",
-        "lat": 21.4333,
-        "lng": -102.5833
+        "id": "teocaltiche-centro",
+        "nombre": "Teocaltiche Centro",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Colonia"
       },
       {
-        "id": "san-miguel",
-        "nombre": "San Miguel",
-        "lat": 21.434,
-        "lng": -102.585
+        "id": "el-nejayote",
+        "nombre": "El Nejayote",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Barrio tradicional"
       },
       {
-        "id": "guadalupe",
-        "nombre": "Guadalupe",
-        "lat": 21.431,
-        "lng": -102.581
+        "id": "el-tanque",
+        "nombre": "El Tanque",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Barrio tradicional"
       },
       {
-        "id": "la-cruz",
-        "nombre": "La Cruz",
-        "lat": 21.436,
-        "lng": -102.58
+        "id": "el-santuario",
+        "nombre": "El Santuario",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Barrio tradicional"
       },
       {
-        "id": "el-refugio",
-        "nombre": "El Refugio",
-        "lat": 21.429,
-        "lng": -102.587
+        "id": "bellavista",
+        "nombre": "Bellavista",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "ctm-los-organos",
+        "nombre": "CTM (Los Órganos)",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "colinas-de-la-cruz",
+        "nombre": "Colinas de la Cruz",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "san-miguel-norte",
+        "nombre": "San Miguel Norte",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "san-miguel-sur",
+        "nombre": "San Miguel Sur",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "tavares",
+        "nombre": "Tavares",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "los-angeles",
+        "nombre": "Los Ángeles",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "los-arcos",
+        "nombre": "Los Arcos",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "maravillas",
+        "nombre": "Maravillas",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "arboledas",
+        "nombre": "Arboledas",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Fraccionamiento"
+      },
+      {
+        "id": "magisterial",
+        "nombre": "Magisterial",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "san-pedro",
+        "nombre": "San Pedro",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "lomas-de-teocaltiche",
+        "nombre": "Lomas de Teocaltiche",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Fraccionamiento"
       }
     ]
   },
