@@ -1,0 +1,8 @@
+# Copia este archivo a android/key.properties y completa los valores.
+# key.properties y el .jks NUNCA se versionan: estan en el .gitignore.
+# Ver android/FIRMA.md para generar la llave.
+
+storePassword=
+keyPassword=
+keyAlias=upload
+storeFile=/Users/TU_USUARIO/llaves/miteocal-upload.jks
