@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import Mapa, { type Globo } from "@/components/Mapa";
+import { f } from "@/lib/almacen";
 import {
   ETIQUETA_ESTADO_REPORTE, ETIQUETA_REPORTE, cambiarEstadoReporte, haceTexto, listarReportes,
   type EstadoReporte, type Reporte,
@@ -122,6 +123,24 @@ export default function Reportes() {
               </div>
             ) : <span className="muted" style={{ fontSize: 12 }}>El vecino no compartió su ubicación; solo dejó la dirección.</span>}
 
+            {sel.historial.length > 0 && (
+              <div className="col" style={{ gap: 6 }}>
+                <span className="section-label">HISTORIAL</span>
+                <div className="timeline">
+                  {sel.historial.map((h, i) => (
+                    <div key={i} className="tl-row">
+                      <span className="hora">{f(h.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</span>
+                      <span className="rail"><i /></span>
+                      <div className="body col" style={{ gap: 2 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{ETIQUETA_ESTADO_REPORTE[h.estado]}</span>
+                        {h.mensaje && <span style={{ fontSize: 12 }}>{h.mensaje}</span>}
+                        <span className="muted" style={{ fontSize: 11 }}>{h.autor}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
               <label className="section-label">NUEVO ESTADO</label>
               <div className="options">
@@ -146,7 +165,7 @@ export default function Reportes() {
                 setGuardando(true);
                 await cambiarEstadoReporte(sel, estado, respuesta.trim(), sesion!.nombre, sesion!.uid);
                 await cargar();
-                setSel({ ...sel, estado, respuesta: respuesta.trim() || null });
+                setSel({ ...sel, estado, respuesta: respuesta.trim() || null, historial: [...sel.historial, { estado, mensaje: respuesta.trim(), autor: sesion!.nombre, fecha: new Date() }] });
                 setGuardando(false);
               }}>
               {guardando ? "Guardando…" : "Guardar y avisar al vecino"}

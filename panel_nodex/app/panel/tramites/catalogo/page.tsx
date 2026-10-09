@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { esAdmin, useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { pesos } from "@/lib/almacen";
 import {
   CATALOGO_SUGERIDO, dependencias, MODALIDADES, guardarTramite, listarTramites, usarCatalogoSugerido,

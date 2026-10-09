@@ -27,6 +27,8 @@ export interface Comercio {
   cierra: string;
   dias: string[];
   activo: boolean;
+  /** imagen en Storage: municipios/{id}/comercios/{slug}/… */
+  portada?: string;
   calificacion?: number;
   resenas?: number;
 }

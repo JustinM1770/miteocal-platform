@@ -89,7 +89,7 @@ function Ventas({ boletos, eventos, onCambio }: {
               return (
                 <tr key={p.id} className={`click${sel?.id === p.id ? " sel" : ""}`} onClick={() => setSel(p)}>
                   <td><strong>{p.folio}</strong></td>
-                  <td>{p.vecinoId ? <>{p.compradorNombre ?? "Vecino"}<div className="muted" style={{ fontSize: 11 }}>{p.compradorTipo === "paisano" ? `Paisano · ${p.compradorOrigen ?? ""}` : p.compradorColonia}</div></> : <span className="muted">Taquilla</span>}</td>
+                  <td>{p.uid ? <>{p.compradorNombre ?? "Vecino"}<div className="muted" style={{ fontSize: 11 }}>{p.compradorTipo === "paisano" ? `Paisano · ${p.compradorOrigen ?? ""}` : p.compradorColonia}</div></> : <span className="muted">Taquilla</span>}</td>
                   <td>{p.descripcion}</td>
                   <td className="num">{p.cantidad}</td>
                   <td className="num">{pesos(p.monto)}</td>

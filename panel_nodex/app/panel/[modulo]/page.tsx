@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import ModalConfirmar from "@/components/ModalConfirmar";
 import VistaApp, { type Item } from "@/components/VistaApp";
 import TramoMapa from "@/components/TramoMapa";
+import SubirImagen from "@/components/SubirImagen";
 import { moduloPorSlug, opcionesDe, type Campo } from "@/lib/modulos";
 import { alcanceDe, coloniasDeZona, textoAlcance, zonas } from "@/lib/config";
 import { f } from "@/lib/almacen";
@@ -278,6 +279,9 @@ function CampoForm({ campo, valor, onCambio }: { campo: Campo; valor: string; on
       );
       break;
     }
+    case "imagen":
+      // La subida tiene su propia etiqueta y avance
+      return <SubirImagen carpeta="noticias" id={`pub-${new Date().toISOString().slice(0, 10)}`} valor={valor} onCambio={onCambio} etiqueta={campo.etiqueta} />;
     case "tramo":
       control = <TramoMapa valor={valor} onCambio={onCambio} />;
       break;

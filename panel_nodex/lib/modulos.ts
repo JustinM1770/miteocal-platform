@@ -14,7 +14,7 @@ export interface Campo {
   clave: string;
   etiqueta: string;
   /** seg = botones de color (como los chips de la app); dias = L M X J V S D */
-  tipo: "texto" | "area" | "fecha" | "hora" | "select" | "seg" | "dias" | "colonia" | "tel" | "url" | "tramo";
+  tipo: "texto" | "area" | "fecha" | "hora" | "select" | "seg" | "dias" | "colonia" | "tel" | "url" | "tramo" | "imagen";
   /** fijas, o leídas de la configuración del municipio al momento de mostrarse */
   opciones?: string[] | (() => string[]);
   /** color de cada opción de un seg, en el mismo orden: azul, rojo, naranja, verde, morado, gris */
@@ -130,7 +130,7 @@ export const MODULOS: Modulo[] = [
       { clave: "titulo", etiqueta: "Titular", tipo: "texto", placeholder: "Rehabilitación de calle Benito Juárez inicia el lunes" },
       { clave: "fuente", etiqueta: "Fuente", tipo: "texto", opcional: true, placeholder: "Obras Públicas" },
       { clave: "mensaje", etiqueta: "Nota", tipo: "area", placeholder: "Dos o tres párrafos cortos." },
-      { clave: "imagen", etiqueta: "Imagen (URL)", tipo: "url", opcional: true },
+      { clave: "imagen", etiqueta: "Imagen", tipo: "imagen", opcional: true },
       COLONIA_OPC,
     ],
     caducaHoras: null, notificarPorDefecto: false, accion: "Publicar nota",

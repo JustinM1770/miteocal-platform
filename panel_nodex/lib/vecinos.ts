@@ -35,7 +35,7 @@ export interface Vecino {
 
 export interface Calificacion {
   id?: string;
-  vecinoId: string;
+  uid: string;
   /* copiados al calificar, para mostrarla sin leer datos personales */
   vecinoNombre?: string;
   colonia?: string;
@@ -93,7 +93,7 @@ function generar() {
     const x = a.r();
     const e = (x < 0.55 ? 5 : x < 0.8 ? 4 : x < 0.9 ? 3 : x < 0.96 ? 2 : 1) as Calificacion["estrellas"];
     calificaciones.push({
-      id: `c${calificaciones.length + 1}`, vecinoId: v.id!, vecinoNombre: v.nombre, colonia: v.colonia, tipo: v.tipo, origen: v.origen, estrellas: e,
+      id: `c${calificaciones.length + 1}`, uid: v.id!, vecinoNombre: v.nombre, colonia: v.colonia, tipo: v.tipo, origen: v.origen, estrellas: e,
       comentario: a.r() < 0.45 ? a.de(COMENTARIOS[e]) : "",
       version: a.de(["1.2.0", "1.3.0", "1.3.1"]), creadoEn: hace(a.int(0, 90)), respuesta: null,
     });
@@ -146,5 +146,5 @@ export const listarCalificaciones = () => leer("calificaciones", demoCalificacio
 export const responderCalificacion = (c: Calificacion, respuesta: string) =>
   actualizar("calificaciones", demoCalificaciones, c.id!, { respuesta });
 
-export const calificacionDe = async (vecinoId: string) =>
-  (await leer("calificaciones", demoCalificaciones.filter((c) => c.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 1 }))[0] ?? null;
+export const calificacionDe = async (uid: string) =>
+  (await leer("calificaciones", demoCalificaciones.filter((c) => c.uid === uid), { filtros: [["uid", uid]], max: 1 }))[0] ?? null;

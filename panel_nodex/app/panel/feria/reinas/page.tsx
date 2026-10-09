@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Pestanas } from "@/components/graficas";
+import SubirImagen from "@/components/SubirImagen";
+import { aSlug } from "@/lib/config";
 import { alcanceDe, colonias } from "@/lib/config";
 import {
   CERTAMENES, cambiarCertamen, guardarCandidata, listarCandidatas, listarCertamenes, listarVotos,
@@ -74,8 +76,8 @@ export default function Reinas() {
           const ganadora = estado?.ganadoraId === c.id;
           return (
             <div key={c.id} className="card col" style={{ gap: 10, padding: 14, borderColor: ganadora ? "var(--brand)" : undefined, borderWidth: ganadora ? 2 : 1 }}>
-              <div className="foto-cand" style={{ background: c.color, position: "relative" }}>
-                {iniciales(c.nombre)}
+              <div className="foto-cand" style={{ background: c.foto ? `center/cover url(${c.foto})` : c.color, position: "relative" }}>
+                {!c.foto && iniciales(c.nombre)}
                 {i === 0 && total > 0 && !ganadora && <span className="tag naranja" style={{ position: "absolute", top: 8, left: 8 }}>Va en 1.º</span>}
                 {ganadora && <span className="tag azul" style={{ position: "absolute", top: 8, left: 8 }}>♛ Ganadora</span>}
               </div>
@@ -157,6 +159,7 @@ function NuevaCandidata({ certamen, onCerrar, onGuardar }: {
   const [representa, setRepresenta] = useState(colonias()[0]?.nombre ?? "");
   const [semblanza, setSemblanza] = useState("");
   const [color, setColor] = useState(COLORES[0]);
+  const [foto, setFoto] = useState("");
   const rango = certamen === "reina" ? [17, 25] : [4, 9];
   const listo = nombre.trim() && semblanza.trim() && edad >= rango[0] && edad <= rango[1];
 
@@ -179,18 +182,20 @@ function NuevaCandidata({ certamen, onCerrar, onGuardar }: {
           <span className="muted" style={{ fontSize: 12 }}>Edad permitida: {rango[0]} a {rango[1]} años.</span>
           <div className="field"><label className="section-label">SEMBLANZA</label>
             <textarea className="textarea" value={semblanza} onChange={(e) => setSemblanza(e.target.value)} placeholder="Una o dos frases: estudios, a qué se dedica, qué la representa." /></div>
-          <div className="field"><label className="section-label">FOTO</label>
-            <div className="row" style={{ gap: 8, alignItems: "center" }}>
-              {COLORES.map((c) => (
-                <button key={c} type="button" aria-label="Color de fondo" onClick={() => setColor(c)}
-                  style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2px solid var(--brand)" : "1px solid var(--border)" }} />
-              ))}
-              <span className="muted" style={{ fontSize: 12 }}>La foto se sube cuando el almacenamiento de Firebase esté activo.</span>
-            </div></div>
+          <SubirImagen carpeta="candidatas" id={aSlug(nombre || "candidata")} valor={foto} onCambio={setFoto} etiqueta="Foto" />
+          {!foto && (
+            <div className="field"><label className="section-label">COLOR DE FONDO SIN FOTO</label>
+              <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                {COLORES.map((c) => (
+                  <button key={c} type="button" aria-label="Color de fondo" onClick={() => setColor(c)}
+                    style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2px solid var(--brand)" : "1px solid var(--border)" }} />
+                ))}
+              </div></div>
+          )}
           <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
             <button className="btn ghost" type="button" onClick={onCerrar}>Cancelar</button>
             <button className="btn primary" type="button" disabled={!listo}
-              onClick={() => onGuardar({ certamen, nombre: nombre.trim(), edad, representa, semblanza: semblanza.trim(), color })}>
+              onClick={() => onGuardar({ certamen, nombre: nombre.trim(), edad, representa, semblanza: semblanza.trim(), color, ...(foto ? { foto } : {}) })}>
               Registrar candidata
             </button>
           </div>
@@ -200,7 +205,7 @@ function NuevaCandidata({ certamen, onCerrar, onGuardar }: {
           <div className="phone">
             <div className="phone-head"><span className="back">‹</span><div><strong>{CERTAMENES[certamen]}</strong><span>Vota por tu favorita</span></div></div>
             <div className="acard" style={{ padding: 10 }}>
-              <div className="foto-cand" style={{ background: color, height: 110 }}>{nombre ? iniciales(nombre) : "?"}</div>
+              <div className="foto-cand" style={{ background: foto ? `center/cover url(${foto})` : color, height: 110 }}>{!foto && (nombre ? iniciales(nombre) : "?")}</div>
               <span className="t">{nombre || "Nombre"}</span>
               <span className="s">{edad} años · {representa}</span>
               <span className="s">{semblanza || "Semblanza"}</span>

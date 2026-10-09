@@ -79,7 +79,7 @@ export interface Solicitud {
   tramiteId: string;
   tramite: string;
   dependencia: Dependencia;
-  vecinoId: string | null;
+  uid: string | null;
   vecinoNombre: string;
   telefono: string;
   canal: "app" | "ventanilla";
@@ -134,7 +134,7 @@ function semilla() {
     const cita = tr.modalidad !== "en_linea" && estado !== "rechazada" ? (() => { const d = new Date(); d.setDate(d.getDate() + a.int(-2, 6)); d.setHours(a.int(9, 13), a.de([0, 20, 40]), 0, 0); return d; })() : null;
     solicitudes.push({
       id: `s${i + 1}`, folio: `TRM-${3100 + i}`, tramiteId: tr.id!, tramite: tr.nombre, dependencia: tr.dependencia,
-      vecinoId: v?.id ?? null, vecinoNombre: v?.nombre ?? "Vecino", telefono: v?.telefono ?? "", canal: a.r() < 0.85 ? "app" : "ventanilla",
+      uid: v?.id ?? null, vecinoNombre: v?.nombre ?? "Vecino", telefono: v?.telefono ?? "", canal: a.r() < 0.85 ? "app" : "ventanilla",
       documentos: tr.requisitos.map((r, k) => ({
         nombre: r, url: null,
         estado: estado === "falta_documento" && k === 0 ? "rechazado" : estado === "recibida" ? "pendiente" : "aceptado",
@@ -219,7 +219,7 @@ export async function actualizarSolicitud(sol: Solicitud, cambios: Partial<Solic
 export async function solicitudEnVentanilla(tr: Tramite, vecinoNombre: string, telefono: string, cita: Date | null, autor: string) {
   const folio = await siguienteFolio("tramites", "TRM", 3100);
   await crear("solicitudes", demoSolicitudes, {
-    folio, tramiteId: tr.id!, tramite: tr.nombre, dependencia: tr.dependencia, vecinoId: null, vecinoNombre, telefono,
+    folio, tramiteId: tr.id!, tramite: tr.nombre, dependencia: tr.dependencia, uid: null, vecinoNombre, telefono,
     canal: "ventanilla", documentos: tr.requisitos.map((r) => ({ nombre: r, url: null, estado: "pendiente" })),
     estado: "recibida", pago: tr.costo ? { monto: tr.costo, metodo: "Ventanilla", estado: "pendiente" } : null,
     cita, entrega: "oficina", notas: [], creadoEn: new Date(), actualizadoEn: new Date(),
@@ -228,4 +228,4 @@ export async function solicitudEnVentanilla(tr: Tramite, vecinoNombre: string, t
   return folio;
 }
 
-export const solicitudesDe = (vecinoId: string) => leer("solicitudes", demoSolicitudes.filter((s) => s.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 100 });
+export const solicitudesDe = (uid: string) => leer("solicitudes", demoSolicitudes.filter((s) => s.uid === uid), { filtros: [["uid", uid]], max: 100 });

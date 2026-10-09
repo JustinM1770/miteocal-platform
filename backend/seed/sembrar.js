@@ -61,6 +61,9 @@ async function main() {
   await raiz.set(municipio, { merge: true });
   await raiz.collection('config').doc('colonias').set(config.colonias);
   await raiz.collection('config').doc('emergencias').set(config.emergencias);
+  // Config que usa el panel_nodex. merge: no pisa lo que el municipio ya capturó.
+  if (config.feria) await raiz.collection('config').doc('feria').set(config.feria, { merge: true });
+  if (config.catalogos) await raiz.collection('config').doc('catalogos').set(config.catalogos, { merge: true });
 
   // Estado del agua de hoy, para que la app tenga algo que pintar desde el dia 1.
   const hoy = new Date().toISOString().slice(0, 10);
@@ -75,7 +78,7 @@ async function main() {
   });
 
   console.log(`  municipios/${MUNICIPIO_ID}`);
-  console.log(`  municipios/${MUNICIPIO_ID}/config/{colonias,emergencias}`);
+  console.log(`  municipios/${MUNICIPIO_ID}/config/{colonias,emergencias,feria,catalogos}`);
   console.log(`  municipios/${MUNICIPIO_ID}/agua/${hoy}`);
   console.log('\nListo. Revisa el emulador en http://localhost:4000');
   console.log('Recuerda: colonias y telefonos de emergencia son PLACEHOLDER.');

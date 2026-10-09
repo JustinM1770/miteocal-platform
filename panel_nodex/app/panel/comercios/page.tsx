@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import Modal from "@/components/Modal";
+import SubirImagen from "@/components/SubirImagen";
+import { aSlug } from "@/lib/config";
 import { CATEGORIAS_COMERCIO, abiertoAhora, guardarComercio, listarComercios, type Comercio } from "@/lib/comercios";
 
 const DIAS = ["L", "M", "X", "J", "V", "S", "D"];
@@ -94,6 +96,7 @@ function Editor({ comercio, onCerrar, onGuardar }: { comercio: Comercio; onCerra
             <div className="field grow"><label className="section-label">DIRECCIÓN</label>
               <input className="input" value={c.direccion} onChange={(e) => poner({ direccion: e.target.value })} placeholder="Zaragoza 45, Centro" /></div>
           </div>
+          <SubirImagen carpeta="comercios" id={comercio.id ?? aSlug(c.nombre || "nuevo")} valor={c.portada ?? ""} onCambio={(portada) => poner({ portada })} etiqueta="Portada" />
           <div className="field"><label className="section-label">DESCRIPCIÓN · OPCIONAL</label>
             <input className="input" value={c.descripcion} onChange={(e) => poner({ descripcion: e.target.value })} /></div>
           <div className="field"><label className="section-label">HORARIO</label>
@@ -129,7 +132,7 @@ function Editor({ comercio, onCerrar, onGuardar }: { comercio: Comercio; onCerra
           <span className="section-label">ASÍ SE VERÁ EN LA APP</span>
           <div className="phone">
             <div className="acard" style={{ overflow: "hidden" }}>
-              <div className="img-ph" style={{ background: "var(--warn-soft)" }} />
+              <div className="img-ph" style={{ background: c.portada ? `center/cover url(${c.portada})` : "var(--warn-soft)" }} />
               <div className="row" style={{ justifyContent: "space-between" }}>
                 <span className="t">{c.nombre || "Nombre del comercio"}</span>
                 <span className={`tag ${abiertoAhora(c) ? "verde" : "gris"}`}>{abiertoAhora(c) ? "Abierto" : "Cerrado"}</span>

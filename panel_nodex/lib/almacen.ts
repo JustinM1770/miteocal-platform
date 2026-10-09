@@ -83,9 +83,9 @@ export async function actualizar<T extends { id?: string }>(col: string, demo: T
 }
 
 /* ─── Folios consecutivos ───────────────────────────────────
-   Un contador por tipo en municipios/{id}/contadores/{tipo}, incrementado
-   dentro de una transacción: dos taquillas al mismo tiempo nunca reciben
-   el mismo folio. */
+   Mismo contador que usa la Cloud Function de reportes:
+   municipios/{id}/config/contadores, un campo por tipo. Se incrementa en una
+   transacción: dos taquillas al mismo tiempo nunca reciben el mismo folio. */
 const contadoresDemo: Record<string, number> = {};
 
 export async function siguienteFolio(tipo: string, prefijo: string, inicio = 10000): Promise<string> {
@@ -93,10 +93,10 @@ export async function siguienteFolio(tipo: string, prefijo: string, inicio = 100
     contadoresDemo[tipo] = (contadoresDemo[tipo] ?? inicio) + 1;
     return `${prefijo}-${contadoresDemo[tipo]}`;
   }
-  const ref = documento("contadores", tipo);
+  const ref = documento("config", "contadores");
   const n = await runTransaction(db, async (tx) => {
-    const actual = (await tx.get(ref)).data()?.n ?? inicio;
-    tx.set(ref, { n: actual + 1 }, { merge: true });
+    const actual = (await tx.get(ref)).get(tipo) ?? inicio;
+    tx.set(ref, { [tipo]: actual + 1 }, { merge: true });
     return actual + 1;
   });
   return `${prefijo}-${n}`;

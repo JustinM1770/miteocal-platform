@@ -63,6 +63,21 @@ service firebase.storage {
         allow read:  if true;
         allow write: if esFuncionario(mid) && esImagen() && pesaMenosDe(5);
       }
+
+      // Fotos de candidatas de los certámenes de la feria: públicas.
+      match /candidatas/{candidataId}/{archivo} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid) && esImagen() && pesaMenosDe(5);
+      }
+
+      // Documentos que el vecino sube para un trámite (INE, actas). Privados:
+      // solo el dueño (carpeta con su uid) y el personal del municipio.
+      match /solicitudes/{uid}/{solicitudId}/{archivo} {
+        allow read:   if esFuncionario(mid) || (delMunicipio(mid) && request.auth.uid == uid);
+        allow create: if delMunicipio(mid) && request.auth.uid == uid && pesaMenosDe(10)
+                      && (esImagen() || request.resource.contentType == 'application/pdf');
+        allow update, delete: if false;
+      }
     }
   }
 }

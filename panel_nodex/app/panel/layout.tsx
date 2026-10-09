@@ -29,7 +29,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           {sinAcceso.motivo !== "error-config" && (
             <div className="acard flat" style={{ gap: 6 }}>
               <span className="s">Pídele al administrador que corra (desde backend/):</span>
-              <code style={{ fontSize: 12, wordBreak: "break-all" }}>node seed/asignar-rol.js {sinAcceso.email} --rol funcionario --municipio &lt;id&gt; --produccion</code>
+              <code style={{ fontSize: 12, wordBreak: "break-all" }}>node seed/crear-funcionario.js {sinAcceso.email} --rol funcionario --municipio &lt;id&gt; --produccion</code>
               <span className="s">Después vuelve a entrar.</span>
             </div>
           )}

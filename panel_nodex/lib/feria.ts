@@ -1,8 +1,8 @@
-import { runTransaction, serverTimestamp } from "firebase/firestore";
-import { db, documento, firebaseListo } from "./firebase";
+import { getAggregateFromServer, query, runTransaction, serverTimestamp, sum, count, where, type QueryDocumentSnapshot, type DocumentData } from "firebase/firestore";
+import { coleccion, db, documento, firebaseListo } from "./firebase";
 import { registrar } from "./datos";
 import { cfg } from "./config";
-import { actualizar, azar, contar, crear, diaLocal, f, leer, siguienteFolio, type Fecha } from "./almacen";
+import { actualizar, azar, contar, crear, diaLocal, f, leer, leerPagina, siguienteFolio, type Fecha, type Pagina } from "./almacen";
 import { demoVecinos, ORIGENES } from "./vecinos";
 
 /* ─── Feria ─────────────────────────────────────────────────
@@ -59,6 +59,8 @@ export interface Candidata {
   representa: string;
   semblanza: string;
   color: string;
+  /** foto en Storage; si no hay, se muestran iniciales sobre `color` */
+  foto?: string;
 }
 
 export interface EstadoCertamen {
@@ -72,7 +74,7 @@ export interface EstadoCertamen {
 /** Un voto por vecino verificado por SMS y por certamen */
 /** Un voto por vecino y certamen: id `<certamen>_<uid>`. Guarda colonia y tipo del
     votante para que el panel no tenga que leer datos personales en usuarios. */
-export interface Voto { id?: string; vecinoId: string; certamen: Certamen; candidataId: string; colonia: string; tipo: "local" | "paisano"; creadoEn: Fecha }
+export interface Voto { id?: string; uid: string; certamen: Certamen; candidataId: string; colonia: string; tipo: "local" | "paisano"; creadoEn: Fecha }
 
 export type EstadoTransmision = "programada" | "en_vivo" | "terminada";
 export interface Transmision {
@@ -88,7 +90,7 @@ export interface Transmision {
 
 export interface RegistroPaisano {
   id?: string;
-  vecinoId: string | null;
+  uid: string | null;
   nombre: string;
   origen: string;
   llega: string;
@@ -108,7 +110,7 @@ export const METODOS: Record<MetodoPago, string> = { tarjeta: "Tarjeta", oxxo: "
 export interface Pago {
   id?: string;
   folio: string;
-  vecinoId: string | null;
+  uid: string | null;
   concepto: Concepto;
   descripcion: string;
   monto: number;
@@ -173,8 +175,8 @@ function generar() {
   const pesoMiss = [0.41, 0.33, 0.26];
   const elegir = (p: number[]) => { let x = a.r(); for (let i = 0; i < p.length; i++) { x -= p[i]; if (x <= 0) return i; } return p.length - 1; };
   for (const v of demoVecinos) {
-    if (a.r() < 0.58) votos.push({ id: `reina_${v.id}`, vecinoId: v.id!, certamen: "reina", candidataId: CANDIDATAS[elegir(pesoReina)].id!, colonia: v.colonia, tipo: v.tipo, creadoEn: hace(a.int(0, 20)) });
-    if (a.r() < 0.41) votos.push({ id: `miss_chiquitita_${v.id}`, vecinoId: v.id!, certamen: "miss_chiquitita", candidataId: CANDIDATAS[4 + elegir(pesoMiss)].id!, colonia: v.colonia, tipo: v.tipo, creadoEn: hace(a.int(0, 20)) });
+    if (a.r() < 0.58) votos.push({ id: `reina_${v.id}`, uid: v.id!, certamen: "reina", candidataId: CANDIDATAS[elegir(pesoReina)].id!, colonia: v.colonia, tipo: v.tipo, creadoEn: hace(a.int(0, 20)) });
+    if (a.r() < 0.41) votos.push({ id: `miss_chiquitita_${v.id}`, uid: v.id!, certamen: "miss_chiquitita", candidataId: CANDIDATAS[4 + elegir(pesoMiss)].id!, colonia: v.colonia, tipo: v.tipo, creadoEn: hace(a.int(0, 20)) });
   }
 
   const pagos: Pago[] = [];
@@ -191,32 +193,32 @@ function generar() {
       const metodo: MetodoPago = v.tipo === "paisano" ? (a.r() < 0.9 ? "tarjeta" : "spei") : a.de(["tarjeta", "tarjeta", "oxxo", "spei"] as const);
       const estado: EstadoPago = metodo === "oxxo" && a.r() < 0.25 ? "pendiente" : a.r() < 0.03 ? "reembolsado" : "pagado";
       pagos.push({
-        id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "boleto",
+        id: `p${++folio}`, folio: `TEC-${folio}`, uid: v.id!, concepto: "boleto",
         descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN",
         metodo, canal: "app", estado, creadoEn: hace(a.int(0, 24), a.int(0, 23)),
         eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null, ...comprador(v),
       });
     }
     // Pagos municipales desde la app
-    if (a.r() < 0.18) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "agua", descripcion: `Agua · ${v.colonia} · bimestre 5`, monto: a.int(180, 420), moneda: "MXN", metodo: a.de(["tarjeta", "oxxo", "spei"] as const), canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 40)), ...comprador(v) });
-    if (v.tipo === "paisano" && a.r() < 0.3) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "predial", descripcion: `Predial 2026 · ${v.colonia}`, monto: a.int(900, 3200), moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
-    if (a.r() < 0.04) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "acta", descripcion: "Acta de nacimiento certificada", monto: 160, moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
+    if (a.r() < 0.18) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, uid: v.id!, concepto: "agua", descripcion: `Agua · ${v.colonia} · bimestre 5`, monto: a.int(180, 420), moneda: "MXN", metodo: a.de(["tarjeta", "oxxo", "spei"] as const), canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 40)), ...comprador(v) });
+    if (v.tipo === "paisano" && a.r() < 0.3) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, uid: v.id!, concepto: "predial", descripcion: `Predial 2026 · ${v.colonia}`, monto: a.int(900, 3200), moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
+    if (a.r() < 0.04) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, uid: v.id!, concepto: "acta", descripcion: "Acta de nacimiento certificada", monto: 160, moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
   }
   // Ventas en taquilla, sin cuenta en la app
   for (let i = 0; i < 90; i++) {
     const e = a.de(conBoletos); const z = e.zonas[0]; const cantidad = a.int(1, 5);
-    pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: null, concepto: "boleto", descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado", creadoEn: hace(a.int(0, 15), a.int(0, 10)), eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null, compradorNombre: "Taquilla", compradorTipo: null });
+    pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, uid: null, concepto: "boleto", descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado", creadoEn: hace(a.int(0, 15), a.int(0, 10)), eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null, compradorNombre: "Taquilla", compradorTipo: null });
   }
 
   // El resumen por vecino que en producción mantiene una Cloud Function
   for (const v of demoVecinos) {
-    const b = pagos.filter((p) => p.vecinoId === v.id && p.concepto === "boleto" && p.estado === "pagado");
+    const b = pagos.filter((p) => p.uid === v.id && p.concepto === "boleto" && p.estado === "pagado");
     v.resumen = { estrellas: v.resumen?.estrellas ?? null, boletos: b.reduce((s, p) => s + (p.cantidad ?? 0), 0), gasto: b.reduce((s, p) => s + p.monto, 0) };
   }
 
   const paisanos = demoVecinos.filter((v) => v.tipo === "paisano");
   const registros: RegistroPaisano[] = paisanos.filter(() => a.r() < 0.45).map((v, i) => ({
-    id: `h${i + 1}`, vecinoId: v.id!, nombre: v.nombre, origen: v.origen ?? a.de(ORIGENES),
+    id: `h${i + 1}`, uid: v.id!, nombre: v.nombre, origen: v.origen ?? a.de(ORIGENES),
     llega: (() => { const d = new Date(`${cfg().feria.inicio}T12:00`); d.setDate(d.getDate() + a.int(0, 7)); return diaLocal(d); })(), personas: a.int(1, 6), desfile: a.r() < 0.6,
   }));
 
@@ -364,7 +366,7 @@ export async function reembolsar(p: Pago, autor: string) {
 export async function venderTaquilla(e: Evento, zona: Zona, cantidad: number, autor: string) {
   const folio = await siguienteFolio("boletos", "TEC", 20000);
   await crear("pagos", demoPagos, {
-    folio, vecinoId: null, concepto: "boleto", descripcion: `${e.titulo} · ${zona.nombre}`,
+    folio, uid: null, concepto: "boleto", descripcion: `${e.titulo} · ${zona.nombre}`,
     monto: zona.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado",
     creadoEn: new Date(), eventoId: e.id, zona: zona.nombre, cantidad, usado: false, usadoEn: null,
     compradorNombre: "Taquilla", compradorTipo: null,
@@ -374,5 +376,31 @@ export async function venderTaquilla(e: Evento, zona: Zona, cantidad: number, au
 }
 
 /* ─── Por vecino (ficha del CRM) ─── */
-export const pagosDe = (vecinoId: string) => leer("pagos", demoPagos.filter((p) => p.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 200 });
-export const votosDe = (vecinoId: string) => leer("votos", demoVotos.filter((v) => v.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 10 });
+export const pagosDe = (uid: string) => leer("pagos", demoPagos.filter((p) => p.uid === uid), { filtros: [["uid", uid]], max: 200 });
+export const votosDe = (uid: string) => leer("votos", demoVotos.filter((v) => v.uid === uid), { filtros: [["uid", uid]], max: 10 });
+
+/* ─── Pagos en línea: página y totales en el servidor ─── */
+export const paginaPagos = (cursor: QueryDocumentSnapshot<DocumentData> | null, filtros: [string, unknown][] = []): Promise<Pagina<Pago>> =>
+  leerPagina("pagos", demoPagos.filter((p) => filtros.every(([c, v]) => (p as unknown as Record<string, unknown>)[c] === v)).sort((a, b) => +f(b.creadoEn) - +f(a.creadoEn)), "creadoEn", 100, cursor, filtros);
+
+/** Suma y cuenta pagos que cumplen los filtros (en el servidor, sin descargarlos) */
+async function sumar(filtros: [string, unknown][]): Promise<{ monto: number; n: number }> {
+  if (!firebaseListo || !db) {
+    const l = demoPagos.filter((p) => filtros.every(([c, v]) => (p as unknown as Record<string, unknown>)[c] === v));
+    return { monto: l.reduce((s, p) => s + p.monto, 0), n: l.length };
+  }
+  const r = await getAggregateFromServer(query(coleccion("pagos"), ...filtros.map(([c, v]) => where(c, "==", v))), { monto: sum("monto"), n: count() });
+  return { monto: r.data().monto ?? 0, n: r.data().n };
+}
+
+export async function totalesPagos() {
+  const app: [string, unknown][] = [["canal", "app"], ["estado", "pagado"]];
+  const [enApp, eu, pendientes, ...porConcepto] = await Promise.all([
+    sumar(app),
+    sumar([["compradorTipo", "paisano"], ["estado", "pagado"]]),
+    sumar([["estado", "pendiente"]]),
+    ...(Object.keys(CONCEPTOS) as Concepto[]).map((c) => sumar([...app, ["concepto", c]])),
+  ]);
+  const conceptos = Object.fromEntries((Object.keys(CONCEPTOS) as Concepto[]).map((c, i) => [c, porConcepto[i]])) as Record<Concepto, { monto: number; n: number }>;
+  return { enApp, eu, pendientes, conceptos, municipales: { monto: enApp.monto - conceptos.boleto.monto, n: enApp.n - conceptos.boleto.n } };
+}

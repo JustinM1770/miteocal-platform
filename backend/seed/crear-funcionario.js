@@ -11,6 +11,10 @@
  * Contra el emulador (lo normal):
  *   npm run emu                                    # en otra terminal
  *   node seed/crear-funcionario.js jefe@teocaltiche.gob.mx --rol admin
+ *   node seed/crear-funcionario.js agua@teocaltiche.gob.mx --area "Agua Potable"
+ *
+ * Si la cuenta ya existe (por ejemplo, creada en la consola de Firebase), no
+ * se toca su contraseña: solo se le asignan municipio, rol y área.
  *
  * Contra el proyecto real (con cuidado, crea una cuenta de verdad):
  *   GOOGLE_APPLICATION_CREDENTIALS=~/llaves/miteocal-admin.json \
@@ -33,6 +37,7 @@ function opcion(nombre, porDefecto) {
 
 const rol = opcion('rol', 'funcionario');
 const municipioId = opcion('municipio', MUNICIPIO_POR_DEFECTO);
+const area = opcion('area', null);
 let clave = opcion('clave', null);
 
 if (!correo) {
@@ -71,26 +76,35 @@ async function main() {
   }
 
   let usuario;
+  let nueva = false;
   try {
     usuario = await admin.auth().getUserByEmail(correo);
     console.log(`La cuenta ya existia (${usuario.uid}). Solo actualizo sus permisos.`);
   } catch {
     usuario = await admin.auth().createUser({ email: correo, password: clave });
+    nueva = true;
     console.log(`Cuenta creada: ${usuario.uid}`);
   }
 
-  await admin.auth().setCustomUserClaims(usuario.uid, { municipioId, rol });
+  // El panel lee municipioId, rol y (opcional) area de estos claims
+  await admin.auth().setCustomUserClaims(usuario.uid, { municipioId, rol, ...(area ? { area } : {}) });
 
+  const perfil = await admin.firestore().collection('usuarios').doc(usuario.uid).get();
   await admin.firestore().collection('usuarios').doc(usuario.uid).set(
-    { municipioId, rol, correo, nombre: correo.split('@')[0] },
+    { municipioId, rol, area, correo, ...(perfil.get('nombre') ? {} : { nombre: correo.split('@')[0] }) },
     { merge: true }
   );
 
   console.log(`\n  correo:    ${correo}`);
   console.log(`  municipio: ${municipioId}`);
   console.log(`  rol:       ${rol}`);
-  console.log(`  clave:     ${clave}`);
-  console.log('\nEntrégasela por un canal seguro y que la cambie al entrar.');
+  console.log(`  area:      ${area || '(sin area)'}`);
+  if (nueva) {
+    console.log(`  clave:     ${clave}`);
+    console.log('\nEntrégasela por un canal seguro y que la cambie al entrar.');
+  } else {
+    console.log('  clave:     (sin cambios; usa la que ya tenia)');
+  }
   console.log('Si ya tenia sesion abierta, debe salir y volver a entrar para');
   console.log('que el token recoja los permisos nuevos.');
 }

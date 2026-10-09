@@ -6,7 +6,7 @@ import { listarPersonal, type Usuario } from "@/lib/datos";
 import { cfg } from "@/lib/config";
 
 /* El rol y el municipio son custom claims: solo los asigna el Admin SDK
-   (backend/seed/crear-funcionario.js y asignar-rol.js, o una Cloud
+   (backend/seed/crear-funcionario.js o la Cloud
    Function). Por eso aquí no hay botón de «crear usuario»: se arma el
    comando exacto para quien tenga la llave de servicio. */
 
@@ -78,7 +78,7 @@ export default function Personal() {
             onClick={async () => { await navigator.clipboard.writeText(comando); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}>
             {copiado ? "Copiado" : "Copiar comando"}
           </button>
-          <span className="muted" style={{ fontSize: 12 }}>¿La persona ya tiene cuenta? Usa <code>seed/asignar-rol.js</code> con los mismos parámetros.</span>
+          <span className="muted" style={{ fontSize: 12 }}>Si la persona ya tiene cuenta, el mismo comando solo le asigna permisos y no toca su contraseña.</span>
         </div>
       </div>
     </>
