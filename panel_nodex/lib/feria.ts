@@ -9,7 +9,7 @@ import { demoVecinos, ORIGENES } from "./vecinos";
    simulados: el panel deja todo listo para conectar la pasarela.
    ───────────────────────────────────────────────────────── */
 
-export const FERIA = { nombre: "Feria de Noviembre 2026", inicio: "2026-11-01", fin: "2026-11-16" };
+export const FERIA = { nombre: "Feria de Noviembre 2026", inicio: "2026-10-30", fin: "2026-11-16" };
 
 export type CategoriaEvento =
   | "concierto" | "toros" | "palenque" | "religioso" | "cultural"
@@ -125,6 +125,8 @@ const ev = (id: string, titulo: string, categoria: CategoriaEvento, escenario: s
   ({ id, titulo, categoria, escenario, fecha, hora, descripcion, zonas, transmitir, publicado: true });
 
 const EVENTOS: Evento[] = [
+  ev("e15", "Desfile inaugural de la feria", "cultural", "Plaza principal", "2026-10-30", "18:00", "Carros alegóricos y bandas de las escuelas.", [], true),
+  ev("e16", "Serenata y baile de inauguración", "concierto", "Teatro del Pueblo", "2026-10-31", "21:00", "Entrada libre."),
   ev("e1", "Banda El Recodo", "concierto", "Plaza de Toros", "2026-11-01", "22:00", "Inauguración de la feria.", [{ nombre: "General", precio: 450, cupo: 1800 }, { nombre: "Preferente", precio: 800, cupo: 600 }, { nombre: "VIP", precio: 1500, cupo: 150 }], true),
   ev("e2", "Coronación de la Reina de la Feria", "certamen", "Teatro del Pueblo", "2026-11-01", "20:00", "Coronación y desfile de candidatas.", [], true),
   ev("e3", "Christian Nodal", "concierto", "Plaza de Toros", "2026-11-03", "22:00", "", [{ nombre: "General", precio: 890, cupo: 1800 }, { nombre: "Preferente", precio: 1400, cupo: 600 }, { nombre: "VIP", precio: 2500, cupo: 150 }], true),
@@ -197,7 +199,7 @@ function generar() {
   const paisanos = demoVecinos.filter((v) => v.tipo === "paisano");
   const registros: RegistroPaisano[] = paisanos.filter(() => a.r() < 0.45).map((v, i) => ({
     id: `h${i + 1}`, vecinoId: v.id!, nombre: v.nombre, origen: v.origen ?? a.de(ORIGENES),
-    llega: `2026-11-0${a.int(1, 6)}`, personas: a.int(1, 6), desfile: a.r() < 0.6,
+    llega: (() => { const d = new Date(`${FERIA.inicio}T12:00`); d.setDate(d.getDate() + a.int(0, 7)); return d.toLocaleDateString("en-CA"); })(), personas: a.int(1, 6), desfile: a.r() < 0.6,
   }));
 
   return { votos, pagos, registros };

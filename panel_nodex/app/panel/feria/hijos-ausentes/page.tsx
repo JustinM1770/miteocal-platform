@@ -28,8 +28,10 @@ export default function HijosAusentes() {
     .map((c) => ({ etiqueta: c, valor: regs.filter((r) => r.origen === c).reduce((s, r) => s + r.personas, 0), detalle: `${regs.filter((r) => r.origen === c).length} familias desde ${c}` }))
     .sort((a, b) => b.valor - a.valor);
 
-  // Desde el inicio de la feria hasta el día del desfile
-  const llegadas = Array.from({ length: 6 }, (_, i) => {
+  // Desde el inicio de la feria hasta el último día en que llega alguien
+  const ultima = regs.reduce((m, r) => (r.llega > m ? r.llega : m), FERIA.inicio);
+  const diasLlegada = Math.max(1, Math.round((+new Date(`${ultima}T12:00`) - +new Date(`${FERIA.inicio}T12:00`)) / 86400_000) + 1);
+  const llegadas = Array.from({ length: diasLlegada }, (_, i) => {
     const d = new Date(`${FERIA.inicio}T12:00`); d.setDate(d.getDate() + i);
     const fecha = d.toISOString().slice(0, 10);
     return {
