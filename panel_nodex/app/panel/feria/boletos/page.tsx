@@ -4,10 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Barras, Kpi, Pestanas } from "@/components/graficas";
 import { f, pesos } from "@/lib/almacen";
-import { listarVecinos, type Vecino } from "@/lib/vecinos";
 import {
-  listarEventos, listarPagos, METODOS, reembolsar, validarBoleto, venderTaquilla, vendidos,
-  type Evento, type MetodoPago, type Pago,
+  listarEventos, listarBoletos, METODOS, reembolsar, validarBoleto, venderTaquilla, vendidos,
+  type Evento, type MetodoPago, type Pago, type ResultadoValidacion,
 } from "@/lib/feria";
 
 type Vista = "ventas" | "validar" | "taquilla" | "corte";
@@ -16,16 +15,14 @@ export default function Boletos() {
   const [vista, setVista] = useState<Vista>("ventas");
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
-  const [vecinos, setVecinos] = useState<Vecino[]>([]);
 
   const cargar = useCallback(async () => {
-    const [p, e, v] = await Promise.all([listarPagos(), listarEventos(), listarVecinos()]);
-    setPagos([...p]); setEventos(e); setVecinos(v);
+    const [p, e] = await Promise.all([listarBoletos(), listarEventos()]);
+    setPagos([...p]); setEventos(e);
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
   const boletos = useMemo(() => pagos.filter((p) => p.concepto === "boleto"), [pagos]);
-  const vecinoDe = useMemo(() => new Map(vecinos.map((v) => [v.id, v])), [vecinos]);
 
   return (
     <>
@@ -35,8 +32,8 @@ export default function Boletos() {
         { id: "taquilla", nombre: "Vender en taquilla" },
         { id: "corte", nombre: "Corte de caja" },
       ]} />
-      {vista === "ventas" && <Ventas boletos={boletos} eventos={eventos} vecinoDe={vecinoDe} onCambio={cargar} />}
-      {vista === "validar" && <Validar boletos={boletos} vecinoDe={vecinoDe} onCambio={cargar} />}
+      {vista === "ventas" && <Ventas boletos={boletos} eventos={eventos} onCambio={cargar} />}
+      {vista === "validar" && <Validar boletos={boletos} onCambio={cargar} />}
       {vista === "taquilla" && <Taquilla eventos={eventos} pagos={pagos} onCambio={cargar} />}
       {vista === "corte" && <Corte boletos={boletos} />}
     </>
@@ -50,8 +47,8 @@ function EstadoPill({ p }: { p: Pago }) {
   return <span className="tag verde">Pagado</span>;
 }
 
-function Ventas({ boletos, eventos, vecinoDe, onCambio }: {
-  boletos: Pago[]; eventos: Evento[]; vecinoDe: Map<string | undefined, Vecino>; onCambio: () => Promise<void>;
+function Ventas({ boletos, eventos, onCambio }: {
+  boletos: Pago[]; eventos: Evento[]; onCambio: () => Promise<void>;
 }) {
   const { sesion } = useAuth();
   const [evento, setEvento] = useState("");
@@ -62,7 +59,7 @@ function Ventas({ boletos, eventos, vecinoDe, onCambio }: {
 
   const visibles = boletos.filter((p) =>
     (!evento || p.eventoId === evento) && (!metodo || p.metodo === metodo) &&
-    (!q || `${p.folio} ${vecinoDe.get(p.vecinoId ?? undefined)?.nombre ?? ""}`.toLowerCase().includes(q)));
+    (!q || `${p.folio} ${p.compradorNombre ?? ""}`.toLowerCase().includes(q)));
   const pagados = visibles.filter((p) => p.estado === "pagado");
 
   return (
@@ -89,11 +86,10 @@ function Ventas({ boletos, eventos, vecinoDe, onCambio }: {
           <thead><tr><th>FOLIO</th><th>COMPRADOR</th><th>EVENTO · ZONA</th><th className="num">CANT.</th><th className="num">MONTO</th><th>MÉTODO</th><th>CUÁNDO</th><th>ESTADO</th></tr></thead>
           <tbody>
             {visibles.slice(0, 60).map((p) => {
-              const v = vecinoDe.get(p.vecinoId ?? undefined);
               return (
                 <tr key={p.id} className={`click${sel?.id === p.id ? " sel" : ""}`} onClick={() => setSel(p)}>
                   <td><strong>{p.folio}</strong></td>
-                  <td>{v ? <>{v.nombre}<div className="muted" style={{ fontSize: 11 }}>{v.tipo === "paisano" ? `Paisano · ${v.origen}` : v.colonia}</div></> : <span className="muted">Taquilla</span>}</td>
+                  <td>{p.vecinoId ? <>{p.compradorNombre ?? "Vecino"}<div className="muted" style={{ fontSize: 11 }}>{p.compradorTipo === "paisano" ? `Paisano · ${p.compradorOrigen ?? ""}` : p.compradorColonia}</div></> : <span className="muted">Taquilla</span>}</td>
                   <td>{p.descripcion}</td>
                   <td className="num">{p.cantidad}</td>
                   <td className="num">{pesos(p.monto)}</td>
@@ -133,7 +129,7 @@ function Ventas({ boletos, eventos, vecinoDe, onCambio }: {
   );
 }
 
-function Validar({ boletos, vecinoDe, onCambio }: { boletos: Pago[]; vecinoDe: Map<string | undefined, Vecino>; onCambio: () => Promise<void> }) {
+function Validar({ boletos, onCambio }: { boletos: Pago[]; onCambio: () => Promise<void> }) {
   const { sesion } = useAuth();
   const [folio, setFolio] = useState("");
   const [ultimo, setUltimo] = useState<{ ok: boolean; titulo: string; detalle: string } | null>(null);
@@ -141,12 +137,16 @@ function Validar({ boletos, vecinoDe, onCambio }: { boletos: Pago[]; vecinoDe: M
 
   async function validar() {
     const p = encontrado;
-    if (!p) { setUltimo({ ok: false, titulo: "Folio no encontrado", detalle: "Revisa que el vecino muestre su pase digital de MiTeocal." }); return; }
-    if (p.estado === "reembolsado") { setUltimo({ ok: false, titulo: "Boleto reembolsado", detalle: p.descripcion }); return; }
-    if (p.estado === "pendiente") { setUltimo({ ok: false, titulo: "Pago pendiente", detalle: "La ficha de OXXO no se ha pagado." }); return; }
-    if (p.usado) { setUltimo({ ok: false, titulo: "Este boleto ya entró", detalle: `Validado el ${f(p.usadoEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` }); return; }
-    await validarBoleto(p, sesion!.nombre);
-    setUltimo({ ok: true, titulo: `Pase · ${p.cantidad} persona(s)`, detalle: `${p.descripcion} · ${vecinoDe.get(p.vecinoId ?? undefined)?.nombre ?? "Taquilla"}` });
+    if (!p) { setUltimo({ ok: false, titulo: "Folio no encontrado", detalle: "Revisa que el vecino muestre su pase digital de la app." }); return; }
+    const r = await validarBoleto(p, sesion!.nombre);
+    const MENSAJE: Record<Exclude<ResultadoValidacion, "valido">, { titulo: string; detalle: string }> = {
+      "no-existe": { titulo: "Folio no encontrado", detalle: "Revisa que el vecino muestre su pase digital de la app." },
+      reembolsado: { titulo: "Boleto reembolsado", detalle: p.descripcion },
+      pendiente: { titulo: "Pago pendiente", detalle: "La ficha de OXXO no se ha pagado." },
+      "ya-entro": { titulo: "Este boleto ya entró", detalle: p.usadoEn ? `Validado el ${f(p.usadoEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "Se validó en otra puerta." },
+    };
+    if (r !== "valido") { setUltimo({ ok: false, ...MENSAJE[r] }); await onCambio(); return; }
+    setUltimo({ ok: true, titulo: `Pase · ${p.cantidad} persona(s)`, detalle: `${p.descripcion} · ${p.compradorNombre ?? "Taquilla"}` });
     setFolio("");
     await onCambio();
   }

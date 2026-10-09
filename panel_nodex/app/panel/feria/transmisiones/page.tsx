@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { f } from "@/lib/almacen";
+import { firebaseListo } from "@/lib/firebase";
 import {
-  cambiarTransmision, guardarTransmision, listarEventos, listarTransmisiones,
+  cambiarTransmision, guardarTransmision, listarEventos, listarTransmisiones, ponerEnlace, enlaceValido,
   type Evento, type EstadoTransmision, type Transmision,
 } from "@/lib/feria";
 
@@ -26,8 +27,10 @@ export default function Transmisiones() {
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
-  // El contador de espectadores lo manda el reproductor; en demo se simula
+  // El contador real lo escribe el reproductor/Cloud Function en la transmisión.
+  // Solo en modo demo se simula, para que la pantalla se vea viva.
   useEffect(() => {
+    if (firebaseListo) return;
     const id = setInterval(() => {
       setLista((l) => l.map((t) => {
         if (t.estado !== "en_vivo") return t;
@@ -61,14 +64,17 @@ export default function Transmisiones() {
                 <strong>{t.titulo}</strong>
                 <span className="muted" style={{ fontSize: 12 }}>
                   {f(t.inicio).toLocaleString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  {ev ? ` · ${ev.escenario}` : ""} · {t.url.replace(/^https?:\/\//, "")}
+                  {ev ? ` · ${ev.escenario}` : ""} · {t.url ? t.url.replace(/^https?:\/\//, "") : "sin enlace"}
                 </span>
               </div>
               <div className="col" style={{ alignItems: "flex-end", gap: 2, width: 130 }}>
                 {t.estado === "en_vivo" && <><strong style={{ fontSize: 22 }}>{t.espectadores}</strong><span className="muted" style={{ fontSize: 11 }}>viendo ahora · pico {t.pico}</span></>}
                 {t.estado === "terminada" && <><strong style={{ fontSize: 18 }}>{t.pico}</strong><span className="muted" style={{ fontSize: 11 }}>pico de espectadores</span></>}
               </div>
-              {t.estado === "programada" && (
+              {t.estado === "programada" && !enlaceValido(t.url) && (
+                <EnlacePendiente onGuardar={async (url) => { await ponerEnlace(t, url, sesion!.nombre); await cargar(); }} />
+              )}
+              {t.estado === "programada" && enlaceValido(t.url) && (
                 <button className="btn primary" type="button" disabled={Boolean(enVivo)} title={enVivo ? "Ya hay una transmisión en vivo" : undefined}
                   onClick={async () => { await cambiarTransmision(t, "en_vivo", sesion!.nombre); await cargar(); }}>Iniciar</button>
               )}
@@ -127,7 +133,7 @@ function NuevaTransmision({ eventos, onCerrar, onGuardar }: {
   const [titulo, setTitulo] = useState("");
   const [url, setUrl] = useState("");
   const [inicio, setInicio] = useState("");
-  const urlValida = /^https:\/\/(www\.)?(youtube\.com|youtu\.be|facebook\.com)\//.test(url);
+  const urlValida = enlaceValido(url);
 
   function elegirEvento(id: string) {
     setEventoId(id);
@@ -159,6 +165,20 @@ function NuevaTransmision({ eventos, onCerrar, onGuardar }: {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Una transmisión creada desde un evento llega sin enlace: se captura antes de poder iniciarla */
+function EnlacePendiente({ onGuardar }: { onGuardar: (url: string) => Promise<void> }) {
+  const [url, setUrl] = useState("");
+  return (
+    <div className="col" style={{ gap: 4, width: 260 }}>
+      <div className="row" style={{ gap: 6 }}>
+        <input className={`input${url && !enlaceValido(url) ? " error" : ""}`} style={{ padding: "8px 10px" }} placeholder="https://youtube.com/live/…" value={url} onChange={(e) => setUrl(e.target.value)} />
+        <button className="btn ghost" style={{ padding: "8px 10px" }} type="button" disabled={!enlaceValido(url)} onClick={() => onGuardar(url)}>Guardar</button>
+      </div>
+      <span className="muted" style={{ fontSize: 11 }}>Falta el enlace de YouTube o Facebook para poder iniciarla.</span>
     </div>
   );
 }

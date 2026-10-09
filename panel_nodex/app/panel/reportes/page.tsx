@@ -144,7 +144,7 @@ export default function Reportes() {
               disabled={guardando || (estado === sel.estado && respuesta === (sel.respuesta ?? ""))}
               onClick={async () => {
                 setGuardando(true);
-                await cambiarEstadoReporte(sel, estado, respuesta.trim(), sesion!.nombre);
+                await cambiarEstadoReporte(sel, estado, respuesta.trim(), sesion!.nombre, sesion!.uid);
                 await cargar();
                 setSel({ ...sel, estado, respuesta: respuesta.trim() || null });
                 setGuardando(false);

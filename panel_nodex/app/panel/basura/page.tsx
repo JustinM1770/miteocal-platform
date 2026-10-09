@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import Mapa, { type Globo, type Linea, type Marcador } from "@/components/Mapa";
-import { COLONIAS, alcanceDe, publicar } from "@/lib/datos";
+import { publicar } from "@/lib/datos";
+import { alcanceDe, colonias } from "@/lib/config";
 import { avances, horaEn, masCercano, trazarPorCalles, type Punto } from "@/lib/mapas";
 import { COLORES_RUTA, DIAS, guardarRuta, hoy, listarRutas, type RutaBasura } from "@/lib/basura";
 
@@ -166,7 +167,7 @@ function Editor({ ruta, trazando, onCambio, onCancelar, onGuardar }: {
         <div className="field grow"><label className="section-label">TERMINA</label><input className="input" type="time" value={ruta.fin} onChange={(e) => poner({ fin: e.target.value })} /></div>
       </div>
       <div className="field"><label className="section-label">COLONIAS QUE CUBRE</label>
-        <div className="seg">{COLONIAS.map((c) => (
+        <div className="seg">{colonias().map((c) => (
           <button key={c.nombre} type="button" className={ruta.colonias.includes(c.nombre) ? "on verde" : ""}
             onClick={() => poner({ colonias: ruta.colonias.includes(c.nombre) ? ruta.colonias.filter((x) => x !== c.nombre) : [...ruta.colonias, c.nombre] })}>{c.nombre}</button>
         ))}</div></div>
@@ -209,14 +210,16 @@ function Aviso({ ruta, onCerrar }: { ruta: RutaBasura; onCerrar: () => void }) {
   const [mensaje, setMensaje] = useState("");
   const [notificar, setNotificar] = useState(true);
   const [listo, setListo] = useState(false);
-  const alcance = ruta.colonias.reduce((s, c) => s + alcanceDe(c), 0);
+  // null si no hay estadísticas: no se inventa la cifra
+  const porColonia = ruta.colonias.map((c) => alcanceDe(c));
+  const alcance = porColonia.some((n) => n === null) ? null : porColonia.reduce<number>((s, n) => s + (n ?? 0), 0);
   const RAPIDOS = ["Hoy el camión va con 30 minutos de retraso.", "Hoy no pasa el camión por falla mecánica. Pasa mañana.", "Hoy pasa más temprano de lo normal."];
 
   return (
     <div className="scrim" onClick={onCerrar}>
       <div className="modal col" style={{ width: 520, gap: 14 }} onClick={(e) => e.stopPropagation()}>
         <h3 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Avisar a los vecinos de {ruta.nombre}</h3>
-        <span className="muted" style={{ fontSize: 13 }}>Le llega a {alcance} vecinos de {ruta.colonias.join(", ") || "la ruta"} y aparece en «Basura en vivo».</span>
+        <span className="muted" style={{ fontSize: 13 }}>Le llega a {alcance === null ? "los vecinos" : `${alcance} vecinos`} de {ruta.colonias.join(", ") || "la ruta"} y aparece en «Basura en vivo».</span>
         <div className="chips">{RAPIDOS.map((m) => <button key={m} type="button" className="chip" onClick={() => setMensaje(m)}>{m}</button>)}</div>
         <textarea className="textarea" value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Qué pasa con el camión hoy" />
         <div className="row" style={{ alignItems: "center", gap: 14 }}>
@@ -226,15 +229,15 @@ function Aviso({ ruta, onCerrar }: { ruta: RutaBasura; onCerrar: () => void }) {
         {listo && <div className="banner" style={{ background: "var(--ok-soft)" }}><strong>Aviso publicado.</strong></div>}
         <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
           <button className="btn ghost" type="button" onClick={onCerrar}>{listo ? "Cerrar" : "Cancelar"}</button>
-          {!listo && <button className="btn primary" type="button" disabled={!mensaje.trim()} onClick={async () => {
+          {!listo && <button className="btn primary" type="button" disabled={!mensaje.trim() || !ruta.colonias.length} onClick={async () => {
             await publicar({
               tipo: "basura", canal: "publico", colonia: ruta.colonias.length === 1 ? ruta.colonias[0] : null, estado: null,
               titulo: `${ruta.nombre} · ${ruta.unidad}`, mensaje: mensaje.trim(), horaEstimada: null,
               publicarEn: new Date(), caducaEn: new Date(Date.now() + 12 * 3600_000), notificar, alcance,
               autorNombre: sesion!.nombre, autorUid: sesion!.uid, datos: { ruta: ruta.id ?? "", dias: ruta.dias.join(","), hora: ruta.inicio },
-            }, "Avisó cambio en ruta de basura");
+            }, { accion: "Avisó cambio en ruta de basura", colonias: ruta.colonias });
             setListo(true);
-          }}>{notificar ? `Publicar y notificar a ${alcance}` : "Publicar"}</button>}
+          }}>{notificar ? (alcance === null ? "Publicar y notificar" : `Publicar y notificar a ${alcance}`) : "Publicar"}</button>}
         </div>
       </div>
     </div>

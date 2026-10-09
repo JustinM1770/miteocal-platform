@@ -5,23 +5,28 @@ import { useRouter } from "next/navigation";
 import { Barras, Columnas, Kpi } from "@/components/graficas";
 import { pesos, f } from "@/lib/almacen";
 import {
-  CATEGORIAS, CERTAMENES, listarCandidatas, listarEventos, listarPagos, listarRegistrosPaisanos,
-  listarTransmisiones, listarVotos, METODOS, vendidos,
-  type Candidata, type Evento, type Pago, type RegistroPaisano, type Transmision, type Voto,
+  CATEGORIAS, CERTAMENES, contarVotos, listarBoletos, listarCandidatas, listarEventos, listarRegistrosPaisanos,
+  listarTransmisiones, METODOS, vendidos,
+  type Candidata, type Evento, type Pago, type RegistroPaisano, type Transmision,
 } from "@/lib/feria";
 
 export default function ResumenFeria() {
   const router = useRouter();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [pagos, setPagos] = useState<Pago[]>([]);
-  const [votos, setVotos] = useState<Voto[]>([]);
+  // Votos por candidata, contados en el servidor
+  const [votos, setVotos] = useState<Record<string, number>>({});
   const [cands, setCands] = useState<Candidata[]>([]);
   const [trans, setTrans] = useState<Transmision[]>([]);
   const [regs, setRegs] = useState<RegistroPaisano[]>([]);
 
   useEffect(() => {
-    Promise.all([listarEventos(), listarPagos(), listarVotos(), listarCandidatas(), listarTransmisiones(), listarRegistrosPaisanos()])
-      .then(([e, p, v, c, t, r]) => { setEventos(e); setPagos(p); setVotos(v); setCands(c); setTrans(t); setRegs(r); });
+    Promise.all([listarEventos(), listarBoletos(), listarCandidatas(), listarTransmisiones(), listarRegistrosPaisanos()])
+      .then(async ([e, p, c, t, r]) => {
+        setEventos(e); setPagos(p); setCands(c); setTrans(t); setRegs(r);
+        const n = await Promise.all(c.map((x) => contarVotos(x.id!)));
+        setVotos(Object.fromEntries(c.map((x, i) => [x.id!, n[i]])));
+      });
   }, []);
 
   const boletos = pagos.filter((p) => p.concepto === "boleto" && p.estado === "pagado");
@@ -57,7 +62,7 @@ export default function ResumenFeria() {
       <div className="row">
         <Kpi n={pesos(ingresos)} t="Venta de boletos" s={`${Math.round((enApp / Math.max(1, ingresos)) * 100)}% desde la app`} onClick={() => router.push("/panel/feria/boletos")} />
         <Kpi n={piezas.toLocaleString("es-MX")} t="Boletos vendidos" s={`${conBoletos.length} eventos con boletaje`} />
-        <Kpi n={votos.length.toLocaleString("es-MX")} t="Votos para reinas" s="1 voto por vecino y certamen" onClick={() => router.push("/panel/feria/reinas")} />
+        <Kpi n={Object.values(votos).reduce((s, n) => s + n, 0).toLocaleString("es-MX")} t="Votos para reinas" s="1 voto por vecino y certamen" onClick={() => router.push("/panel/feria/reinas")} />
         <Kpi n={regs.reduce((s, r) => s + r.personas, 0)} t="Paisanos que vienen" s={`${regs.length} familias registradas`} onClick={() => router.push("/panel/feria/hijos-ausentes")} />
       </div>
 
@@ -121,7 +126,7 @@ export default function ResumenFeria() {
           <h3 className="h3">Van ganando</h3>
           {(Object.keys(CERTAMENES) as (keyof typeof CERTAMENES)[]).map((c) => {
             const lista = cands.filter((x) => x.certamen === c)
-              .map((x) => ({ etiqueta: x.nombre, valor: votos.filter((v) => v.candidataId === x.id).length, detalle: x.representa }))
+              .map((x) => ({ etiqueta: x.nombre, valor: votos[x.id!] ?? 0, detalle: x.representa }))
               .sort((a, b) => b.valor - a.valor);
             return (
               <div key={c} className="col" style={{ gap: 8 }}>

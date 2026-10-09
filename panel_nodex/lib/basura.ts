@@ -1,7 +1,7 @@
 import { firebaseListo } from "./firebase";
 import { registrar } from "./datos";
 import { actualizar, crear, leer } from "./almacen";
-import { CENTRO, type Punto } from "./mapas";
+import { type Punto } from "./mapas";
 
 /* ─── Rutas del camión de basura ────────────────────────────
    Se configuran desde cero en el mapa: puntos por donde pasa (la
@@ -31,7 +31,8 @@ export interface RutaBasura {
   activa: boolean;
 }
 
-const p = (dLng: number, dLat: number): Punto => ({ lng: CENTRO.lng + dLng, lat: CENTRO.lat + dLat });
+// Rutas de ejemplo alrededor del centro del municipio demo
+const p = (dLng: number, dLat: number): Punto => ({ lng: -102.5764 + dLng, lat: 21.4271 + dLat });
 
 const demoRutas: RutaBasura[] = firebaseListo ? [] : [
   {

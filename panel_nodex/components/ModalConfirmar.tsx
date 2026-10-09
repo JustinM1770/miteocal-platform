@@ -6,7 +6,8 @@ export default function ModalConfirmar({
   colonia, alcance, titulo, cuerpo, programadoPara, onCancelar, onConfirmar,
 }: {
   colonia: string;
-  alcance: number;
+  /** null: todavía no hay estadísticas de vecinos */
+  alcance: number | null;
   titulo: string;
   cuerpo: string;
   programadoPara: Date | null;
@@ -14,6 +15,7 @@ export default function ModalConfirmar({
   onConfirmar: () => Promise<void>;
 }) {
   const [enviando, setEnviando] = useState(false);
+  const destino = alcance === null ? `los vecinos de ${colonia}` : `${alcance} teléfonos`;
 
   return (
     <div className="scrim" onClick={onCancelar}>
@@ -28,8 +30,8 @@ export default function ModalConfirmar({
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
               {programadoPara
-                ? `Se enviará a ${alcance} teléfonos el ${programadoPara.toLocaleString("es-MX", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`
-                : `Vas a enviar una notificación a ${alcance} teléfonos`}
+                ? `Se enviará a ${destino} el ${programadoPara.toLocaleString("es-MX", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`
+                : `Vas a enviar una notificación a ${destino}`}
             </h3>
           </div>
 
@@ -52,7 +54,7 @@ export default function ModalConfirmar({
             <button className="btn ghost" onClick={onCancelar} type="button">Cancelar</button>
             <button className="btn primary" disabled={enviando} type="button"
               onClick={async () => { setEnviando(true); await onConfirmar(); }}>
-              {enviando ? "Enviando…" : programadoPara ? "Sí, programar envío" : `Sí, enviar a ${alcance} vecinos`}
+              {enviando ? "Enviando…" : programadoPara ? "Sí, programar envío" : alcance === null ? "Sí, enviar" : `Sí, enviar a ${alcance} vecinos`}
             </button>
           </div>
         </div>

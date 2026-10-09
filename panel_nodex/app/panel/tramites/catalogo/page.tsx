@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { esAdmin, useAuth } from "@/lib/auth";
 import { pesos } from "@/lib/almacen";
 import {
-  CATALOGO_SUGERIDO, DEPENDENCIAS, MODALIDADES, guardarTramite, listarTramites, usarCatalogoSugerido,
+  CATALOGO_SUGERIDO, dependencias, MODALIDADES, guardarTramite, listarTramites, usarCatalogoSugerido,
   type Dependencia, type Modalidad, type Tramite,
 } from "@/lib/tramites";
 
-const VACIO: Tramite = { dependencia: "Registro Civil", nombre: "", descripcion: "", requisitos: [""], costo: 0, pagoEnLinea: false, modalidad: "mixta", dias: 1, paraPaisanos: false, activo: true };
+const VACIO = (): Tramite => ({ dependencia: dependencias()[0], nombre: "", descripcion: "", requisitos: [""], costo: 0, pagoEnLinea: false, modalidad: "mixta", dias: 1, paraPaisanos: false, activo: true });
 
 export default function Catalogo() {
   const { sesion } = useAuth();
@@ -32,13 +32,13 @@ export default function Catalogo() {
               setAviso(`Se agregaron ${n} trámites sugeridos. Revisa costos y requisitos de tu municipio.`); await cargar();
             }}>Agregar {faltan} trámites sugeridos</button>
           )}
-          <button className="btn primary" type="button" onClick={() => setEditando({ ...VACIO, requisitos: [""] })}>Nuevo trámite</button>
+          <button className="btn primary" type="button" onClick={() => setEditando(VACIO())}>Nuevo trámite</button>
         </div>
       </div>
       {aviso && <div className="banner info"><strong>{aviso}</strong></div>}
       {lista.length === 0 && <div className="card muted">Todavía no hay trámites. Empieza con los sugeridos y ajústalos.</div>}
 
-      {DEPENDENCIAS.filter((d) => lista.some((t) => t.dependencia === d)).map((d) => (
+      {dependencias().filter((d) => lista.some((t) => t.dependencia === d)).map((d) => (
         <div key={d} className="col" style={{ gap: 10 }}>
           <span className="section-label">{d.toUpperCase()}</span>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
@@ -81,7 +81,7 @@ function Editor({ tramite, onCerrar, onGuardar }: { tramite: Tramite; onCerrar: 
         <div className="col grow" style={{ gap: 14 }}>
           <h3 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>{tramite.id ? "Editar trámite" : "Nuevo trámite"}</h3>
           <div className="field"><label className="section-label">DEPENDENCIA</label>
-            <div className="seg">{DEPENDENCIAS.map((d) => <button key={d} type="button" className={t.dependencia === d ? "on azul" : ""} onClick={() => poner({ dependencia: d as Dependencia })}>{d}</button>)}</div></div>
+            <div className="seg">{dependencias().map((d) => <button key={d} type="button" className={t.dependencia === d ? "on azul" : ""} onClick={() => poner({ dependencia: d as Dependencia })}>{d}</button>)}</div></div>
           <div className="field"><label className="section-label">NOMBRE</label><input className="input" value={t.nombre} onChange={(e) => poner({ nombre: e.target.value })} placeholder="Copia certificada de acta de matrimonio" /></div>
           <div className="field"><label className="section-label">DESCRIPCIÓN</label><input className="input" value={t.descripcion} onChange={(e) => poner({ descripcion: e.target.value })} /></div>
           <div className="field"><label className="section-label">CÓMO SE HACE</label>

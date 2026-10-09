@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { esAdmin, useAuth } from "@/lib/auth";
 import { Kpi } from "@/components/graficas";
 import { haceTexto } from "@/lib/datos";
 import { f, pesos } from "@/lib/almacen";
 import {
-  DEPENDENCIAS, ENTREGAS, ESTADOS, actualizarSolicitud, listarSolicitudes, listarTramites, solicitudEnVentanilla,
+  dependencias, ENTREGAS, ESTADOS, actualizarSolicitud, listarSolicitudes, listarTramites, solicitudEnVentanilla,
   type Dependencia, type EstadoSolicitud, type Solicitud, type Tramite,
 } from "@/lib/tramites";
 
@@ -22,7 +22,7 @@ export default function Solicitudes() {
   const [ventanilla, setVentanilla] = useState(false);
 
   // Cada área ve solo lo suyo; el administrador ve todo
-  const miArea = sesion?.rol !== "admin" && (DEPENDENCIAS as readonly string[]).includes(sesion?.area ?? "") ? (sesion!.area as Dependencia) : null;
+  const miArea = !esAdmin(sesion) && dependencias().includes(sesion?.area ?? "") ? (sesion!.area as Dependencia) : null;
 
   const cargar = useCallback(async () => {
     const [s, t] = await Promise.all([listarSolicitudes(), listarTramites()]);
@@ -60,7 +60,7 @@ export default function Solicitudes() {
             : (
               <select className="select" style={{ width: 200 }} value={dep} onChange={(e) => setDep(e.target.value as Dependencia | "")}>
                 <option value="">Todas las dependencias</option>
-                {DEPENDENCIAS.map((d) => <option key={d}>{d}</option>)}
+                {dependencias().map((d) => <option key={d}>{d}</option>)}
               </select>
             )}
           <button className="btn primary" type="button" onClick={() => setVentanilla(true)}>Registrar en ventanilla</button>

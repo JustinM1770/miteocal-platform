@@ -1,6 +1,7 @@
 import { firebaseListo } from "./firebase";
 import { registrar } from "./datos";
-import { actualizar, azar, crear, f, leer, type Fecha } from "./almacen";
+import { actualizar, azar, crear, diaLocal, f, leer, siguienteFolio, type Fecha } from "./almacen";
+import { cfg } from "./config";
 import { demoVecinos } from "./vecinos";
 
 /* ─── Trámites y citas ──────────────────────────────────────
@@ -9,8 +10,14 @@ import { demoVecinos } from "./vecinos";
    y agenda desde la app, y va UNA vez a recoger o a firmar.
    ───────────────────────────────────────────────────────── */
 
-export const DEPENDENCIAS = ["Registro Civil", "DIF", "Catastro", "Tesorería", "Secretaría General"] as const;
-export type Dependencia = (typeof DEPENDENCIAS)[number];
+/** Dependencias que atienden trámites. Las que no están en config/catalogos se ignoran. */
+const TRAMITADORAS = ["Registro Civil", "DIF", "Catastro", "Tesorería", "Secretaría General"];
+export const dependencias = (): string[] => {
+  const delMunicipio = cfg().catalogos.dependencias;
+  const l = delMunicipio.length ? TRAMITADORAS.filter((d) => delMunicipio.includes(d)) : TRAMITADORAS;
+  return l.length ? l : TRAMITADORAS;
+};
+export type Dependencia = string;
 
 export type Modalidad = "en_linea" | "cita" | "mixta";
 export const MODALIDADES: Record<Modalidad, { nombre: string; ayuda: string }> = {
@@ -141,7 +148,7 @@ function semilla() {
       creadoEn: hace(dias, a.int(0, 8)), actualizadoEn: hace(Math.max(0, dias - 1)),
     });
   }
-  return { tramites, solicitudes, agendas: DEPENDENCIAS.map((d, i) => ({ ...AGENDA_BASE(d), id: `ag${i + 1}` })) };
+  return { tramites, solicitudes, agendas: TRAMITADORAS.map((d, i) => ({ ...AGENDA_BASE(d), id: `ag${i + 1}` })) };
 }
 
 const s = firebaseListo ? { tramites: [], solicitudes: [], agendas: [] } : semilla();
@@ -153,16 +160,16 @@ const demoAgendas: Agenda[] = s.agendas;
 
 export const listarTramites = async () => (await leer("tramites", demoTramites)).sort((a, b) => a.dependencia.localeCompare(b.dependencia) || a.nombre.localeCompare(b.nombre));
 export const listarSolicitudes = async () =>
-  (await leer("solicitudes", demoSolicitudes)).sort((a, b) => +f(b.creadoEn) - +f(a.creadoEn));
+  (await leer("solicitudes", demoSolicitudes, { orden: "creadoEn", max: 1000 })).sort((a, b) => +f(b.creadoEn) - +f(a.creadoEn));
 export async function listarAgendas(): Promise<Agenda[]> {
   const l = await leer("agendas", demoAgendas);
   // Las dependencias sin agenda guardada usan el horario base
-  return DEPENDENCIAS.map((d) => l.find((x) => x.dependencia === d) ?? AGENDA_BASE(d));
+  return dependencias().map((d) => l.find((x) => x.dependencia === d) ?? AGENDA_BASE(d));
 }
 
 /** Horarios de cita de un día para una dependencia */
 export function turnos(ag: Agenda, fecha: Date): Date[] {
-  const clave = fecha.toLocaleDateString("en-CA");
+  const clave = diaLocal(fecha);
   if (!ag.dias.includes(fecha.getDay()) || ag.inhabiles.includes(clave)) return [];
   const [hi, mi] = ag.inicio.split(":").map(Number);
   const [hf, mf] = ag.fin.split(":").map(Number);
@@ -210,7 +217,7 @@ export async function actualizarSolicitud(sol: Solicitud, cambios: Partial<Solic
 }
 
 export async function solicitudEnVentanilla(tr: Tramite, vecinoNombre: string, telefono: string, cita: Date | null, autor: string) {
-  const folio = `TRM-${Math.floor(10000 + Math.random() * 89999)}`;
+  const folio = await siguienteFolio("tramites", "TRM", 3100);
   await crear("solicitudes", demoSolicitudes, {
     folio, tramiteId: tr.id!, tramite: tr.nombre, dependencia: tr.dependencia, vecinoId: null, vecinoNombre, telefono,
     canal: "ventanilla", documentos: tr.requisitos.map((r) => ({ nombre: r, url: null, estado: "pendiente" })),
@@ -220,3 +227,5 @@ export async function solicitudEnVentanilla(tr: Tramite, vecinoNombre: string, t
   await registrar("Registró solicitud en ventanilla", `${folio} · ${tr.nombre}`, "publico", autor);
   return folio;
 }
+
+export const solicitudesDe = (vecinoId: string) => leer("solicitudes", demoSolicitudes.filter((s) => s.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 100 });

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as MapboxMap, Marker, Popup, GeoJSONSource } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { CENTRO, MAPBOX_TOKEN, type Punto } from "@/lib/mapas";
+import { centro, MAPBOX_TOKEN, type Punto } from "@/lib/mapas";
 
 export interface Linea { id: string; puntos: Punto[]; color: string; ancho?: number; punteada?: boolean }
 export interface Marcador { id: string; punto: Punto; color: string; texto?: string; onClick?: () => void }
@@ -40,7 +40,7 @@ export default function Mapa({
       const mb = m.default;
       lib.current = m;
       mb.accessToken = MAPBOX_TOKEN;
-      const map = new mb.Map({ container: caja.current, style: "mapbox://styles/mapbox/streets-v12", center: [CENTRO.lng, CENTRO.lat], zoom, attributionControl: false });
+      const map = new mb.Map({ container: caja.current, style: "mapbox://styles/mapbox/streets-v12", center: [centro().lng, centro().lat], zoom, attributionControl: false });
       map.addControl(new mb.NavigationControl({ showCompass: false }), "top-right");
       map.addControl(new mb.AttributionControl({ compact: true }));
       map.on("click", (e) => clic.current?.({ lng: e.lngLat.lng, lat: e.lngLat.lat }));

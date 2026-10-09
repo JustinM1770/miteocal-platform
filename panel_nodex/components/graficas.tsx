@@ -7,13 +7,17 @@
 export interface Punto { etiqueta: string; valor: number; detalle?: string }
 
 export function Kpi({ n, t, s, onClick }: { n: string | number; t: string; s?: string; onClick?: () => void }) {
-  return (
-    <div className="card metric col" style={{ gap: 2, cursor: onClick ? "pointer" : undefined }} onClick={onClick}>
+  const contenido = (
+    <>
       <span className="n">{n}</span>
       <span style={{ fontWeight: 500 }}>{t}</span>
       {s && <span className="muted" style={{ fontSize: 11 }}>{s}</span>}
-    </div>
+    </>
   );
+  // Con acción es un botón de verdad: se enfoca y se activa con el teclado
+  return onClick
+    ? <button type="button" className="card metric col" style={{ gap: 2, cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit" }} onClick={onClick}>{contenido}</button>
+    : <div className="card metric col" style={{ gap: 2 }}>{contenido}</div>;
 }
 
 export function Columnas({ datos, formato = String, alto = 160, titulo }: {

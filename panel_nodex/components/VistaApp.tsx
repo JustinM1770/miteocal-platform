@@ -1,7 +1,7 @@
 "use client";
 
 import type { Timestamp } from "firebase/firestore";
-import type { Modulo } from "@/lib/modulos";
+import { opcionesDe, type Modulo } from "@/lib/modulos";
 import { haceTexto } from "@/lib/datos";
 import Mapa from "@/components/Mapa";
 import { deJSON } from "@/lib/mapas";
@@ -24,10 +24,11 @@ function colorDe(mod: Modulo, clave: string, valor?: string) {
   const c = mod.campos.find((x) => x.clave === clave);
   if (!c?.colores || !valor) return "gris";
   const k = `${mod.slug}.${clave}`;
-  COLOR_DE[k] ??= Object.fromEntries(c.opciones!.map((o, i) => [o, c.colores![i]]));
+  COLOR_DE[k] ??= Object.fromEntries(opcionesDe(c).map((o, i) => [o, c.colores![i]]));
   return COLOR_DE[k][valor] ?? "gris";
 }
 
+const FONDO_CATEGORIA: Record<string, string> = { azul: "var(--brand-soft)", verde: "var(--ok-soft)", morado: "var(--internal-soft)", rojo: "var(--danger-soft)", naranja: "var(--warn-soft)" };
 const dd = (s?: string) => (s ? s.slice(8, 10) : "--");
 const mmm = (s?: string) => (s ? new Date(`${s}T12:00`).toLocaleDateString("es-MX", { month: "short" }).replace(".", "").toUpperCase() : "---");
 const larga = (s?: string) => (s ? new Date(`${s}T12:00`).toLocaleDateString("es-MX", { day: "numeric", month: "long" }) : "");
@@ -177,7 +178,7 @@ export default function VistaApp({ mod, items }: { mod: Modulo; items: Item[] })
             const c = colorDe(mod, "categoria", i.datos.categoria);
             return (
               <div key={i.id ?? n} className="acard" style={{ overflow: "hidden", ...borde(i) }}>
-                <div className="img-ph" style={{ background: i.datos.imagen ? `center/cover url(${i.datos.imagen})` : `var(--${c === "azul" ? "brand" : c === "verde" ? "ok" : c === "morado" ? "internal" : c === "rojo" ? "danger" : "border"}-soft, var(--subtle))` }} />
+                <div className="img-ph" style={{ background: i.datos.imagen ? `center/cover url(${i.datos.imagen})` : FONDO_CATEGORIA[c] ?? "var(--subtle)" }} />
                 <span className={`tag ${c}`}>{(i.datos.categoria || "Categoría").toUpperCase()}</span>
                 <span className="t">{i.titulo || "Titular de la nota"}</span>
                 <span className="s">{i.nuevo ? "Ahora" : haceTexto(i.creadoEn)}{i.datos.fuente ? ` · ${i.datos.fuente}` : ""}</span>
@@ -270,25 +271,6 @@ export default function VistaApp({ mod, items }: { mod: Modulo; items: Item[] })
               <span className="muted">›</span>
             </div>
           ))}
-        </div>
-      );
-
-    case "contacto":
-      return (
-        <div className="phone">
-          <div><span className="h">Directorio de emergencia</span><div className="s" style={{ fontSize: 11, color: "var(--sec)" }}>Un toque para marcar</div></div>
-          <div className="grid2">
-            {l.map((i, n) => {
-              const c = colorDe(mod, "categoria", i.datos.categoria);
-              return (
-                <div key={i.id ?? n} className="acard" style={borde(i)}>
-                  <span className={`tag ${c}`} style={{ width: 30, height: 30, justifyContent: "center", alignItems: "center", borderRadius: 8 }}>✆</span>
-                  <span className="t" style={{ fontSize: 13 }}>{i.titulo || "Nombre"}</span>
-                  <span className="s">{i.datos.telefono || "Toca para marcar"}</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
       );
 

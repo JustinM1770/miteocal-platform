@@ -3,24 +3,24 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Barras, Columnas, Kpi } from "@/components/graficas";
-import { listarVecinos, type Vecino } from "@/lib/vecinos";
+import { contarVecinos } from "@/lib/vecinos";
 import {
-  CATEGORIAS, FERIA, listarEventos, listarRegistrosPaisanos, type Evento, type RegistroPaisano,
+  CATEGORIAS, feria, listarEventos, listarRegistrosPaisanos, type Evento, type RegistroPaisano,
 } from "@/lib/feria";
 
 export default function HijosAusentes() {
   const router = useRouter();
   const [regs, setRegs] = useState<RegistroPaisano[]>([]);
-  const [vecinos, setVecinos] = useState<Vecino[]>([]);
+  // Total de paisanos con la app: solo el admin puede contarlos (datos personales)
+  const [paisanosApp, setPaisanosApp] = useState<number | null>(null);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [buscar, setBuscar] = useState("");
 
   useEffect(() => {
-    Promise.all([listarRegistrosPaisanos(), listarVecinos(), listarEventos()])
-      .then(([r, v, e]) => { setRegs(r); setVecinos(v); setEventos(e); });
+    Promise.all([listarRegistrosPaisanos(), listarEventos()]).then(([r, e]) => { setRegs(r); setEventos(e); });
+    contarVecinos({ tipo: "paisano" }).then(setPaisanosApp).catch(() => setPaisanosApp(null));
   }, []);
 
-  const paisanosApp = vecinos.filter((v) => v.tipo === "paisano");
   const personas = regs.reduce((s, r) => s + r.personas, 0);
   const desfile = regs.filter((r) => r.desfile).reduce((s, r) => s + r.personas, 0);
 
@@ -29,10 +29,11 @@ export default function HijosAusentes() {
     .sort((a, b) => b.valor - a.valor);
 
   // Desde el inicio de la feria hasta el último día en que llega alguien
-  const ultima = regs.reduce((m, r) => (r.llega > m ? r.llega : m), FERIA.inicio);
-  const diasLlegada = Math.max(1, Math.round((+new Date(`${ultima}T12:00`) - +new Date(`${FERIA.inicio}T12:00`)) / 86400_000) + 1);
+  const inicio = feria().inicio || regs.reduce((m, r) => (!m || r.llega < m ? r.llega : m), "");
+  const ultima = regs.reduce((m, r) => (r.llega > m ? r.llega : m), inicio);
+  const diasLlegada = inicio ? Math.max(1, Math.round((+new Date(`${ultima}T12:00`) - +new Date(`${inicio}T12:00`)) / 86400_000) + 1) : 0;
   const llegadas = Array.from({ length: diasLlegada }, (_, i) => {
-    const d = new Date(`${FERIA.inicio}T12:00`); d.setDate(d.getDate() + i);
+    const d = new Date(`${inicio}T12:00`); d.setDate(d.getDate() + i);
     const fecha = d.toISOString().slice(0, 10);
     return {
       etiqueta: new Date(`${fecha}T12:00`).toLocaleDateString("es-MX", { day: "numeric", month: "short" }),
@@ -51,7 +52,7 @@ export default function HijosAusentes() {
         <Kpi n={personas} t="Paisanos que vienen" s={`${regs.length} familias registradas en la app`} />
         <Kpi n={desfile} t="Van al desfile" s="Para calcular vallas y agua" />
         <Kpi n={ciudades.length} t="Ciudades de origen" s={ciudades[0] ? `La mayoría desde ${ciudades[0].etiqueta}` : ""} />
-        <Kpi n={paisanosApp.length} t="Paisanos con la app" s="Pueden recibir avisos y ver transmisiones" onClick={() => router.push("/panel/crm")} />
+        <Kpi n={paisanosApp ?? "—"} t="Paisanos con la app" s="Pueden recibir avisos y ver transmisiones" onClick={() => router.push("/panel/crm")} />
       </div>
 
       <div className="row">
@@ -65,7 +66,7 @@ export default function HijosAusentes() {
         <div className="card col" style={{ gap: 14, width: 420, flex: "0 0 420px" }}>
           <div className="col" style={{ gap: 2 }}>
             <h3 className="h3">Cuándo llegan</h3>
-            <span className="muted" style={{ fontSize: 12 }}>Personas por día de llegada a {FERIA.nombre.split(" ")[0]}</span>
+            <span className="muted" style={{ fontSize: 12 }}>Personas por día de llegada, desde que empieza la feria</span>
           </div>
           <Columnas datos={llegadas} formato={(n) => `${n} personas`} alto={140} titulo="Personas por día de llegada" />
         </div>

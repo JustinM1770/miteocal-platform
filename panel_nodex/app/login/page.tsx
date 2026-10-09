@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { auth, MUNICIPIO_NOMBRE } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
+
+// Antes de iniciar sesión no se sabe el municipio (sale del token); el subtítulo es opcional por instalación
+const SUBTITULO = process.env.NEXT_PUBLIC_PANEL_SUBTITULO || "Panel del Ayuntamiento";
 
 export default function Login() {
   const { entrar, modoDemo } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState(modoDemo ? "laura.m@teocaltiche.gob.mx" : "");
+  const [email, setEmail] = useState(modoDemo ? "laura.m@ejemplo.mx" : "");
   const [pass, setPass] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -54,7 +57,7 @@ export default function Login() {
       <form className="login-card col" style={{ gap: 18 }} onSubmit={onSubmit}>
         <div className="col" style={{ gap: 5 }}>
           <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.02em" }}>Nodex</div>
-          <div className="muted">Panel del Ayuntamiento de {MUNICIPIO_NOMBRE}</div>
+          <div className="muted">{SUBTITULO}</div>
         </div>
 
         {error && (

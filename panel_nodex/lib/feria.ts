@@ -1,6 +1,8 @@
-import { firebaseListo } from "./firebase";
+import { runTransaction, serverTimestamp } from "firebase/firestore";
+import { db, documento, firebaseListo } from "./firebase";
 import { registrar } from "./datos";
-import { actualizar, azar, crear, f, leer, type Fecha } from "./almacen";
+import { cfg } from "./config";
+import { actualizar, azar, contar, crear, diaLocal, f, leer, siguienteFolio, type Fecha } from "./almacen";
 import { demoVecinos, ORIGENES } from "./vecinos";
 
 /* ─── Feria ─────────────────────────────────────────────────
@@ -9,7 +11,8 @@ import { demoVecinos, ORIGENES } from "./vecinos";
    simulados: el panel deja todo listo para conectar la pasarela.
    ───────────────────────────────────────────────────────── */
 
-export const FERIA = { nombre: "Feria de Noviembre 2026", inicio: "2026-10-30", fin: "2026-11-16" };
+/** Nombre y fechas de la feria: config/feria del municipio */
+export const feria = () => cfg().feria;
 
 export type CategoriaEvento =
   | "concierto" | "toros" | "palenque" | "religioso" | "cultural"
@@ -26,7 +29,8 @@ export const CATEGORIAS: Record<CategoriaEvento, { nombre: string; color: string
   hijos_ausentes: { nombre: "Hijos Ausentes", color: "azul", icono: "✈" },
 };
 
-export const ESCENARIOS = ["Palenque", "Teatro del Pueblo", "Plaza de Toros", "Parroquia de San Miguel", "Lienzo Charro", "Plaza principal"];
+/** Escenarios del recinto: config/catalogos del municipio */
+export const escenarios = () => cfg().catalogos.escenarios;
 
 export interface Zona { nombre: string; precio: number; cupo: number }
 
@@ -66,7 +70,9 @@ export interface EstadoCertamen {
 }
 
 /** Un voto por vecino verificado por SMS y por certamen */
-export interface Voto { id?: string; vecinoId: string; certamen: Certamen; candidataId: string; creadoEn: Fecha }
+/** Un voto por vecino y certamen: id `<certamen>_<uid>`. Guarda colonia y tipo del
+    votante para que el panel no tenga que leer datos personales en usuarios. */
+export interface Voto { id?: string; vecinoId: string; certamen: Certamen; candidataId: string; colonia: string; tipo: "local" | "paisano"; creadoEn: Fecha }
 
 export type EstadoTransmision = "programada" | "en_vivo" | "terminada";
 export interface Transmision {
@@ -117,6 +123,11 @@ export interface Pago {
   cantidad?: number;
   usado?: boolean;
   usadoEn?: Fecha | null;
+  /* datos del comprador copiados al pagar: el panel no lee usuarios para mostrarlos */
+  compradorNombre?: string;
+  compradorColonia?: string;
+  compradorTipo?: "local" | "paisano" | null;
+  compradorOrigen?: string | null;
 }
 
 /* ─── Datos demo ────────────────────────────────────────── */
@@ -162,14 +173,15 @@ function generar() {
   const pesoMiss = [0.41, 0.33, 0.26];
   const elegir = (p: number[]) => { let x = a.r(); for (let i = 0; i < p.length; i++) { x -= p[i]; if (x <= 0) return i; } return p.length - 1; };
   for (const v of demoVecinos) {
-    if (a.r() < 0.58) votos.push({ id: `vr${v.id}`, vecinoId: v.id!, certamen: "reina", candidataId: CANDIDATAS[elegir(pesoReina)].id!, creadoEn: hace(a.int(0, 20)) });
-    if (a.r() < 0.41) votos.push({ id: `vm${v.id}`, vecinoId: v.id!, certamen: "miss_chiquitita", candidataId: CANDIDATAS[4 + elegir(pesoMiss)].id!, creadoEn: hace(a.int(0, 20)) });
+    if (a.r() < 0.58) votos.push({ id: `reina_${v.id}`, vecinoId: v.id!, certamen: "reina", candidataId: CANDIDATAS[elegir(pesoReina)].id!, colonia: v.colonia, tipo: v.tipo, creadoEn: hace(a.int(0, 20)) });
+    if (a.r() < 0.41) votos.push({ id: `miss_chiquitita_${v.id}`, vecinoId: v.id!, certamen: "miss_chiquitita", candidataId: CANDIDATAS[4 + elegir(pesoMiss)].id!, colonia: v.colonia, tipo: v.tipo, creadoEn: hace(a.int(0, 20)) });
   }
 
   const pagos: Pago[] = [];
   let folio = 8000;
   const conBoletos = EVENTOS.filter((e) => e.zonas.length);
   // Boletos: los paisanos compran más y casi siempre con tarjeta
+  const comprador = (v: (typeof demoVecinos)[number]) => ({ compradorNombre: v.nombre, compradorColonia: v.colonia, compradorTipo: v.tipo, compradorOrigen: v.origen });
   for (const v of demoVecinos) {
     const compras = v.tipo === "paisano" ? (a.r() < 0.55 ? a.int(1, 3) : 0) : (a.r() < 0.28 ? a.int(1, 2) : 0);
     for (let i = 0; i < compras; i++) {
@@ -182,24 +194,30 @@ function generar() {
         id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "boleto",
         descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN",
         metodo, canal: "app", estado, creadoEn: hace(a.int(0, 24), a.int(0, 23)),
-        eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null,
+        eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null, ...comprador(v),
       });
     }
     // Pagos municipales desde la app
-    if (a.r() < 0.18) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "agua", descripcion: `Agua · ${v.colonia} · bimestre 5`, monto: a.int(180, 420), moneda: "MXN", metodo: a.de(["tarjeta", "oxxo", "spei"] as const), canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 40)) });
-    if (v.tipo === "paisano" && a.r() < 0.3) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "predial", descripcion: `Predial 2026 · ${v.colonia}`, monto: a.int(900, 3200), moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)) });
-    if (a.r() < 0.04) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "acta", descripcion: "Acta de nacimiento certificada", monto: 160, moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)) });
+    if (a.r() < 0.18) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "agua", descripcion: `Agua · ${v.colonia} · bimestre 5`, monto: a.int(180, 420), moneda: "MXN", metodo: a.de(["tarjeta", "oxxo", "spei"] as const), canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 40)), ...comprador(v) });
+    if (v.tipo === "paisano" && a.r() < 0.3) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "predial", descripcion: `Predial 2026 · ${v.colonia}`, monto: a.int(900, 3200), moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
+    if (a.r() < 0.04) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: v.id!, concepto: "acta", descripcion: "Acta de nacimiento certificada", monto: 160, moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
   }
   // Ventas en taquilla, sin cuenta en la app
   for (let i = 0; i < 90; i++) {
     const e = a.de(conBoletos); const z = e.zonas[0]; const cantidad = a.int(1, 5);
-    pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: null, concepto: "boleto", descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado", creadoEn: hace(a.int(0, 15), a.int(0, 10)), eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null });
+    pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, vecinoId: null, concepto: "boleto", descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado", creadoEn: hace(a.int(0, 15), a.int(0, 10)), eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null, compradorNombre: "Taquilla", compradorTipo: null });
+  }
+
+  // El resumen por vecino que en producción mantiene una Cloud Function
+  for (const v of demoVecinos) {
+    const b = pagos.filter((p) => p.vecinoId === v.id && p.concepto === "boleto" && p.estado === "pagado");
+    v.resumen = { estrellas: v.resumen?.estrellas ?? null, boletos: b.reduce((s, p) => s + (p.cantidad ?? 0), 0), gasto: b.reduce((s, p) => s + p.monto, 0) };
   }
 
   const paisanos = demoVecinos.filter((v) => v.tipo === "paisano");
   const registros: RegistroPaisano[] = paisanos.filter(() => a.r() < 0.45).map((v, i) => ({
     id: `h${i + 1}`, vecinoId: v.id!, nombre: v.nombre, origen: v.origen ?? a.de(ORIGENES),
-    llega: (() => { const d = new Date(`${FERIA.inicio}T12:00`); d.setDate(d.getDate() + a.int(0, 7)); return d.toLocaleDateString("en-CA"); })(), personas: a.int(1, 6), desfile: a.r() < 0.6,
+    llega: (() => { const d = new Date(`${cfg().feria.inicio}T12:00`); d.setDate(d.getDate() + a.int(0, 7)); return diaLocal(d); })(), personas: a.int(1, 6), desfile: a.r() < 0.6,
   }));
 
   return { votos, pagos, registros };
@@ -225,15 +243,34 @@ const demoTransmisiones: Transmision[] = firebaseListo ? [] : [
 
 /* ─── Lecturas ──────────────────────────────────────────── */
 
+/** eventos/{id} también lo carga el importador CSV del admin_panel (artista, lugar,
+    precio, disponible); se completa lo que falte para que se vea igual */
+function normalizarEvento(e: Evento & { artista?: string; lugar?: string; precio?: number }): Evento {
+  return {
+    ...e,
+    titulo: e.titulo ?? e.artista ?? "Evento", escenario: e.escenario ?? e.lugar ?? "",
+    categoria: e.categoria ?? "concierto", hora: e.hora ?? "", descripcion: e.descripcion ?? "",
+    zonas: e.zonas ?? (e.precio ? [{ nombre: "General", precio: e.precio, cupo: 0 }] : []),
+    transmitir: Boolean(e.transmitir), publicado: e.publicado !== false,
+  };
+}
+
 export const listarEventos = async () =>
-  (await leer("eventos", demoEventos)).sort((x, y) => `${x.fecha}${x.hora}`.localeCompare(`${y.fecha}${y.hora}`));
+  (await leer("eventos", demoEventos)).map(normalizarEvento).sort((x, y) => `${x.fecha}${x.hora}`.localeCompare(`${y.fecha}${y.hora}`));
 export const listarCandidatas = () => leer("candidatas", demoCandidatas);
 export const listarCertamenes = () => leer("certamenes", demoCertamenes);
-export const listarVotos = () => leer("votos", demoVotos);
+/** Votos sueltos (para el desglose por colonia). Los totales usan contarVotos. */
+export const listarVotos = (certamen?: Certamen) => leer("votos", certamen ? demoVotos.filter((v) => v.certamen === certamen) : demoVotos, { max: 20000, filtros: certamen ? [["certamen", certamen]] : [] });
+/** Total de votos de una candidata, contado en el servidor */
+export const contarVotos = (candidataId: string) => contar("votos", demoVotos, [["candidataId", candidataId]]);
 export const listarTransmisiones = () => leer("transmisiones", demoTransmisiones);
 export const listarRegistrosPaisanos = () => leer("registrosPaisanos", demoRegistros);
 export const listarPagos = async () =>
-  (await leer("pagos", demoPagos)).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
+  (await leer("pagos", demoPagos, { orden: "creadoEn" })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
+/** Solo boletos: su número está acotado por el cupo de los eventos */
+export const listarBoletos = async () =>
+  (await leer("pagos", demoPagos.filter((p) => p.concepto === "boleto"), { filtros: [["concepto", "boleto"]], max: 20000 })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
+export { demoPagos };
 
 /** Boletos vendidos por evento y zona (cuenta solo pagados) */
 export function vendidos(pagos: Pago[], eventoId: string, zona?: string) {
@@ -245,7 +282,9 @@ export function vendidos(pagos: Pago[], eventoId: string, zona?: string) {
 /* ─── Escrituras ────────────────────────────────────────── */
 
 export async function guardarEvento(e: Omit<Evento, "id">, autor: string) {
-  const nuevo = await crear("eventos", demoEventos, e);
+  // artista/lugar/precio/disponible: el formato que ya usan la app y el importador CSV
+  const paraApp = { artista: e.titulo, lugar: e.escenario, precio: e.zonas.length ? Math.min(...e.zonas.map((z) => z.precio)) : 0, disponible: true };
+  const nuevo = await crear("eventos", demoEventos, { ...e, ...paraApp } as Omit<Evento, "id">);
   await registrar("Agregó evento a la feria", `${e.titulo} · ${e.fecha} ${e.hora}`, "publico", autor);
   if (e.transmitir) {
     await crear("transmisiones", demoTransmisiones, {
@@ -270,7 +309,17 @@ export async function guardarTransmision(t: Omit<Transmision, "id">, autor: stri
   await registrar("Programó transmisión", t.titulo, "publico", autor);
 }
 
+/** Solo enlaces https de YouTube o Facebook Live */
+export const enlaceValido = (url: string) => /^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|facebook\.com|fb\.watch)\//.test(url);
+
+export async function ponerEnlace(t: Transmision, url: string, autor: string) {
+  if (!enlaceValido(url)) throw new Error("Enlace inválido");
+  await actualizar("transmisiones", demoTransmisiones, t.id!, { url });
+  await registrar("Agregó enlace a transmisión", t.titulo, "publico", autor);
+}
+
 export async function cambiarTransmision(t: Transmision, estado: EstadoTransmision, autor: string) {
+  if (estado === "en_vivo" && !enlaceValido(t.url)) throw new Error("La transmisión no tiene enlace");
   const cambios: Partial<Transmision> = { estado };
   if (estado === "en_vivo") { cambios.inicio = new Date(); cambios.espectadores = 0; }
   if (estado === "terminada") cambios.espectadores = 0;
@@ -278,9 +327,33 @@ export async function cambiarTransmision(t: Transmision, estado: EstadoTransmisi
   await registrar(estado === "en_vivo" ? "Inició transmisión" : "Terminó transmisión", t.titulo, "publico", autor);
 }
 
-export async function validarBoleto(p: Pago, autor: string) {
-  await actualizar("pagos", demoPagos, p.id!, { usado: true, usadoEn: new Date() });
+export type ResultadoValidacion = "valido" | "ya-entro" | "reembolsado" | "pendiente" | "no-existe";
+
+/**
+ * Valida un boleto en la entrada dentro de una transacción: si dos puertas
+ * escanean el mismo folio al mismo tiempo, solo una lo deja pasar.
+ */
+export async function validarBoleto(p: Pago, autor: string): Promise<ResultadoValidacion> {
+  if (!firebaseListo || !db) {
+    const x = demoPagos.find((d) => d.id === p.id);
+    if (!x) return "no-existe";
+    if (x.estado !== "pagado") return x.estado === "reembolsado" ? "reembolsado" : "pendiente";
+    if (x.usado) return "ya-entro";
+    x.usado = true; x.usadoEn = new Date();
+  } else {
+    const ref = documento("pagos", p.id!);
+    const r = await runTransaction(db, async (tx) => {
+      const d = (await tx.get(ref)).data();
+      if (!d) return "no-existe" as const;
+      if (d.estado !== "pagado") return d.estado === "reembolsado" ? "reembolsado" as const : "pendiente" as const;
+      if (d.usado) return "ya-entro" as const;
+      tx.update(ref, { usado: true, usadoEn: serverTimestamp() });
+      return "valido" as const;
+    });
+    if (r !== "valido") return r;
+  }
   await registrar("Validó boleto en la entrada", `${p.folio} · ${p.descripcion}`, "interno", autor);
+  return "valido";
 }
 
 export async function reembolsar(p: Pago, autor: string) {
@@ -289,12 +362,17 @@ export async function reembolsar(p: Pago, autor: string) {
 }
 
 export async function venderTaquilla(e: Evento, zona: Zona, cantidad: number, autor: string) {
-  const folio = `TEC-${Math.floor(10000 + Math.random() * 89999)}`;
+  const folio = await siguienteFolio("boletos", "TEC", 20000);
   await crear("pagos", demoPagos, {
     folio, vecinoId: null, concepto: "boleto", descripcion: `${e.titulo} · ${zona.nombre}`,
     monto: zona.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado",
     creadoEn: new Date(), eventoId: e.id, zona: zona.nombre, cantidad, usado: false, usadoEn: null,
+    compradorNombre: "Taquilla", compradorTipo: null,
   });
   await registrar("Vendió boletos en taquilla", `${folio} · ${e.titulo} · ${cantidad} × ${zona.nombre}`, "interno", autor);
   return folio;
 }
+
+/* ─── Por vecino (ficha del CRM) ─── */
+export const pagosDe = (vecinoId: string) => leer("pagos", demoPagos.filter((p) => p.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 200 });
+export const votosDe = (vecinoId: string) => leer("votos", demoVotos.filter((v) => v.vecinoId === vecinoId), { filtros: [["vecinoId", vecinoId]], max: 10 });

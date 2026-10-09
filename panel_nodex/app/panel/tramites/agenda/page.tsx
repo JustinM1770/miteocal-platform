@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { esAdmin, useAuth } from "@/lib/auth";
 import { f } from "@/lib/almacen";
 import {
-  DEPENDENCIAS, ESTADOS, guardarAgenda, listarAgendas, listarSolicitudes, turnos,
+  dependencias, ESTADOS, guardarAgenda, listarAgendas, listarSolicitudes, turnos,
   type Agenda, type Dependencia, type Solicitud,
 } from "@/lib/tramites";
 
@@ -13,8 +13,8 @@ const hora = (d: Date) => d.toLocaleTimeString("es-MX", { hour: "2-digit", minut
 
 export default function AgendaCitas() {
   const { sesion } = useAuth();
-  const miArea = sesion?.rol !== "admin" && (DEPENDENCIAS as readonly string[]).includes(sesion?.area ?? "") ? (sesion!.area as Dependencia) : null;
-  const [dep, setDep] = useState<Dependencia>(miArea ?? "Registro Civil");
+  const miArea = !esAdmin(sesion) && dependencias().includes(sesion?.area ?? "") ? (sesion!.area as Dependencia) : null;
+  const [dep, setDep] = useState<Dependencia>(miArea ?? dependencias()[0]);
   const [agendas, setAgendas] = useState<Agenda[]>([]);
   const [sols, setSols] = useState<Solicitud[]>([]);
   const [dia, setDia] = useState(() => new Date().toLocaleDateString("en-CA"));
@@ -42,7 +42,7 @@ export default function AgendaCitas() {
     <>
       {!miArea && (
         <div className="seg">
-          {DEPENDENCIAS.map((d) => <button key={d} type="button" className={dep === d ? "on azul" : ""} onClick={() => setDep(d)}>{d}</button>)}
+          {dependencias().map((d) => <button key={d} type="button" className={dep === d ? "on azul" : ""} onClick={() => setDep(d)}>{d}</button>)}
         </div>
       )}
       <div className="row">

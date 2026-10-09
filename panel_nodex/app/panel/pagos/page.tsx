@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Barras, Kpi } from "@/components/graficas";
 import { f, pesos } from "@/lib/almacen";
-import { listarVecinos, type Vecino } from "@/lib/vecinos";
 import { CONCEPTOS, listarPagos, METODOS, type Concepto, type MetodoPago, type Pago } from "@/lib/feria";
 
 export default function Pagos() {
   const [pagos, setPagos] = useState<Pago[]>([]);
-  const [vecinos, setVecinos] = useState<Vecino[]>([]);
   const [concepto, setConcepto] = useState<Concepto | "">("");
   const [metodo, setMetodo] = useState<MetodoPago | "">("");
 
-  useEffect(() => { Promise.all([listarPagos(), listarVecinos()]).then(([p, v]) => { setPagos(p); setVecinos(v); }); }, []);
-  const vecinoDe = useMemo(() => new Map(vecinos.map((v) => [v.id, v])), [vecinos]);
+  useEffect(() => { listarPagos().then(setPagos); }, []);
 
   const enLinea = pagos.filter((p) => p.canal === "app");
   const visibles = enLinea.filter((p) => (!concepto || p.concepto === concepto) && (!metodo || p.metodo === metodo));
   const cobrado = (l: Pago[]) => l.filter((p) => p.estado === "pagado").reduce((s, p) => s + p.monto, 0);
-  const desdeEU = enLinea.filter((p) => vecinoDe.get(p.vecinoId ?? undefined)?.tipo === "paisano");
+  const desdeEU = enLinea.filter((p) => p.compradorTipo === "paisano");
 
   const porConcepto = (Object.keys(CONCEPTOS) as Concepto[]).map((c) => ({
     etiqueta: CONCEPTOS[c], valor: cobrado(enLinea.filter((p) => p.concepto === c)),
@@ -52,11 +49,10 @@ export default function Pagos() {
             <thead><tr><th>FOLIO</th><th>VECINO</th><th>CONCEPTO</th><th className="num">MONTO</th><th>MÉTODO</th><th>FECHA</th><th>ESTADO</th></tr></thead>
             <tbody>
               {visibles.slice(0, 60).map((p) => {
-                const v = vecinoDe.get(p.vecinoId ?? undefined);
                 return (
                   <tr key={p.id}>
                     <td><strong>{p.folio}</strong></td>
-                    <td>{v?.nombre}<div className="muted" style={{ fontSize: 11 }}>{v?.tipo === "paisano" ? `✈ ${v.origen}` : v?.colonia}</div></td>
+                    <td>{p.compradorNombre ?? "Vecino"}<div className="muted" style={{ fontSize: 11 }}>{p.compradorTipo === "paisano" ? `✈ ${p.compradorOrigen ?? ""}` : p.compradorColonia}</div></td>
                     <td>{p.descripcion}<div className="muted" style={{ fontSize: 11 }}>{CONCEPTOS[p.concepto]}</div></td>
                     <td className="num">{pesos(p.monto)}</td>
                     <td className="muted">{METODOS[p.metodo]}</td>
