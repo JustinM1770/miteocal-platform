@@ -187,6 +187,9 @@ service cloud.firestore {
       match /pagos/{id} {
         allow read:   if esFuncionario(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
         allow create: if esFuncionario(mid) && request.resource.data.canal == 'taquilla';
+        // Compra de prueba desde el panel: siempre marcada, nunca cuenta como venta
+        allow create: if esFuncionario(mid) && request.resource.data.canal == 'simulacion'
+                      && request.resource.data.simulado == true;
         allow update: if esFuncionario(mid) && soloCambia(['usado', 'usadoEn', 'estado']);
         allow delete: if false;
       }
@@ -197,6 +200,17 @@ service cloud.firestore {
         allow read:   if esAdmin(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
         allow update: if esAdmin(mid) && soloCambia(['respuesta']);
         allow delete: if false;
+      }
+
+      // ── Escuelas ──
+      // Públicas: el papá las busca y las sigue. `seguidores` lo mantiene una
+      // Cloud Function; el panel no lo puede alterar.
+      match /escuelas/{id} {
+        allow read:   if true;
+        allow create: if esFuncionario(mid) && !request.resource.data.keys().hasAny(['seguidores']);
+        allow update: if esFuncionario(mid)
+                      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['seguidores']);
+        allow delete: if false;   // se ocultan con activa = false
       }
 
       // ── Trámites y citas ──

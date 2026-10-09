@@ -21,7 +21,14 @@ export const MUNICIPIO_DEMO: ConfigMunicipio = {
   nombre: "Teocaltiche",
   estado: "Jalisco",
   modulos: { agua: true, basura: true, reportes: true, comercio: true, noticias: true, escuelas: true, feria: true, paisanos: true, tramites: true },
-  colonias: LISTA.map(([nombre, zona]) => ({ id: slug(nombre), nombre, zona })),
+  // Centros APROXIMADOS solo para la demo, repartidos alrededor de la cabecera
+  colonias: LISTA.map(([nombre, zona], i) => {
+    const angulo = (i / LISTA.length) * Math.PI * 2, radio = zona === centro ? 0.0025 + (i % 2) * 0.001 : 0.006 + (i % 3) * 0.0015;
+    return {
+      id: slug(nombre), nombre, zona, tipo: zona === centro ? (i === 0 ? "Colonia" : "Barrio tradicional") : nombre.startsWith("Lomas") || nombre === "Arboledas" ? "Fraccionamiento" : "Colonia",
+      lat: +(21.4271 + Math.sin(angulo) * radio).toFixed(5), lng: +(-102.5764 + Math.cos(angulo) * radio * 1.1).toFixed(5),
+    };
+  }),
   emergencias: [
     { id: "emergencias", nombre: "Emergencias", telefono: "911", categoria: "Emergencias" },
     { id: "proteccion-civil", nombre: "Protección Civil", telefono: "346 787 0911", categoria: "Emergencias", nota: "Atención 24 horas" },
@@ -36,6 +43,7 @@ export const MUNICIPIO_DEMO: ConfigMunicipio = {
     templos: ["Parroquia de San Miguel Arcángel", "Templo de El Señor de Las Maravillas"],
     dependencias: ["Presidencia", "Agua Potable", "Obras Públicas", "Comunicación Social", "Protección Civil", "Registro Civil", "DIF", "Catastro", "Tesorería", "Secretaría General"],
   },
+  escuelas: ["CBTIS 247", "Jardín de Niños Rosaura Zapata", "Jardín de Niños Tepochcalli", "Primaria Benito Juárez", "Primaria Rafael Ramírez", "Secundaria Federal 20"],
   vecinosPorColonia: Object.fromEntries(LISTA.map(([n, , v]) => [n, v])),
   faltantes: [],
 };

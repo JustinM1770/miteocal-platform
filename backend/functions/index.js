@@ -255,3 +255,106 @@ const alCambiar = (coleccion) => onDocumentWritten(`municipios/{municipioId}/${c
 
 exports.resumenPorPago = alCambiar('pagos');
 exports.resumenPorCalificacion = alCambiar('calificaciones');
+
+/* ═══ Personal del municipio (desde el panel) ═══════════════════════════════
+   Solo un admin del MISMO municipio (o plataforma). El rol y el municipio son
+   custom claims: por eso esto vive aquí y no en el cliente. */
+
+const ROLES_PERSONAL = ['funcionario', 'admin'];
+
+function exigirAdmin(req, municipioId) {
+  const c = req.auth?.token || {};
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Inicia sesion.');
+  if (c.rol === 'plataforma') return;
+  if (c.rol !== 'admin' || c.municipioId !== municipioId) {
+    throw new HttpsError('permission-denied', 'Solo un administrador de este municipio puede hacerlo.');
+  }
+}
+
+/** Da de alta a una persona del ayuntamiento. Devuelve un enlace para que cree su contraseña. */
+exports.crearPersonal = onCall(async (req) => {
+  const { correo, nombre, rol = 'funcionario', area = null } = req.data || {};
+  const municipioId = req.auth?.token?.rol === 'plataforma' ? req.data?.municipioId : req.auth?.token?.municipioId;
+  exigirAdmin(req, municipioId);
+  if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) throw new HttpsError('invalid-argument', 'Correo invalido.');
+  if (!ROLES_PERSONAL.includes(rol)) throw new HttpsError('invalid-argument', `Rol invalido: ${rol}`);
+
+  let usuario;
+  let nueva = false;
+  try {
+    usuario = await admin.auth().getUserByEmail(correo);
+    const c = usuario.customClaims || {};
+    if (c.municipioId && c.municipioId !== municipioId) {
+      throw new HttpsError('already-exists', 'Esa cuenta pertenece a otro municipio.');
+    }
+  } catch (e) {
+    if (e instanceof HttpsError) throw e;
+    usuario = await admin.auth().createUser({ email: correo, displayName: nombre || undefined, emailVerified: false });
+    nueva = true;
+  }
+
+  await admin.auth().setCustomUserClaims(usuario.uid, { municipioId, rol, ...(area ? { area } : {}) });
+  await db.collection('usuarios').doc(usuario.uid).set({
+    municipioId, rol, area, correo, activo: true,
+    ...(nombre ? { nombre } : {}),
+    altaPor: req.auth.uid, altaEn: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  // La persona define su contraseña con este enlace; nadie la ve ni la manda por chat
+  const enlace = await admin.auth().generatePasswordResetLink(correo);
+  await db.collection(`municipios/${municipioId}/auditoria`).add({
+    accion: nueva ? 'Dio de alta personal' : 'Asignó permisos a cuenta existente',
+    detalle: `${correo} · ${rol}${area ? ` · ${area}` : ''}`, canal: 'interno',
+    autorUid: req.auth.uid, autorNombre: req.auth.token.name || req.auth.token.email || 'Admin',
+    creadoEn: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { uid: usuario.uid, nueva, enlace };
+});
+
+/** Cambia rol o área, o desactiva / reactiva una cuenta del personal */
+exports.actualizarPersonal = onCall(async (req) => {
+  const { uid, rol, area, activo } = req.data || {};
+  if (!uid) throw new HttpsError('invalid-argument', 'Falta uid.');
+  const usuario = await admin.auth().getUser(uid).catch(() => null);
+  if (!usuario) throw new HttpsError('not-found', 'No existe esa cuenta.');
+  const actuales = usuario.customClaims || {};
+  exigirAdmin(req, actuales.municipioId);
+  if (uid === req.auth.uid && (activo === false || (rol && rol !== actuales.rol))) {
+    throw new HttpsError('failed-precondition', 'No puedes quitarte tus propios permisos.');
+  }
+  if (rol && !ROLES_PERSONAL.includes(rol)) throw new HttpsError('invalid-argument', `Rol invalido: ${rol}`);
+
+  const claims = { ...actuales, ...(rol ? { rol } : {}) };
+  if (area !== undefined) { if (area) claims.area = area; else delete claims.area; }
+  await admin.auth().setCustomUserClaims(uid, claims);
+  if (activo !== undefined) {
+    await admin.auth().updateUser(uid, { disabled: !activo });
+    // Al desactivar se cierran sus sesiones abiertas
+    if (activo === false) await admin.auth().revokeRefreshTokens(uid);
+  }
+  await db.collection('usuarios').doc(uid).set({
+    rol: claims.rol, area: claims.area || null, ...(activo !== undefined ? { activo } : {}),
+  }, { merge: true });
+
+  const cambios = [rol && `rol ${rol}`, area !== undefined && `área ${area || 'ninguna'}`, activo === false && 'desactivada', activo === true && 'reactivada'].filter(Boolean).join(', ');
+  await db.collection(`municipios/${actuales.municipioId}/auditoria`).add({
+    accion: 'Cambió permisos de personal', detalle: `${usuario.email} · ${cambios}`, canal: 'interno',
+    autorUid: req.auth.uid, autorNombre: req.auth.token.name || req.auth.token.email || 'Admin',
+    creadoEn: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+/** Cuántos papás siguen cada escuela: usuarios/{uid}.escuelas[] (ids) → escuelas/{id}.seguidores */
+exports.seguidoresEscuelas = onDocumentWritten('usuarios/{uid}', async (evento) => {
+  const antes = evento.data?.before?.data() || {};
+  const despues = evento.data?.after?.data() || {};
+  const a = new Set(antes.municipioId ? antes.escuelas || [] : []);
+  const b = new Set(despues.municipioId ? despues.escuelas || [] : []);
+  const cambio = (mid, id, delta) => db.doc(`municipios/${mid}/escuelas/${id}`)
+    .update({ seguidores: admin.firestore.FieldValue.increment(delta) }).catch(() => null);   // la escuela pudo borrarse
+  const tareas = [];
+  for (const id of a) if (!b.has(id) || antes.municipioId !== despues.municipioId) tareas.push(cambio(antes.municipioId, id, -1));
+  for (const id of b) if (!a.has(id) || antes.municipioId !== despues.municipioId) tareas.push(cambio(despues.municipioId, id, +1));
+  await Promise.all(tareas);
+});

@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import CodigoQR from "@/components/CodigoQR";
+import EscanerQR, { escanerDisponible, leerQRDeImagen } from "@/components/EscanerQR";
+import { contenidoPase, leerPase } from "@/lib/pase";
+import { coloniasDeZona, zonas } from "@/lib/config";
+import { municipioId } from "@/lib/firebase";
+import { ORIGENES } from "@/lib/vecinos";
 import { Barras, Kpi, Pestanas } from "@/components/graficas";
 import { f, pesos } from "@/lib/almacen";
 import {
   listarEventos, listarBoletos, METODOS, reembolsar, validarBoleto, venderTaquilla, vendidos,
-  type Evento, type MetodoPago, type Pago, type ResultadoValidacion,
+  comprarSimulado, simularPagoRecibido, buscarPorFolio,
+  type Comprador, type Evento, type MetodoPago, type Pago, type ResultadoValidacion, type Zona,
 } from "@/lib/feria";
 
-type Vista = "ventas" | "validar" | "taquilla" | "corte";
+type Vista = "ventas" | "simular" | "validar" | "taquilla" | "corte";
 
 export default function Boletos() {
   const [vista, setVista] = useState<Vista>("ventas");
@@ -28,12 +35,14 @@ export default function Boletos() {
     <>
       <Pestanas<Vista> valor={vista} onCambio={setVista} opciones={[
         { id: "ventas", nombre: "Ventas", n: boletos.length },
+        { id: "simular", nombre: "Simular compra" },
         { id: "validar", nombre: "Validar en la entrada" },
         { id: "taquilla", nombre: "Vender en taquilla" },
         { id: "corte", nombre: "Corte de caja" },
       ]} />
       {vista === "ventas" && <Ventas boletos={boletos} eventos={eventos} onCambio={cargar} />}
-      {vista === "validar" && <Validar boletos={boletos} onCambio={cargar} />}
+      {vista === "simular" && <SimularCompra eventos={eventos} pagos={pagos} onCambio={cargar} onValidar={() => setVista("validar")} />}
+      {vista === "validar" && <Validar boletos={boletos} eventos={eventos} onCambio={cargar} />}
       {vista === "taquilla" && <Taquilla eventos={eventos} pagos={pagos} onCambio={cargar} />}
       {vista === "corte" && <Corte boletos={boletos} />}
     </>
@@ -46,6 +55,8 @@ function EstadoPill({ p }: { p: Pago }) {
   if (p.usado) return <span className="tag azul">Ya entró</span>;
   return <span className="tag verde">Pagado</span>;
 }
+
+const Simulado = ({ p }: { p: Pago }) => (p.simulado ? <span className="tag morado" style={{ marginLeft: 4 }}>Simulación</span> : null);
 
 function Ventas({ boletos, eventos, onCambio }: {
   boletos: Pago[]; eventos: Evento[]; onCambio: () => Promise<void>;
@@ -60,7 +71,8 @@ function Ventas({ boletos, eventos, onCambio }: {
   const visibles = boletos.filter((p) =>
     (!evento || p.eventoId === evento) && (!metodo || p.metodo === metodo) &&
     (!q || `${p.folio} ${p.compradorNombre ?? ""}`.toLowerCase().includes(q)));
-  const pagados = visibles.filter((p) => p.estado === "pagado");
+  // Las compras de prueba se ven en la lista pero no cuentan como venta
+  const pagados = visibles.filter((p) => p.estado === "pagado" && !p.simulado);
 
   return (
     <>
@@ -95,7 +107,7 @@ function Ventas({ boletos, eventos, onCambio }: {
                   <td className="num">{pesos(p.monto)}</td>
                   <td className="muted">{METODOS[p.metodo]}</td>
                   <td className="muted" style={{ whiteSpace: "nowrap" }}>{f(p.creadoEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
-                  <td><EstadoPill p={p} /></td>
+                  <td><EstadoPill p={p} /><Simulado p={p} /></td>
                 </tr>
               );
             })}
@@ -129,40 +141,257 @@ function Ventas({ boletos, eventos, onCambio }: {
   );
 }
 
-function Validar({ boletos, onCambio }: { boletos: Pago[]; onCambio: () => Promise<void> }) {
+function PaseDigital({ p, evento }: { p: Pago; evento?: Evento }) {
+  const fecha = evento ? new Date(`${evento.fecha}T12:00`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase() : "";
+  return (
+    <div className="phone" style={{ alignItems: "stretch" }}>
+      <span className="h">Tu pase digital</span>
+      <div className="acard" style={{ gap: 8 }}>
+        <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
+          <div className="col" style={{ gap: 1 }}>
+            <span className="t">{evento?.titulo ?? p.descripcion.split(" · ")[0]}</span>
+            <span className="s">{[fecha, evento?.hora && `${evento.hora} hrs`].filter(Boolean).join(" · ")}</span>
+          </div>
+          <span className="tag azul">{p.zona}</span>
+        </div>
+        {p.estado === "pagado" ? (
+          <>
+            <CodigoQR texto={contenidoPase(municipioId(), p.folio, p.id ?? "")} tamano={170} etiqueta={`QR del boleto ${p.folio}`} />
+            <span style={{ color: p.usado ? "var(--sec)" : "var(--ok)", fontWeight: 600, textAlign: "center", fontSize: 13 }}>
+              {p.usado ? "Este pase ya se usó" : "Boleto válido · Presenta en la entrada"}
+            </span>
+          </>
+        ) : p.estado === "pendiente" ? (
+          <div className="acard flat" style={{ background: "var(--warn-soft)", gap: 4 }}>
+            <span className="t" style={{ color: "var(--warn)", fontSize: 13 }}>Pago pendiente</span>
+            <span className="s">{p.metodo === "oxxo" ? "Paga en cualquier OXXO con esta referencia:" : "Transfiere por SPEI a esta CLABE:"}</span>
+            <code style={{ fontSize: 15, letterSpacing: "0.06em" }}>{p.referencia}</code>
+            <span className="s">El QR aparece cuando se confirme el pago.</span>
+          </div>
+        ) : <span className="tag gris">Reembolsado</span>}
+        <span className="muted" style={{ textAlign: "center", fontSize: 11 }}>Folio {p.folio} · {p.cantidad} acceso(s){evento ? ` · ${evento.escenario}` : ""}</span>
+        <div className="btn" style={{ background: "var(--ink)", color: "#fff", padding: 10 }}>Guardar en Wallet</div>
+      </div>
+    </div>
+  );
+}
+
+function SimularCompra({ eventos, pagos, onCambio, onValidar }: { eventos: Evento[]; pagos: Pago[]; onCambio: () => Promise<void>; onValidar: () => void }) {
+  const { sesion } = useAuth();
+  const conBoletos = eventos.filter((e) => e.zonas.length);
+  const [paso, setPaso] = useState(1);
+  const [evento, setEvento] = useState<Evento | null>(null);
+  const [zona, setZona] = useState<Zona | null>(null);
+  const [cantidad, setCantidad] = useState(2);
+  const [comprador, setComprador] = useState<Comprador>({ nombre: "", colonia: "", tipo: "local", origen: null });
+  const [metodo, setMetodo] = useState<"tarjeta" | "oxxo" | "spei">("tarjeta");
+  const [pago, setPago] = useState<Pago | null>(null);
+  const [procesando, setProcesando] = useState(false);
+
+  const quedan = evento && zona ? zona.cupo - vendidos(pagos, evento.id!, zona.nombre) : 0;
+  const total = zona ? zona.precio * cantidad : 0;
+  const reiniciar = () => { setPaso(1); setEvento(null); setZona(null); setCantidad(2); setPago(null); };
+  const PASOS = ["Evento", "Zona y boletos", "Comprador", "Pago", "Pase digital"];
+
+  return (
+    <div className="row">
+      <div className="card grow col" style={{ gap: 16 }}>
+        <div className="banner info" style={{ padding: "10px 14px" }}>
+          <span><strong>Simulación.</strong> <span className="muted">Recorre el flujo que hará la app. No cobra nada y no cuenta como venta.</span></span>
+        </div>
+        <ol className="row" style={{ gap: 6, listStyle: "none", margin: 0, padding: 0, flexWrap: "wrap" }} aria-label="Pasos de la compra">
+          {PASOS.map((n, i) => (
+            <li key={n} className={`tag ${paso === i + 1 ? "azul" : paso > i + 1 ? "verde" : "gris"}`} aria-current={paso === i + 1 ? "step" : undefined}>{i + 1}. {n}</li>
+          ))}
+        </ol>
+
+        {paso === 1 && (
+          <div className="col" style={{ gap: 8 }}>
+            <h3 className="h3">¿A qué evento?</h3>
+            {conBoletos.length === 0 && <span className="muted">No hay eventos con boletos en el programa.</span>}
+            {conBoletos.map((e) => {
+              const cupo = e.zonas.reduce((s, z) => s + z.cupo, 0);
+              const agotado = cupo > 0 && vendidos(pagos, e.id!) >= cupo;
+              return (
+                <button key={e.id} type="button" className="acard" disabled={agotado} onClick={() => { setEvento(e); setZona(e.zonas[0]); setPaso(2); }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 12, textAlign: "left", cursor: agotado ? "not-allowed" : "pointer", opacity: agotado ? 0.5 : 1 }}>
+                  <div className="datebadge azul"><b>{e.fecha.slice(8, 10)}</b><small>{new Date(`${e.fecha}T12:00`).toLocaleDateString("es-MX", { month: "short" }).replace(".", "").toUpperCase()}</small></div>
+                  <div className="col grow" style={{ gap: 2 }}><span className="t">{e.titulo}</span><span className="s">{e.escenario} · {e.hora} hrs</span></div>
+                  <strong>{agotado ? "Agotado" : `desde ${pesos(Math.min(...e.zonas.map((z) => z.precio)))}`}</strong>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {paso === 2 && evento && zona && (
+          <div className="col" style={{ gap: 14 }}>
+            <h3 className="h3">{evento.titulo}</h3>
+            <div className="field"><label className="section-label">ZONA</label>
+              <div className="seg">{evento.zonas.map((z) => (
+                <button key={z.nombre} type="button" className={zona.nombre === z.nombre ? "on azul" : ""} onClick={() => setZona(z)}>{z.nombre} · {pesos(z.precio)}</button>
+              ))}</div>
+              <span className="muted" style={{ fontSize: 12 }}>Quedan {Math.max(0, quedan).toLocaleString("es-MX")} lugares.</span></div>
+            <div className="field"><label className="section-label">BOLETOS</label>
+              <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                <button className="btn ghost" type="button" aria-label="Menos" onClick={() => setCantidad((c) => Math.max(1, c - 1))}>−</button>
+                <strong style={{ fontSize: 20, width: 40, textAlign: "center" }} aria-live="polite">{cantidad}</strong>
+                <button className="btn ghost" type="button" aria-label="Más" onClick={() => setCantidad((c) => Math.min(8, c + 1))}>+</button>
+                <span className="grow" /><strong style={{ fontSize: 22 }}>{pesos(total)}</strong>
+              </div>
+              <span className="muted" style={{ fontSize: 12 }}>Máximo 8 por compra.</span></div>
+            <div className="row" style={{ gap: 10, justifyContent: "flex-end" }}>
+              <button className="btn ghost" type="button" onClick={() => setPaso(1)}>Atrás</button>
+              <button className="btn primary" type="button" disabled={quedan < cantidad} onClick={() => setPaso(3)}>{quedan < cantidad ? "No hay lugares suficientes" : "Continuar"}</button>
+            </div>
+          </div>
+        )}
+
+        {paso === 3 && (
+          <div className="col" style={{ gap: 12 }}>
+            <h3 className="h3">¿Quién compra?</h3>
+            <div className="field"><label className="section-label">NOMBRE</label>
+              <input className="input" value={comprador.nombre} onChange={(e) => setComprador({ ...comprador, nombre: e.target.value })} placeholder="María López" /></div>
+            <div className="field"><label className="section-label">DÓNDE VIVE</label>
+              <div className="seg">
+                <button type="button" className={comprador.tipo === "local" ? "on azul" : ""} onClick={() => setComprador({ ...comprador, tipo: "local", origen: null })}>En el municipio</button>
+                <button type="button" className={comprador.tipo === "paisano" ? "on azul" : ""} onClick={() => setComprador({ ...comprador, tipo: "paisano", origen: ORIGENES[0] })}>✈ Paisano en EE. UU.</button>
+              </div></div>
+            {comprador.tipo === "paisano" && (
+              <div className="field"><label className="section-label">CIUDAD</label>
+                <select className="select" value={comprador.origen ?? ""} onChange={(e) => setComprador({ ...comprador, origen: e.target.value })}>{ORIGENES.map((o) => <option key={o}>{o}</option>)}</select></div>
+            )}
+            <div className="field"><label className="section-label">{comprador.tipo === "paisano" ? "COLONIA DE SU FAMILIA" : "COLONIA"}</label>
+              <select className="select" value={comprador.colonia} onChange={(e) => setComprador({ ...comprador, colonia: e.target.value })}>
+                <option value="">Elige una colonia</option>
+                {zonas().map((z) => <optgroup key={z} label={z}>{coloniasDeZona(z).map((c) => <option key={c.id}>{c.nombre}</option>)}</optgroup>)}
+              </select></div>
+            <div className="row" style={{ gap: 10, justifyContent: "flex-end" }}>
+              <button className="btn ghost" type="button" onClick={() => setPaso(2)}>Atrás</button>
+              <button className="btn primary" type="button" disabled={!comprador.nombre.trim() || !comprador.colonia} onClick={() => setPaso(4)}>Continuar</button>
+            </div>
+          </div>
+        )}
+
+        {paso === 4 && evento && zona && (
+          <div className="col" style={{ gap: 12 }}>
+            <h3 className="h3">Pago · {pesos(total)}</h3>
+            <span className="muted" style={{ fontSize: 13 }}>{cantidad} × {zona.nombre} · {evento.titulo}</span>
+            {([
+              ["tarjeta", "Tarjeta de crédito o débito", "Se aprueba al momento y el pase sale de inmediato. Desde EE. UU. también."],
+              ["oxxo", "Efectivo en OXXO", "Genera una referencia; el pase aparece cuando se paga (hasta 72 h)."],
+              ["spei", "Transferencia SPEI", "Genera una CLABE; el pase aparece al recibir la transferencia."],
+            ] as const).map(([m, t, d]) => (
+              <button key={m} type="button" className={`option${metodo === m ? " on activo" : ""}`} style={{ alignItems: "flex-start" }} onClick={() => setMetodo(m)}>
+                <span className="radio" style={{ marginTop: 3 }} />
+                <span className="col" style={{ gap: 2 }}><strong>{t}</strong><span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>{d}</span></span>
+              </button>
+            ))}
+            <span className="muted" style={{ fontSize: 12 }}>En la simulación no se capturan datos de tarjeta.</span>
+            <div className="row" style={{ gap: 10, justifyContent: "flex-end" }}>
+              <button className="btn ghost" type="button" onClick={() => setPaso(3)}>Atrás</button>
+              <button className="btn primary" type="button" disabled={procesando} onClick={async () => {
+                setProcesando(true);
+                await new Promise((r) => setTimeout(r, 900));   // lo que tardaría la pasarela
+                const p = await comprarSimulado(evento, zona, cantidad, { ...comprador, nombre: comprador.nombre.trim() }, metodo, sesion!.nombre);
+                setPago(p); setPaso(5); setProcesando(false); await onCambio();
+              }}>{procesando ? "Procesando pago…" : metodo === "tarjeta" ? `Pagar ${pesos(total)}` : "Generar referencia"}</button>
+            </div>
+          </div>
+        )}
+
+        {paso === 5 && pago && (
+          <div className="col" style={{ gap: 12 }}>
+            <div className="banner" style={{ background: pago.estado === "pagado" ? "var(--ok-soft)" : "var(--warn-soft)", display: "block" }}>
+              <strong>{pago.estado === "pagado" ? `✓ Compra aprobada · folio ${pago.folio}` : `Referencia generada · folio ${pago.folio}`}</strong>
+              <div className="muted" style={{ fontSize: 13 }}>{pago.estado === "pagado" ? "El pase con QR ya está en la app del vecino." : "Cuando el vecino pague, el pase se activa solo."}</div>
+            </div>
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              {pago.estado === "pendiente" && (
+                <button className="btn primary" type="button" onClick={async () => {
+                  await simularPagoRecibido(pago, sesion!.nombre);
+                  setPago({ ...pago, estado: "pagado" }); await onCambio();
+                }}>Simular que ya pagó en {pago.metodo === "oxxo" ? "OXXO" : "SPEI"}</button>
+              )}
+              {pago.estado === "pagado" && <button className="btn primary" type="button" onClick={onValidar}>Probar en la entrada</button>}
+              <button className="btn ghost" type="button" onClick={reiniciar}>Simular otra compra</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="col" style={{ width: 300, flex: "0 0 300px", gap: 10 }}>
+        <span className="section-label">LO QUE VE EL VECINO</span>
+        {pago ? <PaseDigital p={pago} evento={evento ?? undefined} /> : (
+          <div className="phone">
+            <span className="h">{evento?.titulo ?? "Cartelera"}</span>
+            <span className="s" style={{ fontSize: 12, color: "var(--sec)" }}>{evento ? `${evento.escenario} · ${evento.hora} hrs` : "Elige un evento"}</span>
+            {zona && <div className="acard flat"><span className="s">{cantidad} × {zona.nombre}</span><span className="t">{pesos(total)}</span></div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Validar({ boletos, eventos, onCambio }: { boletos: Pago[]; eventos: Evento[]; onCambio: () => Promise<void> }) {
   const { sesion } = useAuth();
   const [folio, setFolio] = useState("");
+  const [escaneando, setEscaneando] = useState(false);
   const [ultimo, setUltimo] = useState<{ ok: boolean; titulo: string; detalle: string } | null>(null);
-  const encontrado = boletos.find((p) => p.folio.toLowerCase() === folio.trim().toLowerCase());
+  const [mostrado, setMostrado] = useState<Pago | null>(null);
+  const encontrado = boletos.find((p) => p.folio.toLowerCase() === folio.trim().toLowerCase()) ?? mostrado;
 
-  async function validar() {
-    const p = encontrado;
+  /** Valida lo que venga: contenido del QR o folio escrito */
+  const validarTexto = useCallback(async (texto: string) => {
+    setEscaneando(false);
+    const leido = leerPase(texto);
+    if (!leido) { setUltimo({ ok: false, titulo: "QR no reconocido", detalle: "No es un pase de la app. Pide al vecino que abra «Tu pase digital»." }); return; }
+    if ("municipio" in leido && leido.municipio !== municipioId()) { setUltimo({ ok: false, titulo: "Pase de otro municipio", detalle: `Este pase es de ${leido.municipio}.` }); return; }
+    const p = boletos.find((x) => x.folio === leido.folio) ?? await buscarPorFolio(leido.folio);
     if (!p) { setUltimo({ ok: false, titulo: "Folio no encontrado", detalle: "Revisa que el vecino muestre su pase digital de la app." }); return; }
+    setMostrado(p);
     const r = await validarBoleto(p, sesion!.nombre);
     const MENSAJE: Record<Exclude<ResultadoValidacion, "valido">, { titulo: string; detalle: string }> = {
       "no-existe": { titulo: "Folio no encontrado", detalle: "Revisa que el vecino muestre su pase digital de la app." },
       reembolsado: { titulo: "Boleto reembolsado", detalle: p.descripcion },
-      pendiente: { titulo: "Pago pendiente", detalle: "La ficha de OXXO no se ha pagado." },
+      pendiente: { titulo: "Pago pendiente", detalle: p.metodo === "spei" ? "La transferencia no ha llegado." : "La ficha de OXXO no se ha pagado." },
       "ya-entro": { titulo: "Este boleto ya entró", detalle: p.usadoEn ? `Validado el ${f(p.usadoEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : "Se validó en otra puerta." },
     };
     if (r !== "valido") { setUltimo({ ok: false, ...MENSAJE[r] }); await onCambio(); return; }
-    setUltimo({ ok: true, titulo: `Pase · ${p.cantidad} persona(s)`, detalle: `${p.descripcion} · ${p.compradorNombre ?? "Taquilla"}` });
+    setUltimo({ ok: true, titulo: `Pase · ${p.cantidad} persona(s)`, detalle: `${p.descripcion} · ${p.compradorNombre ?? "Taquilla"}${p.simulado ? " · simulación" : ""}` });
     setFolio("");
     await onCambio();
-  }
+  }, [boletos, onCambio, sesion]);
 
   return (
     <div className="row">
       <div className="card grow col" style={{ gap: 14 }}>
         <h3 className="h3">Validar boleto</h3>
-        <span className="muted" style={{ fontSize: 13 }}>Escanea el QR del pase digital o escribe el folio. Cada boleto entra una sola vez.</span>
+        <span className="muted" style={{ fontSize: 13 }}>Escanea el QR del pase digital o escribe el folio. Cada boleto entra una sola vez, aunque lo escaneen en dos puertas.</span>
+        <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+          <button className="btn primary" type="button" onClick={() => setEscaneando(true)} disabled={!escanerDisponible()}
+            title={escanerDisponible() ? undefined : "Este navegador no lee QR; usa Chrome o escribe el folio"}>📷 Escanear QR</button>
+          <label className="btn ghost" style={{ cursor: escanerDisponible() ? "pointer" : "not-allowed", opacity: escanerDisponible() ? 1 : 0.5 }}>
+            Subir foto del QR
+            <input type="file" accept="image/*" hidden disabled={!escanerDisponible()} onChange={async (e) => {
+              const a = e.target.files?.[0]; e.target.value = "";
+              if (!a) return;
+              try {
+                const t = await leerQRDeImagen(a);
+                if (t) await validarTexto(t);
+                else setUltimo({ ok: false, titulo: "No se encontró un QR en la imagen", detalle: "Prueba con una foto más cercana y sin reflejos." });
+              } catch (err) { setUltimo({ ok: false, titulo: "No se pudo leer la imagen", detalle: (err as Error).message }); }
+            }} />
+          </label>
+        </div>
         <div className="row" style={{ gap: 10 }}>
-          <input className="input grow" style={{ fontSize: 18, letterSpacing: "0.04em" }} placeholder="TEC-8492" value={folio}
-            onChange={(e) => setFolio(e.target.value)} onKeyDown={(e) => e.key === "Enter" && validar()} autoFocus />
-          <button className="btn primary" type="button" disabled={!folio.trim()} onClick={validar}>Validar</button>
+          <input className="input grow" style={{ fontSize: 18, letterSpacing: "0.04em" }} placeholder="TEC-8492" aria-label="Folio del boleto" value={folio}
+            onChange={(e) => setFolio(e.target.value)} onKeyDown={(e) => e.key === "Enter" && folio.trim() && validarTexto(folio)} />
+          <button className="btn ghost" type="button" disabled={!folio.trim()} onClick={() => validarTexto(folio)}>Validar folio</button>
         </div>
         {ultimo && (
-          <div className="banner" style={{ background: ultimo.ok ? "var(--ok-soft)" : "var(--danger-soft)", display: "block", padding: "20px 22px" }}>
+          <div className="banner" role="status" style={{ background: ultimo.ok ? "var(--ok-soft)" : "var(--danger-soft)", display: "block", padding: "20px 22px" }}>
             <strong style={{ fontSize: 20, color: ultimo.ok ? "var(--ok)" : "var(--danger)" }}>{ultimo.ok ? "✓ " : "✕ "}{ultimo.titulo}</strong>
             <div className="muted">{ultimo.detalle}</div>
           </div>
@@ -171,13 +400,11 @@ function Validar({ boletos, onCambio }: { boletos: Pago[]; onCambio: () => Promi
       </div>
       <div className="col" style={{ width: 300, flex: "0 0 300px", gap: 10 }}>
         <span className="section-label">LO QUE MUESTRA EL VECINO</span>
-        <div className="phone" style={{ alignItems: "stretch" }}>
-          <div className="row" style={{ justifyContent: "space-between" }}><strong>{encontrado?.descripcion.split(" · ")[0] ?? "Banda El Recodo"}</strong><span className="tag azul">{encontrado?.zona ?? "General"}</span></div>
-          <div style={{ height: 150, borderRadius: 12, background: "repeating-conic-gradient(var(--ink) 0 25%, #fff 0 50%) 0 0 / 18px 18px", margin: "6px 20px" }} aria-hidden />
-          <span style={{ color: "var(--ok)", fontWeight: 600, textAlign: "center", fontSize: 13 }}>Boleto válido · Presenta en la entrada</span>
-          <span className="muted" style={{ textAlign: "center", fontSize: 11 }}>Folio {encontrado?.folio ?? "TEC-8492"} · {encontrado?.cantidad ?? 1} acceso(s)</span>
-        </div>
+        {encontrado ? <PaseDigital p={encontrado} evento={eventos.find((e) => e.id === encontrado.eventoId)} /> : (
+          <div className="phone"><span className="s" style={{ color: "var(--sec)", fontSize: 13 }}>Escribe un folio o escanea un pase para ver aquí lo que tiene el vecino en su teléfono.</span></div>
+        )}
       </div>
+      {escaneando && <EscanerQR onLeido={validarTexto} onCerrar={() => setEscaneando(false)} />}
     </div>
   );
 }
@@ -233,7 +460,7 @@ function Corte({ boletos }: { boletos: Pago[] }) {
   // en-CA da AAAA-MM-DD en hora local, igual que el input de fecha
   const clave = (d: Date) => d.toLocaleDateString("en-CA");
   const [dia, setDia] = useState(() => clave(new Date()));
-  const delDia = boletos.filter((p) => p.estado === "pagado" && clave(f(p.creadoEn)) === dia);
+  const delDia = boletos.filter((p) => p.estado === "pagado" && !p.simulado && clave(f(p.creadoEn)) === dia);
   const porMetodo = (Object.keys(METODOS) as MetodoPago[]).map((m) => {
     const l = delDia.filter((p) => p.metodo === m);
     return { etiqueta: METODOS[m], valor: l.reduce((s, p) => s + p.monto, 0), detalle: `${l.length} operaciones` };

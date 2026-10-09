@@ -36,9 +36,13 @@ export default function PaginaModulo() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  // Al cambiar de módulo se limpia el formulario
+  // Al cambiar de módulo se limpia el formulario; si llega ?campo=valor (p. ej. desde
+  // Escuelas → «Publicar aviso»), ese campo viene ya lleno
   useEffect(() => {
-    setValores({}); setNotificar(mod?.notificarPorDefecto ?? false);
+    const previos: Record<string, string> = {};
+    const q = new URLSearchParams(window.location.search);
+    for (const c of mod?.campos ?? []) { const v = q.get(c.clave); if (v) previos[c.clave] = v; }
+    setValores(previos); setNotificar(mod?.notificarPorDefecto ?? false);
     setProgramar(false); setCuando(""); setAviso(null);
   }, [mod]);
 

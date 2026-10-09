@@ -29,7 +29,8 @@ export default function ResumenFeria() {
       });
   }, []);
 
-  const boletos = pagos.filter((p) => p.concepto === "boleto" && p.estado === "pagado");
+  // Las compras simuladas no son ventas
+  const boletos = pagos.filter((p) => p.concepto === "boleto" && p.estado === "pagado" && !p.simulado);
   const ingresos = boletos.reduce((s, p) => s + p.monto, 0);
   const piezas = boletos.reduce((s, p) => s + (p.cantidad ?? 0), 0);
   const enApp = boletos.filter((p) => p.canal === "app").reduce((s, p) => s + p.monto, 0);

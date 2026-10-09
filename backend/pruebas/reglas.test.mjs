@@ -60,6 +60,7 @@ await entorno.withSecurityRulesDisabled(async (ctx) => {
   });
   await setDoc(doc(db, `municipios/${MID}/solicitudes/S-1`), { uid: 'vecino1', estado: 'falta_documento', documentos: [] });
   await setDoc(doc(db, `municipios/${MID}/calificaciones/C-1`), { uid: 'vecino1', estrellas: 4, vecinoNombre: 'Vecino' });
+  await setDoc(doc(db, `municipios/${MID}/escuelas/cbtis-247`), { nombre: 'CBTIS 247', activa: true, seguidores: 10 });
 });
 
 const pruebas = [];
@@ -216,6 +217,29 @@ probar('el admin responde sin tocar las estrellas', () =>
 
 probar('el admin NO cambia las estrellas', () =>
   assertFails(updateDoc(doc(admin.firestore(), `municipios/${MID}/calificaciones/C-1`), { estrellas: 5 })));
+
+// ─── Escuelas: los seguidores los cuenta el servidor ─────────────────────
+probar('cualquiera lee las escuelas', () =>
+  assertSucceeds(getDoc(doc(anonimo.firestore(), `municipios/${MID}/escuelas/cbtis-247`))));
+
+probar('el funcionario edita los datos de la escuela', () =>
+  assertSucceeds(updateDoc(doc(funcionario.firestore(), `municipios/${MID}/escuelas/cbtis-247`), { director: 'Mtra. Ruiz' })));
+
+probar('el funcionario NO altera los seguidores', () =>
+  assertFails(updateDoc(doc(funcionario.firestore(), `municipios/${MID}/escuelas/cbtis-247`), { seguidores: 9999 })));
+
+probar('el funcionario NO crea una escuela con seguidores inventados', () =>
+  assertFails(setDoc(doc(funcionario.firestore(), `municipios/${MID}/escuelas/nueva`), { nombre: 'Nueva', seguidores: 500 })));
+
+// ─── Compras simuladas ───────────────────────────────────────────────────
+probar('el funcionario registra una compra simulada marcada', () =>
+  assertSucceeds(setDoc(doc(funcionario.firestore(), `municipios/${MID}/pagos/SIM-1`), { canal: 'simulacion', simulado: true, estado: 'pendiente' })));
+
+probar('una compra simulada sin marca se rechaza', () =>
+  assertFails(setDoc(doc(funcionario.firestore(), `municipios/${MID}/pagos/SIM-2`), { canal: 'simulacion', estado: 'pagado' })));
+
+probar('el funcionario NO crea un pago "en linea" haciendolo pasar por real', () =>
+  assertFails(setDoc(doc(funcionario.firestore(), `municipios/${MID}/pagos/SIM-3`), { canal: 'app', simulado: true, estado: 'pagado' })));
 
 // ─── Correr ──────────────────────────────────────────────────────────────
 let ok = 0, fallo = 0;

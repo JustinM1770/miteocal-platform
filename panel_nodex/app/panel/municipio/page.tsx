@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Pestanas } from "@/components/graficas";
 import { registrar } from "@/lib/datos";
-import { aSlug, cfg, guardarConfig, type Catalogos, type Colonia, type Feria, type Modulo } from "@/lib/config";
+import { cfg, guardarConfig, type Catalogos, type Feria, type Modulo } from "@/lib/config";
 
-type Vista = "colonias" | "feria" | "catalogos" | "modulos";
+type Vista = "feria" | "catalogos" | "modulos";
 
 const NOMBRE_MODULO: Record<Modulo, string> = {
   agua: "Agua", basura: "Basura", reportes: "Reportes", comercio: "Comercio", noticias: "Noticias",
@@ -14,7 +14,7 @@ const NOMBRE_MODULO: Record<Modulo, string> = {
 };
 
 export default function Municipio() {
-  const [vista, setVista] = useState<Vista>("colonias");
+  const [vista, setVista] = useState<Vista>("feria");
   const c = cfg();
   return (
     <>
@@ -23,12 +23,10 @@ export default function Municipio() {
         {c.faltantes.length > 0 && <span className="tag naranja">Falta: {c.faltantes.join(", ")}</span>}
       </div>
       <Pestanas<Vista> valor={vista} onCambio={setVista} opciones={[
-        { id: "colonias", nombre: "Colonias", n: c.colonias.length },
         { id: "feria", nombre: "Feria" },
         { id: "catalogos", nombre: "Catálogos" },
         { id: "modulos", nombre: "Módulos" },
       ]} />
-      {vista === "colonias" && <EditorColonias />}
       {vista === "feria" && <EditorFeria />}
       {vista === "catalogos" && <EditorCatalogos />}
       {vista === "modulos" && <VerModulos />}
@@ -49,52 +47,6 @@ function Guardar({ cambios, onGuardar }: { cambios: boolean; onGuardar: () => Pr
         }}>
         {estado === "guardando" ? "Guardando…" : "Guardar cambios"}
       </button>
-    </div>
-  );
-}
-
-function EditorColonias() {
-  const { sesion } = useAuth();
-  const [lista, setLista] = useState<Colonia[]>(() => cfg().colonias.map((c) => ({ ...c })));
-  const [cambios, setCambios] = useState(false);
-  const zonasUsadas = [...new Set(lista.map((c) => c.zona).filter(Boolean))] as string[];
-  const poner = (i: number, c: Partial<Colonia>) => { setLista((l) => l.map((x, k) => (k === i ? { ...x, ...c } : x))); setCambios(true); };
-  const nombres = lista.map((c) => c.nombre.trim().toLowerCase());
-  const repetidas = nombres.filter((n, i) => n && nombres.indexOf(n) !== i);
-  const valida = lista.every((c) => c.nombre.trim()) && repetidas.length === 0;
-
-  return (
-    <div className="card col" style={{ gap: 12 }}>
-      <span className="muted" style={{ fontSize: 13 }}>
-        Las colonias sirven para que el vecino elija la suya al registrarse y para mandar avisos solo a quien le afectan.
-        Las coordenadas (centroide) centran los mapas; son opcionales.
-      </span>
-      <table className="tabla">
-        <thead><tr><th>COLONIA</th><th>ZONA</th><th>HORARIO DE AGUA</th><th>POZO</th><th>LAT</th><th>LNG</th><th /></tr></thead>
-        <tbody>
-          {lista.map((c, i) => (
-            <tr key={i}>
-              <td><input className={`input${repetidas.includes(c.nombre.trim().toLowerCase()) ? " error" : ""}`} value={c.nombre} aria-label="Nombre de la colonia" onChange={(e) => poner(i, { nombre: e.target.value, id: c.id || aSlug(e.target.value) })} /></td>
-              <td><input className="input" list="zonas" value={c.zona ?? ""} aria-label="Zona" onChange={(e) => poner(i, { zona: e.target.value })} /></td>
-              <td><input className="input" value={c.horario ?? ""} placeholder="6:00 – 14:00" aria-label="Horario de agua" onChange={(e) => poner(i, { horario: e.target.value })} /></td>
-              <td><input className="input" value={c.pozo ?? ""} aria-label="Pozo" onChange={(e) => poner(i, { pozo: e.target.value })} /></td>
-              <td style={{ width: 110 }}><input className="input" type="number" step="0.0001" value={c.lat ?? ""} aria-label="Latitud" onChange={(e) => poner(i, { lat: e.target.value === "" ? undefined : +e.target.value })} /></td>
-              <td style={{ width: 120 }}><input className="input" type="number" step="0.0001" value={c.lng ?? ""} aria-label="Longitud" onChange={(e) => poner(i, { lng: e.target.value === "" ? undefined : +e.target.value })} /></td>
-              <td><button className="btn ghost" style={{ padding: 8 }} type="button" aria-label={`Quitar ${c.nombre}`} onClick={() => { setLista((l) => l.filter((_, k) => k !== i)); setCambios(true); }}>×</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <datalist id="zonas">{zonasUsadas.map((z) => <option key={z} value={z} />)}</datalist>
-      {repetidas.length > 0 && <span style={{ color: "var(--danger)", fontSize: 12 }}>Hay colonias repetidas.</span>}
-      <button className="btn ghost" style={{ alignSelf: "flex-start" }} type="button" onClick={() => { setLista((l) => [...l, { id: "", nombre: "", zona: zonasUsadas[0] ?? "" }]); setCambios(true); }}>+ Agregar colonia</button>
-      <span className="muted" style={{ fontSize: 12 }}>Ojo: cambiar el nombre de una colonia no mueve a los vecinos que ya la eligieron.</span>
-      <Guardar cambios={cambios && valida} onGuardar={async () => {
-        const limpia = lista.map((c) => ({ ...c, nombre: c.nombre.trim(), id: c.id || aSlug(c.nombre) }));
-        await guardarConfig("colonias", limpia);
-        await registrar("Actualizó colonias", `${limpia.length} colonias`, "interno", sesion!.nombre);
-        setCambios(false);
-      }} />
     </div>
   );
 }
@@ -153,12 +105,11 @@ function EditorCatalogos() {
   return (
     <div className="card col" style={{ gap: 18, maxWidth: 760 }}>
       <ListaEditable titulo="Escenarios de la feria" ayuda="Dónde puede ocurrir un evento del programa." valores={c.escenarios} onCambio={poner("escenarios")} />
-      <ListaEditable titulo="Escuelas" ayuda="Las que pueden publicar avisos; los papás las siguen en la app." valores={c.escuelas} onCambio={poner("escuelas")} />
       <ListaEditable titulo="Templos" ayuda="Para los avisos parroquiales." valores={c.templos} onCambio={poner("templos")} />
       <ListaEditable titulo="Dependencias y áreas" ayuda="Áreas del ayuntamiento: avisos internos, trámites y personal." valores={c.dependencias} onCambio={poner("dependencias")} />
       <Guardar cambios={cambios} onGuardar={async () => {
         await guardarConfig("catalogos", c);
-        await registrar("Actualizó catálogos del municipio", "escenarios, escuelas, templos y dependencias", "interno", sesion!.nombre);
+        await registrar("Actualizó catálogos del municipio", "escenarios, templos y dependencias", "interno", sesion!.nombre);
         setCambios(false);
       }} />
     </div>

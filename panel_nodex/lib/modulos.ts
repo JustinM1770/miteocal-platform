@@ -113,7 +113,7 @@ export const MODULOS: Modulo[] = [
     slug: "escuelas", tipo: "escuela", canal: "publico", nombre: "Escuelas", pantalla: "16 · Escuelas",
     descripcion: "Suspensiones y avisos. Solo los reciben los papás que siguen esa escuela.",
     campos: [
-      { clave: "escuela", etiqueta: "Escuela", tipo: "select", opciones: () => cfg().catalogos.escuelas, ayuda: "Las escuelas se capturan en Administración → Municipio." },
+      { clave: "escuela", etiqueta: "Escuela", tipo: "select", opciones: () => cfg().escuelas, ayuda: "Las escuelas se dan de alta en Servicios → Escuelas." },
       { clave: "categoria", etiqueta: "Tipo de aviso", tipo: "seg", opciones: ["Suspensión de clases", "Aviso", "Examen de ingreso", "Evento"], colores: ["rojo", "azul", "verde", "morado"] },
       { clave: "fecha", etiqueta: "Fecha", tipo: "fecha" },
       { clave: "mensaje", etiqueta: "Mensaje", tipo: "area", placeholder: "Viernes 16: no hay clases por junta de consejo técnico." },

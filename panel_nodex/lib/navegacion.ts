@@ -20,7 +20,8 @@ export const SECCIONES: Seccion[] = [
   { nombre: "Escritorio", paginas: [{ href: "/panel", nombre: "Escritorio" }] },
   { nombre: "Servicios", paginas: [
     { href: "/panel/agua", nombre: "Agua", modulo: "agua" }, mod("cortes", "Cortes", "agua"), mod("incidente", "Incidente", "agua"),
-    { href: "/panel/basura", nombre: "Basura", modulo: "basura" }, mod("cierres", "Cierres y obras"), mod("escuelas", undefined, "escuelas"),
+    { href: "/panel/basura", nombre: "Basura", modulo: "basura" }, mod("cierres", "Cierres y obras"),
+    { href: "/panel/planteles", nombre: "Escuelas", modulo: "escuelas" }, mod("escuelas", "Avisos escolares", "escuelas"),
     { href: "/panel/directorio", nombre: "Emergencias" },
   ] },
   { nombre: "Comunidad", paginas: [
@@ -51,6 +52,7 @@ export const SECCIONES: Seccion[] = [
   ] },
   { nombre: "Interno", interno: true, paginas: [mod("avisos-internos", "Avisos"), mod("dependencias", "Dependencias")] },
   { nombre: "Administración", paginas: [
+    { href: "/panel/colonias", nombre: "Colonias y barrios", admin: true },
     { href: "/panel/municipio", nombre: "Municipio", admin: true },
     { href: "/panel/usuarios", nombre: "Personal", admin: true },
     { href: "/panel/auditoria", nombre: "Auditoría", admin: true },

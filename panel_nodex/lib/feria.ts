@@ -4,6 +4,7 @@ import { registrar } from "./datos";
 import { cfg } from "./config";
 import { actualizar, azar, contar, crear, diaLocal, f, leer, leerPagina, siguienteFolio, type Fecha, type Pagina } from "./almacen";
 import { demoVecinos, ORIGENES } from "./vecinos";
+import { retrato } from "./retratos";
 
 /* ─── Feria ─────────────────────────────────────────────────
    Programa, certámenes, Hijos Ausentes, transmisiones y venta de
@@ -116,7 +117,11 @@ export interface Pago {
   monto: number;
   moneda: "MXN" | "USD";
   metodo: MetodoPago;
-  canal: "app" | "taquilla";
+  /** simulacion: compra de prueba hecha desde el panel; nunca cuenta como venta real */
+  canal: "app" | "taquilla" | "simulacion";
+  simulado?: boolean;
+  /** referencia de pago para OXXO / SPEI mientras está pendiente */
+  referencia?: string;
   estado: EstadoPago;
   creadoEn: Fecha;
   /* solo boletos */
@@ -157,13 +162,13 @@ const EVENTOS: Evento[] = [
 ];
 
 const CANDIDATAS: Candidata[] = [
-  { id: "k1", certamen: "reina", nombre: "Daniela Ramírez", edad: 19, representa: "Teocaltiche Centro", semblanza: "Estudiante de enfermería, voluntaria en Cruz Roja.", color: "#f6d5e4" },
-  { id: "k2", certamen: "reina", nombre: "Valeria Torres", edad: 21, representa: "San Miguel Norte", semblanza: "Bailarina del ballet folclórico municipal.", color: "#dfe7fb" },
-  { id: "k3", certamen: "reina", nombre: "Ximena Delgado", edad: 18, representa: "El Tanque", semblanza: "Charra, campeona estatal de escaramuza.", color: "#fde8cf" },
-  { id: "k4", certamen: "reina", nombre: "Fernanda Aguilar", edad: 20, representa: "Hijos Ausentes · Chicago", semblanza: "Nació en Chicago, sus papás son de El Santuario.", color: "#dcf2e4" },
-  { id: "k5", certamen: "miss_chiquitita", nombre: "Regina López", edad: 6, representa: "Bellavista", semblanza: "Le gusta cantar y bailar jarabe.", color: "#f6d5e4" },
-  { id: "k6", certamen: "miss_chiquitita", nombre: "Camila Flores", edad: 7, representa: "Teocaltiche Centro", semblanza: "Primaria Benito Juárez, 2º grado.", color: "#ece4fb" },
-  { id: "k7", certamen: "miss_chiquitita", nombre: "Renata Muñoz", edad: 5, representa: "El Santuario", semblanza: "Jardín de Niños Rosaura Zapata.", color: "#fde8cf" },
+  { id: "k1", certamen: "reina", nombre: "Daniela Ramírez", edad: 19, representa: "Teocaltiche Centro", semblanza: "Estudiante de enfermería, voluntaria en Cruz Roja.", color: "#f6d5e4", foto: retrato(1, true, false) },
+  { id: "k2", certamen: "reina", nombre: "Valeria Torres", edad: 21, representa: "San Miguel Norte", semblanza: "Bailarina del ballet folclórico municipal.", color: "#dfe7fb", foto: retrato(2, true, false) },
+  { id: "k3", certamen: "reina", nombre: "Ximena Delgado", edad: 18, representa: "El Tanque", semblanza: "Charra, campeona estatal de escaramuza.", color: "#fde8cf", foto: retrato(3, true, false) },
+  { id: "k4", certamen: "reina", nombre: "Fernanda Aguilar", edad: 20, representa: "Hijos Ausentes · Chicago", semblanza: "Nació en Chicago, sus papás son de El Santuario.", color: "#dcf2e4", foto: retrato(4, true, false) },
+  { id: "k5", certamen: "miss_chiquitita", nombre: "Regina López", edad: 6, representa: "Bellavista", semblanza: "Le gusta cantar y bailar jarabe.", color: "#f6d5e4", foto: retrato(5, false, true) },
+  { id: "k6", certamen: "miss_chiquitita", nombre: "Camila Flores", edad: 7, representa: "Teocaltiche Centro", semblanza: "Primaria Benito Juárez, 2º grado.", color: "#ece4fb", foto: retrato(6, false, true) },
+  { id: "k7", certamen: "miss_chiquitita", nombre: "Renata Muñoz", edad: 5, representa: "El Santuario", semblanza: "Jardín de Niños Rosaura Zapata.", color: "#fde8cf", foto: retrato(7, false, true) },
 ];
 
 const hace = (dias: number, horas = 0) => new Date(Date.now() - dias * 86400_000 - horas * 3600_000);
@@ -277,7 +282,8 @@ export { demoPagos };
 /** Boletos vendidos por evento y zona (cuenta solo pagados) */
 export function vendidos(pagos: Pago[], eventoId: string, zona?: string) {
   return pagos
-    .filter((p) => p.concepto === "boleto" && p.estado === "pagado" && p.eventoId === eventoId && (!zona || p.zona === zona))
+    // Las compras simuladas no ocupan lugares reales
+    .filter((p) => p.concepto === "boleto" && p.estado === "pagado" && !p.simulado && p.eventoId === eventoId && (!zona || p.zona === zona))
     .reduce((s, p) => s + (p.cantidad ?? 0), 0);
 }
 
@@ -404,3 +410,38 @@ export async function totalesPagos() {
   const conceptos = Object.fromEntries((Object.keys(CONCEPTOS) as Concepto[]).map((c, i) => [c, porConcepto[i]])) as Record<Concepto, { monto: number; n: number }>;
   return { enApp, eu, pendientes, conceptos, municipales: { monto: enApp.monto - conceptos.boleto.monto, n: enApp.n - conceptos.boleto.n } };
 }
+
+/* ─── Compra simulada (pase digital con QR) ─────────────────
+   Recorre el mismo flujo que hará la app: elegir evento y zona, pagar y
+   recibir el pase con QR. No mueve dinero: queda marcada `simulado` y fuera
+   de los totales de venta. Con la pasarela real, esto lo hace una Cloud
+   Function al confirmar el cobro. */
+
+export interface Comprador { nombre: string; colonia: string; tipo: "local" | "paisano"; origen: string | null }
+
+const referenciaPago = (metodo: MetodoPago) => metodo === "oxxo"
+  ? Array.from({ length: 14 }, () => Math.floor(Math.random() * 10)).join("")
+  : `646180${Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("")}`;
+
+export async function comprarSimulado(e: Evento, zona: Zona, cantidad: number, comprador: Comprador, metodo: Exclude<MetodoPago, "taquilla">, autor: string): Promise<Pago> {
+  const folio = await siguienteFolio("boletos", "TEC", 20000);
+  const inmediato = metodo === "tarjeta";
+  const pago = await crear("pagos", demoPagos, {
+    folio, uid: null, concepto: "boleto", descripcion: `${e.titulo} · ${zona.nombre}`,
+    monto: zona.precio * cantidad, moneda: "MXN", metodo, canal: "simulacion", simulado: true,
+    estado: inmediato ? "pagado" : "pendiente", ...(inmediato ? {} : { referencia: referenciaPago(metodo) }),
+    creadoEn: new Date(), eventoId: e.id, zona: zona.nombre, cantidad, usado: false, usadoEn: null,
+    compradorNombre: comprador.nombre, compradorColonia: comprador.colonia, compradorTipo: comprador.tipo, compradorOrigen: comprador.origen,
+  });
+  await registrar("Simuló compra de boletos", `${folio} · ${e.titulo} · ${cantidad} × ${zona.nombre} · ${METODOS[metodo]}`, "interno", autor);
+  return pago;
+}
+
+/** Simula que la ficha de OXXO o la transferencia ya se pagó */
+export async function simularPagoRecibido(p: Pago, autor: string) {
+  await actualizar("pagos", demoPagos, p.id!, { estado: "pagado" });
+  await registrar("Simuló pago recibido", `${p.folio} · ${METODOS[p.metodo]}`, "interno", autor);
+}
+
+export const buscarPorFolio = async (folio: string) =>
+  (await leer("pagos", demoPagos.filter((p) => p.folio === folio), { filtros: [["folio", folio]], max: 1 }))[0] ?? null;

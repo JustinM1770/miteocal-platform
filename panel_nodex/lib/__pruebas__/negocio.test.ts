@@ -66,3 +66,25 @@ describe("configuración del municipio (modo demo)", () => {
     expect(aSlug("  San Miguel Norte ")).toBe("san-miguel-norte");
   });
 });
+
+import { contenidoPase, leerPase } from "../pase";
+
+describe("pase digital (QR)", () => {
+  it("el contenido del QR ida y vuelta", () => {
+    expect(leerPase(contenidoPase("teocaltiche", "TEC-20001", "abc123"))).toEqual({ municipio: "teocaltiche", folio: "TEC-20001", pagoId: "abc123" });
+  });
+  it("acepta el folio escrito a mano, en minúsculas", () => {
+    expect(leerPase(" tec-8492 ")).toEqual({ folio: "TEC-8492" });
+  });
+  it("rechaza QR ajenos o incompletos", () => {
+    expect(leerPase("https://ejemplo.com")).toBeNull();
+    expect(leerPase("MITEOCAL1|teocaltiche")).toBeNull();
+  });
+});
+
+describe("compras simuladas", () => {
+  it("no ocupan lugares del cupo", () => {
+    const base = { folio: "", uid: null, concepto: "boleto" as const, descripcion: "", monto: 0, moneda: "MXN" as const, metodo: "tarjeta" as const, estado: "pagado" as const, creadoEn: new Date(), eventoId: "e1", zona: "General", cantidad: 2 };
+    expect(vendidos([{ ...base, canal: "app" }, { ...base, canal: "simulacion", simulado: true }], "e1")).toBe(2);
+  });
+});

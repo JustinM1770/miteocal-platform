@@ -1,5 +1,5 @@
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db, documento, firebaseListo, municipioId } from "./firebase";
+import { doc, getDoc, getDocs, query, setDoc, serverTimestamp, where } from "firebase/firestore";
+import { coleccion, db, documento, firebaseListo, municipioId } from "./firebase";
 import { MUNICIPIO_DEMO } from "./demo-municipio";
 
 /* ─── Configuración del municipio ───────────────────────────
@@ -17,7 +17,9 @@ import { MUNICIPIO_DEMO } from "./demo-municipio";
    del admin_panel, así se pueden cargar desde ahí o desde este panel.
    ───────────────────────────────────────────────────────── */
 
-export interface Colonia { id: string; nombre: string; zona?: string; lat?: number; lng?: number; horario?: string; pozo?: string }
+export const TIPOS_COLONIA = ["Barrio tradicional", "Colonia", "Fraccionamiento", "Localidad"] as const;
+export type TipoColonia = (typeof TIPOS_COLONIA)[number];
+export interface Colonia { id: string; nombre: string; zona?: string; tipo?: TipoColonia; lat?: number; lng?: number; horario?: string; pozo?: string }
 export interface Emergencia { id: string; nombre: string; telefono: string; categoria?: string; nota?: string }
 export interface Feria { nombre: string; inicio: string; fin: string }
 export interface Catalogos { escenarios: string[]; escuelas: string[]; templos: string[]; dependencias: string[] }
@@ -32,6 +34,8 @@ export interface ConfigMunicipio {
   emergencias: Emergencia[];
   feria: Feria;
   catalogos: Catalogos;
+  /** nombres de las escuelas activas (colección escuelas/), para los avisos escolares */
+  escuelas: string[];
   /** null mientras no exista config/estadisticas: el panel no inventa números */
   vecinosPorColonia: Record<string, number> | null;
   /** qué documentos de config faltan en Firestore, para avisar al administrador */
@@ -42,12 +46,13 @@ const VACIA: ConfigMunicipio = {
   nombre: "", estado: "", modulos: {}, colonias: [], emergencias: [],
   feria: { nombre: "Feria", inicio: "", fin: "" },
   catalogos: { escenarios: [], escuelas: [], templos: [], dependencias: [] },
-  vecinosPorColonia: null, faltantes: [],
+  escuelas: [], vecinosPorColonia: null, faltantes: [],
 };
 
 let actual: ConfigMunicipio = firebaseListo ? VACIA : MUNICIPIO_DEMO;
 
 export const cfg = () => actual;
+export function fijarEscuelas(nombres: string[]) { actual = { ...actual, escuelas: nombres }; }
 export const colonias = () => actual.colonias;
 /** Zonas en el orden en que aparecen en la lista de colonias; «Sin zona» si no tienen */
 export const zonas = () => [...new Set(actual.colonias.map((c) => c.zona || "Sin zona"))];
@@ -74,8 +79,9 @@ const DOCS = ["colonias", "emergencias", "feria", "catalogos", "estadisticas"] a
 
 export async function cargarConfig(): Promise<ConfigMunicipio> {
   if (!firebaseListo || !db) return actual;
-  const [raiz, ...partes] = await Promise.all([
+  const [raiz, escuelas, ...partes] = await Promise.all([
     getDoc(doc(db, "municipios", municipioId())),
+    getDocs(query(coleccion("escuelas"), where("activa", "==", true))).catch(() => null),
     ...DOCS.map((d) => getDoc(documento("config", d))),
   ]);
   const m = raiz.data() ?? {};
@@ -88,6 +94,7 @@ export async function cargarConfig(): Promise<ConfigMunicipio> {
     emergencias: (eme?.lista ?? []) as Emergencia[],
     feria: { ...VACIA.feria, ...(fer ?? {}) } as Feria,
     catalogos: { ...VACIA.catalogos, ...(cat ?? {}) } as Catalogos,
+    escuelas: escuelas ? escuelas.docs.map((d) => d.get("nombre") as string).sort() : (cat?.escuelas ?? []),
     vecinosPorColonia: est?.vecinosPorColonia ?? null,
     faltantes: DOCS.filter((d, i) => d !== "estadisticas" && !partes[i].exists()),
   };
