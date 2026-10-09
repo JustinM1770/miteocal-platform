@@ -1,0 +1,22 @@
+{
+  "colonias": {
+    "_todo": "PLACEHOLDER. Reemplazar con el listado real y sus centroides antes de publicar.",
+    "lista": [
+      { "id": "centro",     "nombre": "Centro",          "lat": 21.4333, "lng": -102.5833 },
+      { "id": "san-miguel", "nombre": "San Miguel",      "lat": 21.4340, "lng": -102.5850 },
+      { "id": "guadalupe",  "nombre": "Guadalupe",       "lat": 21.4310, "lng": -102.5810 },
+      { "id": "la-cruz",    "nombre": "La Cruz",         "lat": 21.4360, "lng": -102.5800 },
+      { "id": "el-refugio", "nombre": "El Refugio",      "lat": 21.4290, "lng": -102.5870 }
+    ]
+  },
+  "emergencias": {
+    "_todo": "PLACEHOLDER. Confirmar CADA numero con el ayuntamiento antes de publicar: un telefono de emergencia equivocado es peor que no tenerlo.",
+    "lista": [
+      { "id": "emergencias",    "nombre": "Emergencias",        "telefono": "911" },
+      { "id": "policia",        "nombre": "Policia Municipal",  "telefono": "TODO" },
+      { "id": "cruz-roja",      "nombre": "Cruz Roja",          "telefono": "TODO" },
+      { "id": "proteccion",     "nombre": "Proteccion Civil",   "telefono": "TODO" },
+      { "id": "sapas",          "nombre": "SAPAS (agua)",       "telefono": "TODO" }
+    ]
+  }
+}
