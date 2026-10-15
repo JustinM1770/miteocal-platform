@@ -29,7 +29,8 @@ export const SECCIONES: Seccion[] = [
     mod("paisanos", undefined, "paisanos"),
   ] },
   { nombre: "Comercio", paginas: [
-    { href: "/panel/comercios", nombre: "Comercios", modulo: "comercio" },
+    { href: "/panel/comercios/indicadores", nombre: "Indicadores", modulo: "comercio" },
+    { href: "/panel/comercios", nombre: "Directorio", modulo: "comercio" },
     mod("empleo", "Empleo", "comercio"), mod("clasificados", undefined, "comercio"),
   ] },
   { nombre: "Feria", paginas: [

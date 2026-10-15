@@ -452,3 +452,7 @@ button.dia { cursor: pointer; }
 /* Foco visible para quien navega con teclado */
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 tr.click:focus-visible td { background: var(--brand-soft); }
+
+/* Columnas numéricas: encabezado y cifras alineados a la derecha, angostas;
+   la primera columna (el nombre) se queda con el espacio sobrante */
+.tabla th.num, .tabla td.num { text-align: right; width: 1%; white-space: nowrap; padding-left: 28px; padding-right: 4px; }

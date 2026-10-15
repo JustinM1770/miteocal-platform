@@ -86,9 +86,15 @@ service cloud.firestore {
         allow write: if esFuncionario(mid);
       }
 
+      // Las métricas (ventas de qboard.mx, contactos de la app) y la calificación
+      // las escribe el servidor: el panel no puede inflarle las ventas a nadie.
       match /comercios/{comercioId} {
-        allow read:  if true;
-        allow write: if esFuncionario(mid);
+        allow read:   if true;
+        allow create: if esFuncionario(mid)
+                      && !request.resource.data.keys().hasAny(['metricas', 'calificacion', 'resenas']);
+        allow update: if esFuncionario(mid)
+                      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['metricas', 'calificacion', 'resenas']);
+        allow delete: if false;   // se ocultan con activo = false
       }
 
       match /obras/{obraId} {
