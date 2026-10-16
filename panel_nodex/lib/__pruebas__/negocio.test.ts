@@ -88,3 +88,39 @@ describe("compras simuladas", () => {
     expect(vendidos([{ ...base, canal: "app" }, { ...base, canal: "simulacion", simulado: true }], "e1")).toBe(2);
   });
 });
+
+import { leerCSV, validar, ESQUEMAS } from "../importar";
+import { enlacePedido, ventaAlcoholPermitida } from "../comercios";
+
+describe("importador CSV", () => {
+  it("respeta comillas, comas dentro de comillas, punto y coma y CRLF", () => {
+    expect(leerCSV('nombre,nota\r\n"Cruz Roja, Teocaltiche","dice ""hola"""\r\n')).toEqual([["nombre", "nota"], ["Cruz Roja, Teocaltiche", 'dice "hola"']]);
+    expect(leerCSV("a;b\n1;2")).toEqual([["a", "b"], ["1", "2"]]);
+  });
+  it("valida renglón por renglón y detecta repetidos", () => {
+    const e = ESQUEMAS.find((x) => x.id === "escuelas")!;
+    const r = validar(e, leerCSV("nombre,nivel,alumnos\nPrimaria A,primaria,300\nKinder B,Guardería,10\nPrimaria A,Primaria,1\n"));
+    expect(r.validadas[0].errores).toEqual([]);
+    expect(r.validadas[0].datos.nivel).toBe("Primaria");
+    expect(r.validadas[1].errores[0]).toContain("no es válido");
+    expect(r.validadas[2].errores[0]).toContain("repetido");
+  });
+  it("avisa si falta una columna obligatoria", () => {
+    expect(validar(ESQUEMAS[1], leerCSV("nombre\nCruz Roja")).errorGeneral).toContain("telefono");
+  });
+});
+
+describe("alcohol y pedidos", () => {
+  const base = { nombre: "Tienda", categoria: "Tiendas", whatsapp: "", destacado: false, aceptaUsd: false, enviaFamilia: false, direccion: "", descripcion: "", abre: "08:00", cierra: "22:00", dias: [], activo: true };
+  it("venta de alcohol: licencia vigente, en horario y sin ley seca", () => {
+    const c = { ...base, licencia: { numero: "LF-1", vence: "2099-01-01", alcohol: true, horarioAlcohol: { desde: "10:00", hasta: "22:00" } } };
+    expect(ventaAlcoholPermitida(c, false, new Date("2026-11-03T12:00"))).toBe(true);
+    expect(ventaAlcoholPermitida(c, false, new Date("2026-11-03T23:00"))).toBe(false);
+    expect(ventaAlcoholPermitida(c, true, new Date("2026-11-03T12:00"))).toBe(false);
+    expect(ventaAlcoholPermitida({ ...c, licencia: { ...c.licencia, vence: "2020-01-01" } }, false, new Date("2026-11-03T12:00"))).toBe(false);
+  });
+  it("el enlace de pedido lleva ref=miteocal", () => {
+    expect(enlacePedido({ ...base, qboard: { tienda: "https://qboard.mx/tienda", desde: "" } }, "teocaltiche")).toBe("https://qboard.mx/tienda?ref=miteocal&utm_source=miteocal&utm_campaign=teocaltiche");
+    expect(enlacePedido(base, "teocaltiche")).toBeNull();
+  });
+});

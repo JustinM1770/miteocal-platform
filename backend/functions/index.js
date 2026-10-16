@@ -358,3 +358,25 @@ exports.seguidoresEscuelas = onDocumentWritten('usuarios/{uid}', async (evento) 
   for (const id of b) if (!a.has(id) || antes.municipioId !== despues.municipioId) tareas.push(cambio(despues.municipioId, id, +1));
   await Promise.all(tareas);
 });
+
+/* ═══ Respaldo diario de Firestore ══════════════════════════════════════════
+   Exporta TODA la base cada noche a gs://<proyecto>-respaldos/AAAA-MM-DD.
+   Requisitos (una vez, ver backend/README.md):
+     1. Crear el bucket (ideal: misma región que Firestore, con regla de
+        borrado a los 30 días para no acumular costo).
+     2. Dar a la cuenta de servicio de Functions los roles
+        «Cloud Datastore Import Export Admin» y escritura en el bucket.
+   Restaurar: gcloud firestore import gs://<bucket>/<fecha> */
+exports.respaldoDiario = onSchedule({ schedule: 'every day 03:00', timeZone: 'America/Mexico_City' }, async () => {
+  const { v1 } = require('@google-cloud/firestore');
+  const cliente = new v1.FirestoreAdminClient();
+  const proyecto = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+  const bucket = process.env.BUCKET_RESPALDOS || `${proyecto}-respaldos`;
+  const fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+  const [operacion] = await cliente.exportDocuments({
+    name: cliente.databasePath(proyecto, '(default)'),
+    outputUriPrefix: `gs://${bucket}/${fecha}`,
+    collectionIds: [],   // vacío = todas las colecciones
+  });
+  logger.info('Respaldo de Firestore iniciado', { destino: `gs://${bucket}/${fecha}`, operacion: operacion.name });
+});

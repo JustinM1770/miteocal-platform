@@ -1,6 +1,6 @@
 import { firebaseListo } from "./firebase";
 import { registrar } from "./datos";
-import { actualizar, azar, crear, leer } from "./almacen";
+import { actualizar, azar, crear, guardarVarios, leer } from "./almacen";
 import { aSlug } from "./config";
 import { MUNICIPIO_DEMO } from "./demo-municipio";
 
@@ -42,7 +42,9 @@ export interface Comercio {
   empleados?: number;
   /** con RFC y alta en el SAT */
   formal?: boolean;
-  licencia?: { numero: string; vence: string } | null;
+  /** `alcohol`: la licencia permite vender bebidas alcohólicas (giro restringido),
+      dentro de `horarioAlcohol` y nunca durante la ley seca */
+  licencia?: { numero: string; vence: string; alcohol?: boolean; horarioAlcohol?: { desde: string; hasta: string } } | null;
   /** tienda en qboard.mx: si existe, de ahí salen ventas y pedidos */
   qboard?: { tienda: string; desde: string } | null;
   metricas?: Record<string, MetricasMes>;
@@ -104,7 +106,10 @@ function padronDemo(): Comercio[] {
       colonia: r.r() < 0.45 ? "Teocaltiche Centro" : r.de(colonias),
       empleados: tamano < 0.6 ? r.int(1, 3) : tamano < 0.9 ? r.int(3, 8) : r.int(8, 25),
       formal: r.r() < 0.62,
-      licencia: r.r() < 0.78 ? { numero: `LF-${r.int(1000, 9999)}`, vence: vence.toLocaleDateString("en-CA") } : null,
+      licencia: r.r() < 0.78 ? {
+        numero: `LF-${r.int(1000, 9999)}`, vence: vence.toLocaleDateString("en-CA"),
+        ...((categoria === "Restaurantes" && r.r() < 0.35) || (categoria === "Tiendas" && r.r() < 0.4) ? { alcohol: true, horarioAlcohol: { desde: "10:00", hasta: categoria === "Tiendas" ? "22:00" : "23:00" } } : {}),
+      } : null,
       aceptaUsd: categoria === "Envíos a EE. UU." || r.r() < 0.15, enviaFamilia: categoria === "Envíos a EE. UU.",
       calificacion: +(3.6 + r.r() * 1.4).toFixed(1), resenas: r.int(2, 180),
       qboard: enQboard ? { tienda: `https://qboard.mx/${aSlug(nombre)}`, desde: `2026-0${r.int(1, 8)}-01` } : null,
@@ -140,4 +145,45 @@ export function abiertoAhora(x: Comercio, ahora = new Date()) {
   if (!x.dias.includes(dia)) return false;
   const hhmm = `${String(ahora.getHours()).padStart(2, "0")}:${String(ahora.getMinutes()).padStart(2, "0")}`;
   return x.cierra > x.abre ? hhmm >= x.abre && hhmm < x.cierra : hhmm >= x.abre || hhmm < x.cierra;
+}
+
+/** Renglones validados del importador CSV → comercios (crea o actualiza por id) */
+export function importarComercios(filas: Record<string, unknown>[]) {
+  return guardarVarios("comercios", demoComercios, filas.map((f) => {
+    const nombre = String(f.nombre);
+    const datos: Partial<Comercio> = {
+      nombre, categoria: String(f.categoria), whatsapp: String(f.whatsapp ?? ""), colonia: (f.colonia as string) ?? "",
+      direccion: (f.direccion as string) ?? "", activo: true, aceptaUsd: Boolean(f.aceptaUsd), enviaFamilia: f.categoria === "Envíos a EE. UU.",
+      ...(f.empleados !== undefined ? { empleados: Number(f.empleados) } : {}),
+      ...(f.formal !== undefined ? { formal: Boolean(f.formal) } : {}),
+      ...(f.licencia ? { licencia: { numero: String(f.licencia), vence: String(f.vence ?? ""), alcohol: Boolean(f.alcohol) } } : {}),
+      ...(f.qboard ? { qboard: { tienda: String(f.qboard), desde: new Date().toLocaleDateString("en-CA") } } : {}),
+    };
+    return { id: aSlug(nombre), datos };
+  }));
+}
+
+/** ¿Puede vender alcohol ahora? Licencia vigente que lo permita, dentro de horario y sin ley seca. */
+export function ventaAlcoholPermitida(c: Comercio, leySecaActiva: boolean, ahora = new Date()): boolean {
+  if (leySecaActiva || !c.licencia?.alcohol || estadoLicencia(c, ahora) === "vencida") return false;
+  const h = c.licencia.horarioAlcohol;
+  if (!h) return true;
+  const hhmm = `${String(ahora.getHours()).padStart(2, "0")}:${String(ahora.getMinutes()).padStart(2, "0")}`;
+  return h.hasta > h.desde ? hhmm >= h.desde && hhmm < h.hasta : hhmm >= h.desde || hhmm < h.hasta;
+}
+
+/**
+ * Enlace «Pedir en línea» que pone la app: la tienda de qboard.mx con
+ * ref=miteocal y el municipio, para medir cuántas ventas salen de la app.
+ * qboard.mx regresa esos pedidos en metricas[mes] (ventas con origen app).
+ */
+export function enlacePedido(c: Comercio, municipio: string): string | null {
+  if (!c.qboard?.tienda) return null;
+  try {
+    const u = new URL(c.qboard.tienda);
+    u.searchParams.set("ref", "miteocal");
+    u.searchParams.set("utm_source", "miteocal");
+    u.searchParams.set("utm_campaign", municipio);
+    return u.toString();
+  } catch { return null; }
 }

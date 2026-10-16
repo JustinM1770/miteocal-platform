@@ -2,7 +2,8 @@ import { getAggregateFromServer, query, runTransaction, serverTimestamp, sum, co
 import { coleccion, db, documento, firebaseListo } from "./firebase";
 import { registrar } from "./datos";
 import { cfg } from "./config";
-import { actualizar, azar, contar, crear, diaLocal, f, leer, leerPagina, siguienteFolio, type Fecha, type Pagina } from "./almacen";
+import { actualizar, azar, contar, crear, diaLocal, f, guardarVarios, leer, leerPagina, siguienteFolio, type Fecha, type Pagina } from "./almacen";
+import { aSlug } from "./config";
 import { demoVecinos, ORIGENES } from "./vecinos";
 import { retrato } from "./retratos";
 
@@ -445,3 +446,17 @@ export async function simularPagoRecibido(p: Pago, autor: string) {
 
 export const buscarPorFolio = async (folio: string) =>
   (await leer("pagos", demoPagos.filter((p) => p.folio === folio), { filtros: [["folio", folio]], max: 1 }))[0] ?? null;
+
+/** Renglones validados del importador CSV → eventos de la feria (crea o actualiza por id) */
+export function importarEventos(filas: Record<string, unknown>[]) {
+  return guardarVarios("eventos", demoEventos, filas.map((x) => {
+    const precio = Number(x.precio ?? 0), cupo = Number(x.cupo ?? 0);
+    return { id: aSlug(`${x.fecha}-${x.artista}`), datos: {
+      titulo: String(x.artista), categoria: (x.categoria as CategoriaEvento) ?? "concierto", escenario: String(x.lugar ?? ""),
+      fecha: String(x.fecha), hora: String(x.hora ?? ""), descripcion: "", transmitir: false, publicado: true,
+      zonas: precio > 0 ? [{ nombre: "General", precio, cupo }] : [],
+      // Formato que ya leen la app y el admin_panel
+      artista: String(x.artista), lugar: String(x.lugar ?? ""), precio, disponible: true,
+    } as Partial<Evento> };
+  }));
+}

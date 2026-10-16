@@ -1,6 +1,6 @@
 import { firebaseListo } from "./firebase";
 import { registrar } from "./datos";
-import { actualizar, crear, leer } from "./almacen";
+import { actualizar, crear, guardarVarios, leer } from "./almacen";
 import { aSlug, fijarEscuelas } from "./config";
 
 /* ─── Escuelas ──────────────────────────────────────────────
@@ -63,4 +63,18 @@ export async function guardarEscuela(x: Escuela, autor: string) {
     await registrar("Agregó escuela", `${x.nombre} · ${x.nivel}`, "publico", autor);
   }
   await listarEscuelas();
+}
+
+/** Renglones validados del importador CSV → escuelas (crea o actualiza por id) */
+export async function importarEscuelas(filas: Record<string, unknown>[]) {
+  const r = await guardarVarios("escuelas", demoEscuelas, filas.map((f) => {
+    const nivel = f.nivel as Nivel;
+    const descripcion = nivel === "Preescolar" ? "Preescolar" : nivel === "Bachillerato" ? "Bachillerato" : `Educación ${nivel.toLowerCase()}`;
+    return { id: aSlug(String(f.nombre)), datos: {
+      nombre: String(f.nombre), nivel, descripcion, cct: String(f.cct ?? "").toUpperCase(), turno: String(f.turno ?? "Matutino"),
+      colonia: String(f.colonia ?? ""), director: String(f.director ?? ""), telefono: String(f.telefono ?? ""), alumnos: Number(f.alumnos ?? 0), activa: true,
+    } };
+  }));
+  await listarEscuelas();
+  return r;
 }

@@ -23,6 +23,8 @@ export interface Colonia { id: string; nombre: string; zona?: string; tipo?: Tip
 export interface Emergencia { id: string; nombre: string; telefono: string; categoria?: string; nota?: string }
 export interface Feria { nombre: string; inicio: string; fin: string }
 export interface Catalogos { escenarios: string[]; escuelas: string[]; templos: string[]; dependencias: string[] }
+/** Ley seca: mientras esté activa, la app oculta la venta de alcohol */
+export interface LeySeca { activa: boolean; motivo: string; desde: string; hasta: string }
 
 export type Modulo = "agua" | "basura" | "reportes" | "comercio" | "noticias" | "escuelas" | "feria" | "paisanos" | "tramites";
 
@@ -34,6 +36,7 @@ export interface ConfigMunicipio {
   emergencias: Emergencia[];
   feria: Feria;
   catalogos: Catalogos;
+  leySeca: LeySeca;
   /** nombres de las escuelas activas (colección escuelas/), para los avisos escolares */
   escuelas: string[];
   /** null mientras no exista config/estadisticas: el panel no inventa números */
@@ -46,6 +49,7 @@ const VACIA: ConfigMunicipio = {
   nombre: "", estado: "", modulos: {}, colonias: [], emergencias: [],
   feria: { nombre: "Feria", inicio: "", fin: "" },
   catalogos: { escenarios: [], escuelas: [], templos: [], dependencias: [] },
+  leySeca: { activa: false, motivo: "", desde: "", hasta: "" },
   escuelas: [], vecinosPorColonia: null, faltantes: [],
 };
 
@@ -75,7 +79,7 @@ export function textoAlcance(colonia: string | null): string {
   return n === null ? quien : `${n.toLocaleString("es-MX")} vecino${n === 1 ? "" : "s"} (${quien})`;
 }
 
-const DOCS = ["colonias", "emergencias", "feria", "catalogos", "estadisticas"] as const;
+const DOCS = ["colonias", "emergencias", "feria", "catalogos", "estadisticas", "leySeca"] as const;
 
 export async function cargarConfig(): Promise<ConfigMunicipio> {
   if (!firebaseListo || !db) return actual;
@@ -85,7 +89,7 @@ export async function cargarConfig(): Promise<ConfigMunicipio> {
     ...DOCS.map((d) => getDoc(documento("config", d))),
   ]);
   const m = raiz.data() ?? {};
-  const [col, eme, fer, cat, est] = partes.map((p) => p.data());
+  const [col, eme, fer, cat, est, ley] = partes.map((p) => p.data());
   actual = {
     nombre: m.nombre ?? municipioId(),
     estado: m.estado ?? "",
@@ -95,15 +99,16 @@ export async function cargarConfig(): Promise<ConfigMunicipio> {
     feria: { ...VACIA.feria, ...(fer ?? {}) } as Feria,
     catalogos: { ...VACIA.catalogos, ...(cat ?? {}) } as Catalogos,
     escuelas: escuelas ? escuelas.docs.map((d) => d.get("nombre") as string).sort() : (cat?.escuelas ?? []),
+    leySeca: { ...VACIA.leySeca, ...(ley ?? {}) } as LeySeca,
     vecinosPorColonia: est?.vecinosPorColonia ?? null,
-    faltantes: DOCS.filter((d, i) => d !== "estadisticas" && !partes[i].exists()),
+    faltantes: DOCS.filter((d, i) => d !== "estadisticas" && d !== "leySeca" && !partes[i].exists()),
   };
   return actual;
 }
 
 /** Guarda una parte de la configuración (solo funcionarios; lo valida la regla) */
-export async function guardarConfig<K extends "colonias" | "emergencias" | "feria" | "catalogos">(
-  parte: K, valor: K extends "colonias" ? Colonia[] : K extends "emergencias" ? Emergencia[] : K extends "feria" ? Feria : Catalogos,
+export async function guardarConfig<K extends "colonias" | "emergencias" | "feria" | "catalogos" | "leySeca">(
+  parte: K, valor: K extends "colonias" ? Colonia[] : K extends "emergencias" ? Emergencia[] : K extends "feria" ? Feria : K extends "leySeca" ? LeySeca : Catalogos,
 ) {
   const datos = parte === "colonias" || parte === "emergencias" ? { lista: valor } : valor;
   if (firebaseListo && db) await setDoc(documento("config", parte), { ...datos, actualizadoEn: serverTimestamp() });

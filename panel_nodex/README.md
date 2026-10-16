@@ -93,6 +93,27 @@ Cloud Functions que usa el panel: `procesarNotificacion` y `enviarProgramadas`
 (push por FCM), `estadisticasVecinos`, `resumenPorPago` / `resumenPorCalificacion`
 (resumen de cada vecino para el CRM) y `asignarMunicipio` (acepta `area`).
 
+## Comercio, alcohol y carga masiva
+
+- **Indicadores** (Comercio): padrón, empleos, licencias por atender, demanda en la
+  app y, solo para negocios conectados a **qboard.mx**, ventas, pedidos y ranking.
+  Las ventas llegan en `comercios/{id}.metricas[AAAA-MM]`; las escribe el servidor
+  (la regla impide que el panel las toque). El botón de la app «Pedir en línea»
+  usa `enlacePedido()` (`?ref=miteocal`) para medir ventas originadas en la app.
+- **Alcohol**: la licencia puede permitir venta de alcohol con horario
+  (`licencia.alcohol`, `licencia.horarioAlcohol`). **Ley seca** en
+  `config/leySeca` (Comercio → Directorio): la app oculta la venta mientras esté activa.
+- **Importar CSV** (Administración): colonias, emergencias, comercios, escuelas y
+  cartelera. Valida renglón por renglón y crea o actualiza por id (no duplica).
+
+## Personal y respaldos
+
+- **Personal** usa las Cloud Functions `crearPersonal` (cuenta + claims + enlace para
+  crear contraseña) y `actualizarPersonal` (rol, área, desactivar). Sin Functions,
+  la pantalla muestra el comando de `seed/crear-funcionario.js`.
+- **Respaldo diario** (`respaldoDiario`, 3:00 hora del centro): exporta Firestore a
+  `gs://<proyecto>-respaldos/AAAA-MM-DD`. Restaurar: `gcloud firestore import gs://…`.
+
 ## Mapas y fotos
 
 - **Mapbox**: `NEXT_PUBLIC_MAPBOX_TOKEN`. Restringe el token a los dominios del panel.
@@ -113,5 +134,3 @@ Dominios autorizados y en las restricciones del token de Mapbox.
 - Pasarela de pago real (hoy los pagos están simulados).
 - Que la app escriba `tipo` (`local` / `paisano`) y `origen` en `usuarios/` para
   que el CRM y los segmentos de paisanos funcionen con datos reales.
-- La app hoy trata `estado: 'sin-dato'` del agua como servicio activo; debería
-  mostrar «sin información».

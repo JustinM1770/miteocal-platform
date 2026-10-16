@@ -60,6 +60,7 @@ await entorno.withSecurityRulesDisabled(async (ctx) => {
   });
   await setDoc(doc(db, `municipios/${MID}/solicitudes/S-1`), { uid: 'vecino1', estado: 'falta_documento', documentos: [] });
   await setDoc(doc(db, `municipios/${MID}/calificaciones/C-1`), { uid: 'vecino1', estrellas: 4, vecinoNombre: 'Vecino' });
+  await setDoc(doc(db, `municipios/${MID}/comercios/tacos-chuy`), { nombre: 'Tacos Chuy', metricas: { '2026-10': { ventas: 1000 } } });
   await setDoc(doc(db, `municipios/${MID}/escuelas/cbtis-247`), { nombre: 'CBTIS 247', activa: true, seguidores: 10 });
 });
 
@@ -240,6 +241,16 @@ probar('una compra simulada sin marca se rechaza', () =>
 
 probar('el funcionario NO crea un pago "en linea" haciendolo pasar por real', () =>
   assertFails(setDoc(doc(funcionario.firestore(), `municipios/${MID}/pagos/SIM-3`), { canal: 'app', simulado: true, estado: 'pagado' })));
+
+// ─── Comercios: las ventas las escribe el servidor ───────────────────────
+probar('el funcionario edita los datos del comercio', () =>
+  assertSucceeds(updateDoc(doc(funcionario.firestore(), `municipios/${MID}/comercios/tacos-chuy`), { whatsapp: '+523460000000' })));
+
+probar('el funcionario NO infla las ventas de un comercio', () =>
+  assertFails(updateDoc(doc(funcionario.firestore(), `municipios/${MID}/comercios/tacos-chuy`), { metricas: { '2026-10': { ventas: 999999 } } })));
+
+probar('nadie borra un comercio', () =>
+  assertFails(deleteDoc(doc(funcionario.firestore(), `municipios/${MID}/comercios/tacos-chuy`))));
 
 // ─── Correr ──────────────────────────────────────────────────────────────
 let ok = 0, fallo = 0;

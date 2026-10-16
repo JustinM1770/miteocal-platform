@@ -19,7 +19,7 @@ class HeroAgua extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(Medidas.paddingTarjeta),
       decoration: BoxDecoration(
-        color: e.activo ? color : Colores.fondoInverso,
+        color: e.activo ? color : e.sinDato ? Colores.textoSecundario : Colores.fondoInverso,
         borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
       ),
       child: Column(
@@ -30,18 +30,27 @@ class HeroAgua extends StatelessWidget {
             children: [
               Text('Agua potable',
                   style: Tipografia.cuerpo.copyWith(color: Colores.textoInverso)),
-              _Insignia(activo: e.activo),
+              _Insignia(activo: e.activo, sinDato: e.sinDato),
             ],
           ),
           const SizedBox(height: Medidas.e12),
           Text(
-            e.activo ? e.horario : 'Sin servicio',
+            e.activo
+                ? e.horario
+                : e.sinDato
+                    ? 'Sin informacion del pozo'
+                    : e.horaEstimada != null ? 'Vuelve hoy ~${e.horaEstimada}' : 'Sin servicio',
             style: Tipografia.titulo.copyWith(
               color: Colores.textoInverso,
               fontSize: 28,
               height: 34 / 28,
             ),
           ),
+          if (e.mensaje.isNotEmpty) ...[
+            const SizedBox(height: Medidas.e8),
+            Text(e.mensaje,
+                style: Tipografia.cuerpo.copyWith(color: Colores.textoInverso.withValues(alpha: 0.85))),
+          ],
           const SizedBox(height: Medidas.e16),
           Row(
             children: [
@@ -57,21 +66,22 @@ class HeroAgua extends StatelessWidget {
 }
 
 class _Insignia extends StatelessWidget {
-  const _Insignia({required this.activo});
+  const _Insignia({required this.activo, this.sinDato = false});
   final bool activo;
+  final bool sinDato;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Medidas.e8, vertical: Medidas.e4),
       decoration: BoxDecoration(
-        color: activo ? Colores.exitoSuave : Colores.peligro,
+        color: activo ? Colores.exitoSuave : sinDato ? Colores.fondoPantalla : Colores.peligro,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        activo ? 'Servicio activo' : 'Sin servicio',
+        activo ? 'Servicio activo' : sinDato ? 'Sin dato' : 'Sin servicio',
         style: Tipografia.micro.copyWith(
-          color: activo ? Colores.exito : Colores.textoInverso,
+          color: activo ? Colores.exito : sinDato ? Colores.textoPrimario : Colores.textoInverso,
           fontWeight: FontWeight.w600,
         ),
       ),

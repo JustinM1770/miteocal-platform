@@ -56,6 +56,7 @@ export const SECCIONES: Seccion[] = [
     { href: "/panel/colonias", nombre: "Colonias y barrios", admin: true },
     { href: "/panel/municipio", nombre: "Municipio", admin: true },
     { href: "/panel/usuarios", nombre: "Personal", admin: true },
+    { href: "/panel/importar", nombre: "Importar CSV", admin: true },
     { href: "/panel/auditoria", nombre: "Auditoría", admin: true },
   ] },
 ];

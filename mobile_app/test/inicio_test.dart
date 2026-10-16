@@ -75,6 +75,31 @@ void main() {
     expect(find.text('Sin servicio'), findsNWidgets(2)); // titulo e insignia
   });
 
+  testWidgets('sin dato del pozo NO se muestra como servicio activo',
+      (tester) async {
+    final bd = await conMunicipio(agua: {'estado': 'sin-dato'});
+    await tester.pumpWidget(envolver(Repositorio(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin informacion del pozo'), findsOneWidget);
+    expect(find.text('Sin dato'), findsOneWidget);
+    expect(find.text('Servicio activo'), findsNothing);
+  });
+
+  testWidgets('el corte con hora estimada dice cuando vuelve y el mensaje',
+      (tester) async {
+    final bd = await conMunicipio(agua: {
+      'estado': 'sin-servicio',
+      'horaEstimada': '16:00',
+      'mensaje': 'Falla en el pozo. La cuadrilla ya esta trabajando.',
+    });
+    await tester.pumpWidget(envolver(Repositorio(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vuelve hoy ~16:00'), findsOneWidget);
+    expect(find.textContaining('Falla en el pozo'), findsOneWidget);
+  });
+
   testWidgets('con el modulo de agua apagado no se dibuja la tarjeta',
       (tester) async {
     final bd = await conMunicipio(modulos: {'agua': false}, agua: {

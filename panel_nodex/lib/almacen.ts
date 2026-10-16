@@ -1,6 +1,6 @@
 import {
   getDocs, query, addDoc, updateDoc, setDoc, orderBy, limit, startAfter, where,
-  getCountFromServer, runTransaction, Timestamp,
+  getCountFromServer, runTransaction, Timestamp, writeBatch,
   type QueryConstraint, type QueryDocumentSnapshot, type DocumentData,
 } from "firebase/firestore";
 import { coleccion, db, documento, firebaseListo, municipioId } from "./firebase";
@@ -80,6 +80,28 @@ export async function actualizar<T extends { id?: string }>(col: string, demo: T
   const { id: _omitido, ...resto } = cambios as Record<string, unknown>;
   void _omitido;
   await updateDoc(documento(col, id), resto);
+}
+
+/**
+ * Crea o actualiza varios documentos por id (merge): volver a importar el mismo
+ * renglón lo actualiza en vez de duplicarlo. Lotes de 400 (el límite es 500).
+ */
+export async function guardarVarios<T extends { id?: string }>(col: string, demo: T[], items: { id: string; datos: Partial<T> }[]): Promise<{ nuevos: number; actualizados: number }> {
+  let nuevos = 0, actualizados = 0;
+  if (!firebaseListo || !db) {
+    for (const { id, datos } of items) {
+      const x = demo.find((d) => d.id === id);
+      if (x) { Object.assign(x, datos); actualizados++; } else { demo.push({ ...datos, id } as T); nuevos++; }
+    }
+    return { nuevos, actualizados };
+  }
+  for (let i = 0; i < items.length; i += 400) {
+    const lote = writeBatch(db);
+    for (const { id, datos } of items.slice(i, i + 400)) lote.set(documento(col, id), { ...datos, municipioId: municipioId() }, { merge: true });
+    await lote.commit();
+  }
+  // En Firestore no se distingue sin leer antes; se reporta el total
+  return { nuevos: items.length, actualizados: 0 };
 }
 
 /* ─── Folios consecutivos ───────────────────────────────────

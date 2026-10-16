@@ -43,6 +43,7 @@ export const MUNICIPIO_DEMO: ConfigMunicipio = {
     templos: ["Parroquia de San Miguel Arcángel", "Templo de El Señor de Las Maravillas"],
     dependencias: ["Presidencia", "Agua Potable", "Obras Públicas", "Comunicación Social", "Protección Civil", "Registro Civil", "DIF", "Catastro", "Tesorería", "Secretaría General"],
   },
+  leySeca: { activa: false, motivo: "", desde: "", hasta: "" },
   escuelas: ["CBTIS 247", "Jardín de Niños Rosaura Zapata", "Jardín de Niños Tepochcalli", "Primaria Benito Juárez", "Primaria Rafael Ramírez", "Secundaria Federal 20"],
   vecinosPorColonia: Object.fromEntries(LISTA.map(([n, , v]) => [n, v])),
   faltantes: [],

@@ -80,6 +80,13 @@ export default function Escritorio() {
         </div>
       )}
 
+      {cfg().leySeca.activa && (
+        <div className="banner" style={{ background: "var(--danger-soft)" }}>
+          <span><strong style={{ color: "var(--danger)" }}>Ley seca activa</strong> <span className="muted">· {cfg().leySeca.motivo}. La app oculta la venta de alcohol.</span></span>
+          <button className="btn ghost" type="button" onClick={() => router.push("/panel/comercios")}>Ver</button>
+        </div>
+      )}
+
       {r.enVivo.map((t) => (
         <div key={t.id} className="banner" style={{ background: "var(--danger-soft)" }}>
           <div className="row" style={{ gap: 10, alignItems: "center" }}>
