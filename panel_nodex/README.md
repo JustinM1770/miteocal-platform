@@ -56,7 +56,7 @@ Todo cuelga de `municipios/{municipioId}`:
 
 | Ruta | Quién la escribe | Para qué |
 |---|---|---|
-| `config/colonias`, `config/emergencias` | Panel (Municipio, Emergencias) o importador CSV del `admin_panel` | Colonias con zona, horario y pozo; directorio telefónico |
+| `config/colonias`, `config/emergencias` | Panel (Colonias y barrios, Emergencias, Importar CSV) | Colonias con zona, horario y pozo; directorio telefónico |
 | `config/feria`, `config/catalogos` | Panel (Municipio) | Fechas de la feria; escenarios, escuelas, templos, dependencias |
 | `config/estadisticas` | Cloud Function `estadisticasVecinos` | Vecinos por colonia (el panel no inventa cifras) |
 | `config/contadores` | Panel y Cloud Functions (transacción) | Folios consecutivos de reportes, boletos y trámites |

@@ -14,7 +14,7 @@ import { MUNICIPIO_DEMO } from "./demo-municipio";
      municipios/{id}/config/estadisticas { vecinosPorColonia, total }  ← la mantiene una Cloud Function
 
    `colonias` y `emergencias` usan el mismo formato que el importador CSV
-   del admin_panel, así se pueden cargar desde ahí o desde este panel.
+   CSV (Administración → Importar CSV).
    ───────────────────────────────────────────────────────── */
 
 export const TIPOS_COLONIA = ["Barrio tradicional", "Colonia", "Fraccionamiento", "Localidad"] as const;
@@ -118,3 +118,20 @@ export async function guardarConfig<K extends "colonias" | "emergencias" | "feri
 /** Id estable a partir de un nombre: «San Miguel Norte» → san-miguel-norte */
 export const aSlug = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/** Enciende o apaga un módulo. Lo valida la Cloud Function cambiarModulo (solo admin). */
+export async function cambiarModulo(m: Modulo, activo: boolean): Promise<void> {
+  if (firebaseListo && db) {
+    const { getFunctions, httpsCallable } = await import("firebase/functions");
+    const { getApp } = await import("firebase/app");
+    try {
+      await httpsCallable(getFunctions(getApp()), "cambiarModulo")({ modulo: m, activo });
+    } catch (e) {
+      const code = (e as { code?: string }).code ?? "";
+      throw new Error(code === "functions/permission-denied" ? "Solo un administrador puede cambiar los módulos."
+        : code === "functions/not-found" || code === "functions/unavailable" ? "La Cloud Function cambiarModulo no está desplegada todavía."
+        : "No se pudo cambiar el módulo.");
+    }
+  }
+  actual = { ...actual, modulos: { ...actual.modulos, [m]: activo } };
+}

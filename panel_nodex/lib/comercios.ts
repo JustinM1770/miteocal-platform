@@ -6,7 +6,7 @@ import { MUNICIPIO_DEMO } from "./demo-municipio";
 
 /* ─── Comercios ─────────────────────────────────────────────
    municipios/{id}/comercios/{slug}. Mismos campos base que el importador
-   CSV del admin_panel (nombre, categoria, whatsapp, destacado, aceptaUsd)
+   CSV (nombre, categoria, whatsapp, destacado, aceptaUsd)
    y el mismo id (slug del nombre), para que ambos caminos no dupliquen.
    `calificacion` y `resenas` los calcula la app/Cloud Function.
    ───────────────────────────────────────────────────────── */

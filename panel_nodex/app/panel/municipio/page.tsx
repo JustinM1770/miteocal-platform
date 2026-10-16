@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Pestanas } from "@/components/graficas";
 import { registrar } from "@/lib/datos";
-import { cfg, guardarConfig, type Catalogos, type Feria, type Modulo } from "@/lib/config";
+import { cambiarModulo, cfg, guardarConfig, type Catalogos, type Feria, type Modulo } from "@/lib/config";
+import { firebaseListo } from "@/lib/firebase";
 
 type Vista = "feria" | "catalogos" | "modulos";
 
@@ -117,19 +118,42 @@ function EditorCatalogos() {
 }
 
 function VerModulos() {
-  const m = cfg().modulos;
+  const { sesion } = useAuth();
+  const [m, setM] = useState(() => ({ ...cfg().modulos }));
+  const [ocupado, setOcupado] = useState<Modulo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function cambiar(k: Modulo, activo: boolean) {
+    setOcupado(k); setError(null);
+    try {
+      await cambiarModulo(k, activo);
+      if (!firebaseListo) await registrar(activo ? "Encendió módulo" : "Apagó módulo", NOMBRE_MODULO[k], "publico", sesion!.nombre);
+      setM((x) => ({ ...x, [k]: activo }));
+    } catch (e) { setError((e as Error).message); }
+    finally { setOcupado(null); }
+  }
+
   return (
     <div className="card col" style={{ gap: 12, maxWidth: 640 }}>
       <span className="muted" style={{ fontSize: 13 }}>
-        Los módulos contratados viven en el documento del municipio. Un módulo apagado no aparece ni en la app ni en este panel.
-        Solo el equipo de la plataforma puede cambiarlos.
+        Un módulo apagado desaparece de la app de todos los vecinos y de este panel. Úsalo para lo que el municipio no tiene
+        (por ejemplo, feria fuera de temporada) o todavía no está listo.
       </span>
-      {(Object.keys(NOMBRE_MODULO) as Modulo[]).map((k) => (
-        <div key={k} className="list-row">
-          <strong className="grow">{NOMBRE_MODULO[k]}</strong>
-          {m[k] === false ? <span className="tag gris">Apagado</span> : m[k] ? <span className="tag verde">Encendido</span> : <span className="tag gris">Sin definir · se muestra</span>}
-        </div>
-      ))}
+      {error && <span style={{ color: "var(--danger)", fontSize: 13 }}>{error}</span>}
+      {(Object.keys(NOMBRE_MODULO) as Modulo[]).map((k) => {
+        const activo = m[k] !== false;
+        return (
+          <div key={k} className="list-row">
+            <div className="col grow" style={{ gap: 1 }}>
+              <strong>{NOMBRE_MODULO[k]}</strong>
+              {m[k] === undefined && <span className="muted" style={{ fontSize: 11 }}>Sin definir: se muestra</span>}
+            </div>
+            <button type="button" className={`toggle${activo ? " on" : ""}`} aria-pressed={activo} aria-label={`${NOMBRE_MODULO[k]}: ${activo ? "encendido" : "apagado"}`}
+              disabled={ocupado !== null} onClick={() => cambiar(k, !activo)}><span className="knob" /></button>
+          </div>
+        );
+      })}
+      <span className="muted" style={{ fontSize: 12 }}>El cambio queda en la bitácora. Recarga el panel para ver el menú actualizado.</span>
     </div>
   );
 }

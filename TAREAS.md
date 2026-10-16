@@ -15,7 +15,7 @@ Estado al 15 de octubre de 2026. Marca `[x]` al terminar y sube el cambio.
 - [ ] **Plan Blaze y Cloud Functions**: `firebase deploy --only functions --project miteocal`
 - [ ] **Respaldos**: crear bucket `miteocal-respaldos` (borrado a 30 días) y dar a la cuenta de Functions el rol *Cloud Datastore Import Export Admin*.
 - [ ] **Restringir el token de Mapbox** a `miteocal-panel.vercel.app` y al dominio final.
-- [ ] **Decidir**: quedarse con `panel_nodex` y retirar `admin_panel` (el importador CSV ya vive en `panel_nodex`).
+- [x] Decidido: el panel es `panel_nodex`; el `admin_panel` se retiró (el importador CSV y el encendido de módulos viven en `panel_nodex`).
 
 ## 🟠 App ciudadana · Flutter (`mobile_app/`)
 

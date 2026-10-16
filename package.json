@@ -3,9 +3,9 @@
   "private": true,
   "description": "Plataforma ciudadana multi-municipio. Este package.json de la raiz solo encamina a cada parte del proyecto.",
   "scripts": {
-    "panel": "npm --prefix admin_panel run dev",
-    "panel:build": "npm --prefix admin_panel run build",
-    "panel:probar": "npm --prefix admin_panel test",
+    "panel": "npm --prefix panel_nodex run dev",
+    "panel:build": "npm --prefix panel_nodex run build",
+    "panel:probar": "npm --prefix panel_nodex run lint && npm --prefix panel_nodex run typecheck && npm --prefix panel_nodex test",
 
     "emu": "npm --prefix backend run emu",
     "sembrar": "npm --prefix backend run sembrar",
@@ -14,7 +14,7 @@
     "app": "cd mobile_app && flutter run",
     "app:probar": "cd mobile_app && flutter test",
 
-    "instalar": "npm --prefix backend install && npm --prefix admin_panel install && cd mobile_app && flutter pub get",
+    "instalar": "npm --prefix backend install && npm --prefix panel_nodex install && npm --prefix backend/functions install && cd mobile_app && flutter pub get",
     "probar": "npm run reglas:probar && npm run panel:probar && npm run app:probar"
   }
 }

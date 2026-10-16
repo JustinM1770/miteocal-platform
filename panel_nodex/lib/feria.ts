@@ -251,7 +251,7 @@ const demoTransmisiones: Transmision[] = firebaseListo ? [] : [
 
 /* ─── Lecturas ──────────────────────────────────────────── */
 
-/** eventos/{id} también lo carga el importador CSV del admin_panel (artista, lugar,
+/** eventos/{id} también lo carga el importador CSV (artista, lugar,
     precio, disponible); se completa lo que falte para que se vea igual */
 function normalizarEvento(e: Evento & { artista?: string; lugar?: string; precio?: number }): Evento {
   return {
@@ -455,7 +455,7 @@ export function importarEventos(filas: Record<string, unknown>[]) {
       titulo: String(x.artista), categoria: (x.categoria as CategoriaEvento) ?? "concierto", escenario: String(x.lugar ?? ""),
       fecha: String(x.fecha), hora: String(x.hora ?? ""), descripcion: "", transmitir: false, publicado: true,
       zonas: precio > 0 ? [{ nombre: "General", precio, cupo }] : [],
-      // Formato que ya leen la app y el admin_panel
+      // Formato que ya lee la app (artista, lugar, precio, disponible)
       artista: String(x.artista), lugar: String(x.lugar ?? ""), precio, disponible: true,
     } as Partial<Evento> };
   }));

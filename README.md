@@ -79,7 +79,7 @@ aceptan pago en dólares.
 
 ```
 ┌──────────────────┐     ┌──────────────────┐
-│   mobile_app     │     │   admin_panel    │
+│   mobile_app     │     │   panel_nodex    │
 │  Flutter (iOS,   │     │  Panel web para  │
 │  Android)        │     │  el municipio    │
 └────────┬─────────┘     └────────┬─────────┘
@@ -112,7 +112,7 @@ salen desde Cloud Functions hacia FCM segmentadas por colonia.
 miteocal-platform/
 ├── backend/          API en Node.js, Cloud Functions y reglas de Firestore
 ├── mobile_app/       Aplicación Flutter para ciudadanos y paisanos
-├── admin_panel/      Panel web de administración para el municipio
+├── panel_nodex/      Panel web de administración para el municipio (Next.js)
 ├── docs/             Documentación técnica, de producto y de diseño
 ├── .gitignore
 └── README.md
@@ -126,7 +126,7 @@ miteocal-platform/
 |------|-----------|
 | App móvil | Flutter 3.x · Dart 3.x |
 | Backend | Node.js 20 LTS · Express · TypeScript |
-| Panel admin | React + Vite · TypeScript |
+| Panel admin | Next.js 15 · React · TypeScript |
 | Base de datos | Cloud Firestore |
 | Autenticación | Firebase Auth (verificación por SMS) |
 | Archivos | Firebase Storage |
@@ -175,11 +175,14 @@ flutter run
 ### Panel de administración
 
 ```bash
-cd admin_panel
+cd panel_nodex
 npm install
-cp .env.example .env
-npm run dev
+npm run dev                 # sin .env.local corre en modo demo
+cp .env.example .env.local  # para conectarlo a Firebase
 ```
+
+Detalles del panel (modelo de datos, roles, despliegue en Vercel) en
+[panel_nodex/README.md](panel_nodex/README.md).
 
 ---
 

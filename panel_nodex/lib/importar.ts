@@ -1,7 +1,7 @@
 import { aSlug } from "./config";
 
 /* Carga masiva desde CSV (hojas de cálculo que exporta el municipio).
-   Viene del importador del admin_panel, adaptado al modelo del panel:
+   Viene del importador del antiguo admin_panel, adaptado al modelo del panel:
    mismas columnas base, mismos ids (slug), y validación renglón por
    renglón antes de guardar nada. */
 
@@ -122,7 +122,7 @@ export const ESQUEMAS: EsquemaCSV[] = [
   },
   {
     id: "eventos", titulo: "Cartelera de la feria", destino: "coleccion",
-    descripcion: "Artistas, fechas y precios. Mismas columnas que el importador del admin_panel, más categoría y cupo.",
+    descripcion: "Artistas, fechas y precios, con categoría y cupo.",
     campos: [
       { clave: "artista", etiqueta: "Artista o evento", requerido: true },
       { clave: "fecha", etiqueta: "Fecha (AAAA-MM-DD)", requerido: true, tipo: "fecha" },

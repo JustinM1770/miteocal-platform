@@ -380,3 +380,25 @@ exports.respaldoDiario = onSchedule({ schedule: 'every day 03:00', timeZone: 'Am
   });
   logger.info('Respaldo de Firestore iniciado', { destino: `gs://${bucket}/${fecha}`, operacion: operacion.name });
 });
+
+/* ═══ Módulos del municipio ═════════════════════════════════════════════════
+   municipios/{mid}.modulos decide qué secciones dibujan la app y el panel.
+   El documento raíz solo lo escribe «plataforma» (firestore.rules), así que
+   el admin del municipio lo cambia por aquí, validado y con bitácora. */
+const MODULOS = ['agua', 'basura', 'reportes', 'comercio', 'noticias', 'escuelas', 'feria', 'paisanos', 'tramites'];
+
+exports.cambiarModulo = onCall(async (req) => {
+  const { modulo, activo } = req.data || {};
+  const municipioId = req.auth?.token?.rol === 'plataforma' ? req.data?.municipioId : req.auth?.token?.municipioId;
+  exigirAdmin(req, municipioId);
+  if (!MODULOS.includes(modulo) || typeof activo !== 'boolean') {
+    throw new HttpsError('invalid-argument', 'Modulo o valor invalido.');
+  }
+  await db.doc(`municipios/${municipioId}`).update({ [`modulos.${modulo}`]: activo });
+  await db.collection(`municipios/${municipioId}/auditoria`).add({
+    accion: activo ? 'Encendió módulo' : 'Apagó módulo', detalle: modulo, canal: 'publico',
+    autorUid: req.auth.uid, autorNombre: req.auth.token.name || req.auth.token.email || 'Admin',
+    creadoEn: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
