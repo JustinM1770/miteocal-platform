@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'modelos/agua.dart';
 import 'modelos/colonia.dart';
 import 'modelos/contacto.dart';
+import 'modelos/contenido.dart';
 import 'modelos/municipio.dart';
 import 'modelos/noticia.dart';
 import 'modelos/perfil.dart';
@@ -115,4 +116,114 @@ class RepositorioFirestore implements Repositorio {
       creadoEn: DateTime.now(),
     );
   }
+
+  // ── Pantallas de contenido. Las colecciones que ya publica el panel se
+  // leen; las demas devuelven vacio hasta que el panel las tenga (la pantalla
+  // muestra su estado vacio).
+
+  Future<List<T>> _coleccion<T>(
+    String nombre,
+    T Function(String, Map<String, dynamic>) crear, {
+    int max = 50,
+  }) async {
+    final q = await _raiz.collection(nombre).limit(max).get();
+    return q.docs.map((d) => crear(d.id, d.data())).toList();
+  }
+
+  @override
+  Future<List<Comercio>> comercios() async => (await _coleccion(
+    'comercios',
+    Comercio.desdeMapa,
+  )).where((c) => c.nombre.isNotEmpty).toList();
+
+  @override
+  Future<List<EventoFeria>> eventosFeria() async =>
+      (await _coleccion('eventos', EventoFeria.desdeMapa, max: 200))
+        ..sort((a, b) => a.fecha.compareTo(b.fecha));
+
+  @override
+  Future<List<Cierre>> cierres() => _coleccion('obras', Cierre.desdeMapa);
+
+  // TODO(panel): avisos parroquiales, esquelas, vacantes y clasificados no
+  // tienen coleccion todavia.
+  @override
+  Future<List<AvisoParroquial>> avisosParroquiales() async => const [];
+  @override
+  Future<List<Esquela>> esquelas() async => const [];
+  @override
+  Future<List<Vacante>> vacantes() async => const [];
+  @override
+  Future<List<Clasificado>> clasificados() async => const [];
+
+  // TODO(feria): la compra simulada escribe en pagos/ con canal 'simulacion'
+  // (ver firestore.rules); requiere la sesion de Firebase Auth.
+  @override
+  Future<Pase> comprarBoleto(EventoFeria evento, Perfil comprador) =>
+      Future.error(
+        UnsupportedError(
+          'La compra de boletos con Firebase aún no está conectada.',
+        ),
+      );
+  @override
+  Future<List<Pase>> misPases(Perfil vecino) async => const [];
+
+  @override
+  Future<List<Candidata>> candidatas(String certamen) async {
+    final q = await _raiz
+        .collection('candidatas')
+        .where('certamen', isEqualTo: certamen)
+        .get();
+    return q.docs.map((d) => Candidata.desdeMapa(d.id, d.data())).toList();
+  }
+
+  /// votos/{certamen}_{uid}: el id fijo garantiza un voto por vecino.
+  /// TODO: requiere Firebase Auth (las reglas validan el uid).
+  @override
+  Future<void> votar(Candidata candidata, Perfil vecino) =>
+      _raiz.collection('votos').doc('${candidata.certamen}_${vecino.uid}').set({
+        'certamen': candidata.certamen,
+        'candidataId': candidata.id,
+        'uid': vecino.uid,
+        'colonia': vecino.coloniaId,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+
+  @override
+  Future<String?> miVoto(String certamen, Perfil vecino) async {
+    final s = await _raiz
+        .collection('votos')
+        .doc('${certamen}_${vecino.uid}')
+        .get();
+    return s.data()?['candidataId'] as String?;
+  }
+
+  @override
+  Future<Transmision?> transmisionEnVivo() async => null;
+  @override
+  Future<ComunidadPaisana?> comunidadPaisana() async => null;
+
+  @override
+  Future<List<PasoBitacora>> bitacoraAgua() async {
+    final s = await _raiz.collection('agua').doc(hoy()).get();
+    final incidencias = (s.data()?['incidencias'] as List?) ?? const [];
+    return [
+      for (final i in incidencias.whereType<Map>())
+        PasoBitacora(
+          hora: (i['hora'] as String?) ?? '',
+          titulo: (i['titulo'] as String?) ?? '',
+          detalle: (i['mensaje'] as String?) ?? '',
+        ),
+    ];
+  }
+
+  @override
+  Future<List<CorteProgramado>> cortesProgramados() async => const [];
+
+  @override
+  Future<RutaBasura?> rutaBasura(String coloniaId) async => null;
+
+  @override
+  Future<List<Escuela>> escuelas() async => const [];
+  @override
+  Future<List<AvisoEscolar>> avisosEscolares() async => const [];
 }

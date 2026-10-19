@@ -57,24 +57,38 @@ Reglas para no romper nada:
 3. Colores, tipografía y medidas salen de `nucleo/tema`. Nada de `Color(0xFF...)` sueltos.
 4. Antes de subir: `flutter analyze` sin avisos y `flutter test` en verde.
 
-## Qué ya funciona
+## Qué ya funciona (modo demo)
 
-- Registro completo (09–12) con GPS y elección de colonia.
-- Inicio: saludo, colonia (se cambia tocándola), agua del día, noticias y accesos directos.
-- Servicios: reporte ciudadano con tipo, foto (cámara o galería), descripción, GPS y folio;
-  directorio de emergencia con marcado directo.
+Las 16 pantallas del Figma:
+
+- **Registro (09–12):** con GPS y elección de colonia.
+- **01 Inicio:** agua del día (abre 13), "Tu municipio" con los módulos contratados, noticias y accesos.
+- **02 Noticias:** filtros por categoría, nota completa, avisos parroquiales y esquelas.
+- **03 Comercio:** buscador, filtros, WhatsApp, bolsa de trabajo y clasificados.
+- **04 Servicios:** reporte ciudadano con foto, GPS y folio (08); directorio de emergencia.
+- **05 Feria:** programa real 2026 (30 oct – 12 nov), plaza / plaza de toros, votación de
+  Srita. Teocaltiche y Miss Chiquitita (un voto por vecino), compra simulada con pase QR que valida
+  el escáner del panel (`MITEOCAL1|municipio|folio|pagoId`).
+- **06 Paisanos:** transmisión, trámites a distancia y negocios que envían a la familia.
+- **07 Selector de colonia**.
+- **13 Agua:** estado, bitácora del día y cortes programados.
+- **14 Basura en vivo:** mapa ilustrado con el camión, llegada estimada y días de recolección.
+- **15 Cierres y obras:** mapa, filtros y ruta alterna.
+- **16 Escuelas:** seguir planteles (se guarda en el teléfono) y sus avisos.
+
+Los nombres de negocios, escuelas y personas del demo son **inventados**, salvo el programa de la
+feria y las candidatas, que dio el municipio. Precios y horarios de la Plaza de Toros: por confirmar.
 
 ## Pendiente (para repartir)
 
-| Tarea | Pantallas del Figma |
+| Tarea | Dónde |
 |---|---|
-| Noticias y comunidad | 02 |
-| Cierres y obras (mapa) | 15 |
-| Basura en vivo (mapa) | 14 |
-| Feria: programa y pase con QR | 05 |
-| "Mis reportes" con su estado | — |
 | Firebase Auth con números de prueba (sin SMS reales) | 10, 11 |
-| Empaquetar Inter en `assets/` (no descargarla al abrir) | — |
+| Mapas reales con Mapbox (camión y cierres) | 14, 15 |
+| Notificaciones push (FCM) para los interruptores "Avísame" | 13, 14, 16 |
+| "Mis reportes" con su estado | — |
+| Colecciones del panel que faltan: esquelas, vacantes, clasificados, escuelas, rutas | Firestore |
+| Empaquetar Inter en `assets/` | — |
 
 Con Firebase en el plan gratis (Spark) no hay Storage ni Cloud Functions: la foto viaja
 reducida dentro del documento del reporte, y lo que necesite servidor (asignar el municipio al

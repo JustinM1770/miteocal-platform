@@ -8,6 +8,7 @@ import '../datos/modelos/municipio.dart';
 import '../datos/modelos/noticia.dart';
 import '../datos/repositorio.dart';
 import '../datos/sesion.dart';
+import '../navegacion/modulos.dart';
 import '../navegacion/pestanas.dart';
 import '../nucleo/tema/tema.dart';
 import '../nucleo/widgets/hoja_colonias.dart';
@@ -90,11 +91,44 @@ class _InicioPaginaState extends State<InicioPagina> {
                     ),
                     child: StreamBuilder<EstadoAgua?>(
                       stream: _agua,
-                      builder: (context, snapAgua) => HeroAgua(
-                        estado: snapAgua.data,
-                        color: municipio!.tema.primary,
-                        colonia: colonia,
+                      builder: (context, snapAgua) => GestureDetector(
+                        onTap: () => abrirModulo(
+                          context,
+                          Modulo.agua,
+                          municipio: municipio,
+                          colonia: colonia,
+                          perfil: perfil,
+                        ),
+                        child: HeroAgua(
+                          estado: snapAgua.data,
+                          color: municipio!.tema.primary,
+                          colonia: colonia,
+                        ),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: Medidas.separacionSeccion),
+                ],
+
+                if (municipio != null) ...[
+                  const _TituloSeccion(titulo: 'Tu municipio'),
+                  const SizedBox(height: 14),
+                  _Modulos(
+                    modulos: [
+                      for (final m in Modulo.values)
+                        if (m != Modulo.agua && municipio.tieneModulo(m.clave))
+                          m,
+                    ],
+                    alAbrir: (m) => abrirModulo(
+                      context,
+                      m,
+                      municipio: municipio,
+                      colonia: colonia,
+                      perfil: perfil,
+                      alReportarBasura: () {
+                        Navigator.of(context).pop();
+                        context.read<Pestanas>().ir(Pestanas.servicios);
+                      },
                     ),
                   ),
                   const SizedBox(height: Medidas.separacionSeccion),
@@ -247,6 +281,76 @@ class _TituloSeccion extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Cuadricula de 3 columnas con los modulos contratados por el municipio.
+class _Modulos extends StatelessWidget {
+  const _Modulos({required this.modulos, required this.alAbrir});
+
+  final List<Modulo> modulos;
+  final ValueChanged<Modulo> alAbrir;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final ancho = (c.maxWidth - 20) / 3;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final m in modulos)
+                SizedBox(
+                  width: ancho,
+                  child: Material(
+                    color: Colores.fondoTarjeta,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+                      side: const BorderSide(color: Colores.borde),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+                      onTap: () => alAbrir(m),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 14,
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colores.soft,
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: Icon(m.icono, size: 20, color: primary),
+                            ),
+                            const SizedBox(height: 9),
+                            Text(
+                              m.nombre,
+                              textAlign: TextAlign.center,
+                              style: Tipografia.micro.copyWith(
+                                color: Colores.textoPrimario,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

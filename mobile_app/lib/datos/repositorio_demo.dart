@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart' show Color;
 import 'modelos/agua.dart';
 import 'modelos/colonia.dart';
 import 'modelos/contacto.dart';
+import 'modelos/contenido.dart';
 import 'modelos/municipio.dart';
 import 'modelos/noticia.dart';
 import 'modelos/perfil.dart';
@@ -23,6 +24,10 @@ class RepositorioDemo implements Repositorio {
   final Duration latencia;
 
   final List<Reporte> reportes = [];
+  final List<Pase> pases = [];
+
+  /// certamen → id de candidata
+  final Map<String, String> votos = {};
 
   static const _municipio = Municipio(
     id: 'teocaltiche',
@@ -35,6 +40,10 @@ class RepositorioDemo implements Repositorio {
       'reportes': true,
       'basura': true,
       'feria': true,
+      'cierres': true,
+      'escuelas': true,
+      'paisanos': true,
+      'comercio': true,
     },
     tema: TemaMunicipio(
       primary: Color(0xFF1552E0),
@@ -275,22 +284,33 @@ class RepositorioDemo implements Repositorio {
       () => [
         Noticia(
           id: 'n1',
-          categoria: 'Obras',
-          titulo: 'Rehabilitación de calle Benito Juárez inicia el lunes',
-          publicadaEn: ahora.subtract(const Duration(hours: 2)),
+          categoria: 'Cultura',
+          fuente: 'Comité de Feria',
+          titulo:
+              'Feria de Teocaltiche 2026: del 30 de octubre al 12 de noviembre',
+          cuerpo:
+              'Inaugura el 30 de octubre con el certamen Srita. Teocaltiche y Mario Bautista en la plaza. '
+              'Consulta la cartelera completa, vota por tu reina y guarda tus boletos desde la sección Feria.',
+          publicadaEn: ahora.subtract(const Duration(hours: 1)),
         ),
         Noticia(
           id: 'n2',
-          categoria: 'Salud',
-          titulo: 'Jornada de vacunación gratuita este sábado en el DIF',
-          publicadaEn: ahora.subtract(const Duration(hours: 5)),
+          categoria: 'Obras',
+          fuente: 'Obras Públicas',
+          titulo: 'Rehabilitación de calle Zaragoza inicia el lunes',
+          cuerpo:
+              'Los trabajos durarán tres semanas. La calle permanecerá cerrada entre Juárez e Hidalgo; '
+              'consulta la ruta alterna en Cierres y obras.',
+          publicadaEn: ahora.subtract(const Duration(hours: 3)),
         ),
         Noticia(
           id: 'n3',
-          categoria: 'Cultura',
-          titulo:
-              'Feria de Teocaltiche 2026: programa completo del 30 de octubre al 16 de noviembre',
-          publicadaEn: ahora.subtract(const Duration(days: 1)),
+          categoria: 'Salud',
+          fuente: 'DIF Municipal',
+          titulo: 'Jornada de vacunación gratuita este sábado en el DIF',
+          cuerpo:
+              'De 9:00 a 14:00 hrs. Lleva tu cartilla de vacunación y una identificación.',
+          publicadaEn: ahora.subtract(const Duration(hours: 6)),
         ),
       ].take(max).toList(),
     );
@@ -325,4 +345,401 @@ class RepositorioDemo implements Repositorio {
     reportes.add(reporte);
     return reporte;
   }
+
+  // ── Contenido de ejemplo para las pantallas 02–16. Nombres de personas,
+  // negocios y eventos INVENTADOS para el demo.
+
+  DateTime get _ahora => DateTime.now();
+
+  @override
+  Future<List<AvisoParroquial>> avisosParroquiales() => _tras(const [
+    AvisoParroquial(
+      titulo: 'Misa dominical · 7:00 hrs',
+      detalle: 'Parroquia de San Miguel Arcángel',
+    ),
+    AvisoParroquial(
+      titulo: 'Rosario por la feria · 19:00 hrs',
+      detalle: 'Santuario de Guadalupe, todos los días de la feria',
+    ),
+  ]);
+
+  @override
+  Future<List<Esquela>> esquelas() => _tras([
+    Esquela(
+      nombre: 'Familia Ejemplo (demo)',
+      fallecio: _ahora.subtract(const Duration(days: 1)),
+      misa: 'Misa de cuerpo presente · Hoy 18:00 hrs',
+      lugar: 'Parroquia de San Miguel Arcángel',
+    ),
+  ]);
+
+  static const _comercios = [
+    Comercio(
+      id: 'c1',
+      nombre: 'Farmacia del Centro',
+      categoria: 'Salud',
+      direccion: 'Hidalgo 12, Centro',
+      calificacion: 4.8,
+      resenas: 89,
+    ),
+    Comercio(
+      id: 'c2',
+      nombre: 'Tacos El Portal',
+      categoria: 'Restaurantes',
+      direccion: 'Morelos 8, El Tanque',
+      abierto: false,
+      calificacion: 4.9,
+      resenas: 212,
+    ),
+    Comercio(
+      id: 'c3',
+      nombre: 'Abarrotes La Esperanza',
+      categoria: 'Tiendas',
+      direccion: 'Juárez 30, San Miguel Norte',
+      calificacion: 4.5,
+      resenas: 41,
+    ),
+    Comercio(
+      id: 'c4',
+      nombre: 'Taller Mecánico Hermanos',
+      categoria: 'Servicios',
+      direccion: 'Carretera a Villa Hidalgo km 1',
+      calificacion: 4.6,
+      resenas: 27,
+    ),
+    Comercio(
+      id: 'c5',
+      nombre: 'Muebles Teocaltiche',
+      categoria: 'Tiendas',
+      direccion: 'Zaragoza 51, Centro',
+      calificacion: 4.7,
+      resenas: 64,
+      descripcion:
+          'Envía muebles a tu familia, entrega a domicilio en el municipio.',
+      aceptaUsd: true,
+      enviosAlExtranjero: true,
+    ),
+    Comercio(
+      id: 'c6',
+      nombre: 'Florería Primavera',
+      categoria: 'Tiendas',
+      direccion: 'Plaza principal, Centro',
+      calificacion: 4.9,
+      resenas: 103,
+      descripcion:
+          'Arreglos y flores a domicilio. Pago con tarjeta internacional.',
+      aceptaUsd: true,
+      enviosAlExtranjero: true,
+      qboard: 'https://qboard.mx',
+    ),
+  ];
+
+  @override
+  Future<List<Comercio>> comercios() => _tras(_comercios);
+
+  @override
+  Future<List<Vacante>> vacantes() => _tras(const [
+    Vacante(
+      puesto: 'Cajero/a de tienda',
+      empresa: 'Abarrotes La Esperanza',
+      jornada: 'Tiempo completo',
+      sueldo: '\$6,500 / mes',
+    ),
+    Vacante(
+      puesto: 'Auxiliar administrativo',
+      empresa: 'Despacho contable (demo)',
+      jornada: 'Medio tiempo',
+      sueldo: '\$5,000 / mes',
+    ),
+  ]);
+
+  @override
+  Future<List<Clasificado>> clasificados() => _tras([
+    Clasificado(
+      titulo: 'Camioneta 2019 en buen estado',
+      precio: '\$185,000',
+      categoria: 'Vehículo',
+      publicado: _ahora.subtract(const Duration(days: 2)),
+    ),
+    Clasificado(
+      titulo: 'Se renta casa, 3 recámaras, Centro',
+      precio: '\$4,500 / mes',
+      categoria: 'Inmueble',
+      publicado: _ahora.subtract(const Duration(days: 1)),
+    ),
+  ]);
+
+  /// Feria del 30 de octubre al 16 de noviembre de 2026.
+  /// Programa oficial de la Feria de Teocaltiche 2026 (30 oct – 12 nov),
+  /// dado por el municipio. Los precios de la Plaza de Toros aún no se
+  /// publican: precio null = "por confirmar".
+  static final _eventos = <EventoFeria>[
+    _plaza(
+      'e01',
+      30,
+      'Inauguración · Certamen Srita. Teocaltiche',
+      artista: 'Mario Bautista',
+    ),
+    _plaza(
+      'e02',
+      31,
+      'Certamen Miss Chiquitita',
+      artista: 'Tributo Las Guerreras del K-pop',
+    ),
+    _plaza('e03', 1, 'Los Cadetes de Linares'),
+    _plaza('e04', 2, 'Talentos Locales'),
+    _plaza('e05', 3, 'Talentos Locales'),
+    _plaza('e06', 4, 'Talentos Locales'),
+    _toros('e07', 5, 'Jaripeo con Ulises Quintero'),
+    _toros('e08', 6, 'Lenin Ramírez'),
+    _toros('e09', 7, 'La Adictiva'),
+    _toros('e10', 8, 'La Arrolladora Banda El Limón'),
+    _plaza('e11', 9, 'La Sonora Dinamita'),
+    _plaza('e12', 10, 'Banda La Fresa'),
+    _plaza('e13', 11, 'Joss Favela'),
+    _plaza('e14', 12, 'Talentos Locales'),
+  ];
+
+  static DateTime _dia(int d) => DateTime(2026, d >= 30 ? 10 : 11, d);
+
+  /// Gratuito en la plaza.
+  static EventoFeria _plaza(
+    String id,
+    int dia,
+    String titulo, {
+    String artista = '',
+  }) => EventoFeria(
+    id: id,
+    titulo: titulo,
+    artista: artista,
+    fecha: _dia(dia),
+    hora: '',
+    lugar: 'Plaza principal',
+    escenario: 'Plaza principal',
+    precio: 0,
+  );
+
+  /// Con costo en la Plaza de Toros.
+  static EventoFeria _toros(String id, int dia, String titulo) => EventoFeria(
+    id: id,
+    titulo: titulo,
+    fecha: _dia(dia),
+    hora: '',
+    lugar: 'Plaza de Toros',
+    escenario: 'Plaza de Toros',
+    precio: null,
+  );
+
+  @override
+  Future<List<EventoFeria>> eventosFeria() => _tras(_eventos);
+
+  @override
+  Future<Pase> comprarBoleto(EventoFeria evento, Perfil comprador) async {
+    await Future.delayed(latencia * 3);
+    final r = Random();
+    final pase = Pase(
+      evento: evento,
+      folio: 'TEC-${1000 + r.nextInt(9000)}',
+      pagoId: 'demo-${DateTime.now().millisecondsSinceEpoch}',
+      municipioId: _municipio.id,
+    );
+    pases.insert(0, pase);
+    return pase;
+  }
+
+  @override
+  Future<List<Pase>> misPases(Perfil vecino) => _tras(List.of(pases));
+
+  /// Candidatas reales de la Feria 2026 (dadas por el municipio).
+  static const _candidatas = [
+    Candidata(id: 'r1', nombre: 'Nicole Ramírez', certamen: 'reina'),
+    Candidata(id: 'r2', nombre: 'Allison Ramírez', certamen: 'reina'),
+    Candidata(id: 'r3', nombre: 'Alondra Ruvalcaba', certamen: 'reina'),
+    Candidata(id: 'r4', nombre: 'Daira Espinola', certamen: 'reina'),
+    Candidata(id: 'm1', nombre: 'Alexa', certamen: 'miss'),
+    Candidata(id: 'm2', nombre: 'Paulina', certamen: 'miss'),
+    Candidata(id: 'm3', nombre: 'Geisel', certamen: 'miss'),
+    Candidata(id: 'm4', nombre: 'Victoria', certamen: 'miss'),
+    Candidata(id: 'm5', nombre: 'Irlanda', certamen: 'miss'),
+  ];
+
+  @override
+  Future<List<Candidata>> candidatas(String certamen) =>
+      _tras(_candidatas.where((c) => c.certamen == certamen).toList());
+
+  @override
+  Future<void> votar(Candidata candidata, Perfil vecino) async {
+    await _tras(null);
+    votos[candidata.certamen] = candidata.id;
+  }
+
+  @override
+  Future<String?> miVoto(String certamen, Perfil vecino) =>
+      _tras(votos[certamen]);
+
+  @override
+  Future<Transmision?> transmisionEnVivo() => _tras(
+    const Transmision(
+      titulo: 'Quema del castillo · Parroquia de San Miguel',
+      lugar: 'Transmisión desde Teocaltiche',
+      espectadores: 412,
+    ),
+  );
+
+  @override
+  Future<ComunidadPaisana?> comunidadPaisana() => _tras(
+    const ComunidadPaisana(
+      conectados: 2341,
+      estados: ['California', 'Illinois', 'Texas'],
+    ),
+  );
+
+  @override
+  Future<List<PasoBitacora>> bitacoraAgua() => _tras(const [
+    PasoBitacora(
+      hora: '06:00',
+      titulo: 'Servicio iniciado',
+      detalle: 'El pozo comenzó a bombear a la red.',
+    ),
+    PasoBitacora(
+      hora: '09:30',
+      titulo: 'Presión estable',
+      detalle: 'Lectura de 4.2 bar en el tanque elevado.',
+    ),
+    PasoBitacora(
+      hora: '14:00',
+      titulo: 'Fin del turno',
+      detalle: 'Hora estimada de cierre del servicio.',
+      estimado: true,
+    ),
+  ]);
+
+  @override
+  Future<List<CorteProgramado>> cortesProgramados() => _tras([
+    CorteProgramado(
+      fecha: _ahora.add(const Duration(days: 4)),
+      titulo: 'Cambio de tubería · calle Zaragoza',
+      horario: '8:00 a 16:00 hrs',
+    ),
+    CorteProgramado(
+      fecha: _ahora.add(const Duration(days: 11)),
+      titulo: 'Mantenimiento del pozo El Salitre',
+      horario: '6:00 a 12:00 hrs',
+    ),
+  ]);
+
+  @override
+  Future<RutaBasura?> rutaBasura(String coloniaId) {
+    final c = _colonias.where((c) => c.id == coloniaId).firstOrNull;
+    final dias = _diasDeBasura(c?.basura ?? '');
+    final hoyPasa = dias.contains(_ahora.weekday) && _ahora.hour < 14;
+    return _tras(
+      RutaBasura(
+        nombre:
+            'Ruta ${c?.zona.startsWith('Centro') == true ? 'Centro' : 'Colonias'}',
+        unidad: 'Unidad 04',
+        minutos: hoyPasa ? 18 : null,
+        cuadras: 6,
+        avanzaPor: 'Morelos',
+        dias: dias,
+        llegaA: c?.nombre ?? '',
+      ),
+    );
+  }
+
+  /// "Martes y viernes, 7:00 hrs" → [2, 5]
+  static List<int> _diasDeBasura(String texto) {
+    const nombres = {
+      'lunes': 1,
+      'martes': 2,
+      'miércoles': 3,
+      'jueves': 4,
+      'viernes': 5,
+      'sábado': 6,
+      'domingo': 7,
+    };
+    final t = texto.toLowerCase();
+    return [
+      for (final e in nombres.entries)
+        if (t.contains(e.key)) e.value,
+    ];
+  }
+
+  @override
+  Future<List<Cierre>> cierres() => _tras(const [
+    Cierre(
+      id: 'o1',
+      tipo: TipoCierre.total,
+      calle: 'Calle Zaragoza',
+      detalle: 'Entre Juárez e Hidalgo, por rehabilitación de pavimento.',
+      vigencia: 'Hasta el 7 de noviembre',
+      distanciaM: 350,
+      rutaAlterna: 'Toma Morelos y regresa por Hidalgo.',
+    ),
+    Cierre(
+      id: 'o2',
+      tipo: TipoCierre.obra,
+      calle: 'Av. Juárez',
+      detalle: 'Un carril cerrado en dirección norte, de 8:00 a 18:00 hrs.',
+      vigencia: 'Hasta el 20 de noviembre',
+      distanciaM: 700,
+      rutaAlterna: 'Usa el carril sur con precaución.',
+    ),
+    Cierre(
+      id: 'o3',
+      tipo: TipoCierre.temporal,
+      calle: 'Calles del centro',
+      detalle: 'Cierre por el desfile de Hijos Ausentes.',
+      vigencia: '8 de noviembre, 10:00 a 14:00',
+      distanciaM: 900,
+      rutaAlterna: 'Circula por el libramiento.',
+    ),
+  ]);
+
+  @override
+  Future<List<Escuela>> escuelas() => _tras(const [
+    Escuela(
+      id: 'prepa',
+      nombre: 'Preparatoria Regional',
+      nivel: 'Bachillerato',
+    ),
+    Escuela(
+      id: 'secu',
+      nombre: 'Secundaria Técnica',
+      nivel: 'Educación secundaria',
+    ),
+    Escuela(
+      id: 'prim',
+      nombre: 'Primaria Benito Juárez',
+      nivel: 'Educación primaria',
+    ),
+    Escuela(
+      id: 'kinder',
+      nombre: 'Jardín de Niños Rosaura Zapata',
+      nivel: 'Preescolar',
+    ),
+  ]);
+
+  @override
+  Future<List<AvisoEscolar>> avisosEscolares() => _tras([
+    AvisoEscolar(
+      escuelaId: 'prepa',
+      tipo: TipoAvisoEscolar.suspension,
+      texto:
+          'Viernes: no hay clases por junta de consejo técnico escolar. Se reanudan el lunes.',
+      fecha: _ahora.subtract(const Duration(hours: 3)),
+    ),
+    AvisoEscolar(
+      escuelaId: 'secu',
+      tipo: TipoAvisoEscolar.aviso,
+      texto: 'Entrega de boletas el lunes de 9:00 a 13:00 hrs en cada aula.',
+      fecha: _ahora.subtract(const Duration(days: 1)),
+    ),
+    AvisoEscolar(
+      escuelaId: 'prepa',
+      tipo: TipoAvisoEscolar.examen,
+      texto: 'El examen de ingreso será el próximo lunes a las 8:00 hrs.',
+      fecha: _ahora.subtract(const Duration(days: 2)),
+    ),
+  ]);
 }

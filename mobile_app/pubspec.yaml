@@ -43,6 +43,7 @@ dependencies:
   geolocator: ^14.1.2
   url_launcher: ^6.3.3
   lucide_icons_flutter: ^4.0.0
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

@@ -8,6 +8,8 @@ import '../datos/modelos/contacto.dart';
 import '../datos/modelos/municipio.dart';
 import '../datos/modelos/reporte.dart';
 import '../datos/repositorio.dart';
+import '../datos/sesion.dart';
+import '../navegacion/modulos.dart';
 import '../nucleo/tema/tema.dart';
 import '../nucleo/widgets/campos.dart';
 import 'servicios/reporte_ciudadano.dart';
@@ -131,7 +133,22 @@ class _ServiciosPaginaState extends State<ServiciosPagina> {
                         icono: LucideIcons.trash2,
                         titulo: 'Recolección de basura',
                         detalle: 'Horarios por colonia',
-                        alTocar: () => _irAReporte(TipoReporte.basura),
+                        alTocar: () {
+                          final perfil = context.read<Sesion>().perfil;
+                          abrirModulo(
+                            context,
+                            Modulo.basura,
+                            municipio: municipio,
+                            perfil: perfil,
+                            colonia: _colonias
+                                .where((c) => c.id == perfil?.coloniaId)
+                                .firstOrNull,
+                            alReportarBasura: () {
+                              Navigator.of(context).pop();
+                              _irAReporte(TipoReporte.basura);
+                            },
+                          );
+                        },
                       ),
                       _Servicio(
                         icono: LucideIcons.lightbulb,

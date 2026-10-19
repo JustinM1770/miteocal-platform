@@ -10,6 +10,7 @@ class Noticia {
     required this.publicadaEn,
     this.cuerpo = '',
     this.imagen = '',
+    this.fuente = '',
   });
 
   final String id;
@@ -19,6 +20,9 @@ class Noticia {
   final String cuerpo;
   final String imagen;
 
+  /// Dependencia que la publica ("Obras Públicas").
+  final String fuente;
+
   factory Noticia.desdeMapa(String id, Map<String, dynamic> m) {
     final fecha = m['publicadaEn'];
     return Noticia(
@@ -27,6 +31,7 @@ class Noticia {
       categoria: (m['categoria'] as String?) ?? '',
       cuerpo: (m['cuerpo'] as String?) ?? '',
       imagen: (m['imagen'] as String?) ?? '',
+      fuente: (m['fuente'] as String?) ?? '',
       publicadaEn: fecha is Timestamp ? fecha.toDate() : DateTime.now(),
     );
   }

@@ -74,12 +74,16 @@ class HeroAgua extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'AGUA POTABLE',
-                style: Tipografia.etiqueta.copyWith(
-                  color: Colors.white.withValues(alpha: 0.62),
+              Flexible(
+                child: Text(
+                  'AGUA POTABLE',
+                  overflow: TextOverflow.ellipsis,
+                  style: Tipografia.etiqueta.copyWith(
+                    color: Colors.white.withValues(alpha: 0.62),
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               _Insignia(activo: e.activo, sinDato: e.sinDato),
             ],
           ),

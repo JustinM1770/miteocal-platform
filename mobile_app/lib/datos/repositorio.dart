@@ -1,6 +1,7 @@
 import 'modelos/agua.dart';
 import 'modelos/colonia.dart';
 import 'modelos/contacto.dart';
+import 'modelos/contenido.dart';
 import 'modelos/municipio.dart';
 import 'modelos/noticia.dart';
 import 'modelos/perfil.dart';
@@ -44,4 +45,47 @@ abstract class Repositorio {
 
   /// Registra el reporte y devuelve su folio de seguimiento.
   Future<Reporte> enviarReporte(NuevoReporte nuevo, Perfil autor);
+
+  // ── 02 · Noticias y comunidad
+  Future<List<AvisoParroquial>> avisosParroquiales();
+  Future<List<Esquela>> esquelas();
+
+  // ── 03 · Comercio y empleo (06 usa los que envian al extranjero)
+  Future<List<Comercio>> comercios();
+  Future<List<Vacante>> vacantes();
+  Future<List<Clasificado>> clasificados();
+
+  // ── 05 · Feria
+  Future<List<EventoFeria>> eventosFeria();
+
+  /// Compra SIMULADA (sin cobro real). Devuelve el pase con su QR.
+  Future<Pase> comprarBoleto(EventoFeria evento, Perfil comprador);
+  Future<List<Pase>> misPases(Perfil vecino);
+
+  /// Candidatas de 'reina' o 'miss'.
+  Future<List<Candidata>> candidatas(String certamen);
+
+  /// Un voto gratis por vecino y certamen; votar de nuevo lo cambia.
+  Future<void> votar(Candidata candidata, Perfil vecino);
+
+  /// Id de la candidata por la que voto el vecino, o null.
+  Future<String?> miVoto(String certamen, Perfil vecino);
+
+  // ── 06 · Paisanos
+  Future<Transmision?> transmisionEnVivo();
+  Future<ComunidadPaisana?> comunidadPaisana();
+
+  // ── 13 · Agua (detalle del dia y cortes)
+  Future<List<PasoBitacora>> bitacoraAgua();
+  Future<List<CorteProgramado>> cortesProgramados();
+
+  // ── 14 · Basura en vivo
+  Future<RutaBasura?> rutaBasura(String coloniaId);
+
+  // ── 15 · Cierres y obras
+  Future<List<Cierre>> cierres();
+
+  // ── 16 · Escuelas
+  Future<List<Escuela>> escuelas();
+  Future<List<AvisoEscolar>> avisosEscolares();
 }
