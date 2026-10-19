@@ -1,0 +1,136 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:miteocal/datos/repositorio.dart';
+import 'package:miteocal/datos/repositorio_firestore.dart';
+import 'package:miteocal/datos/sesion.dart';
+import 'package:miteocal/navegacion/pestanas.dart';
+import 'package:miteocal/pantallas/inicio_pagina.dart';
+import 'package:provider/provider.dart';
+
+Future<FakeFirebaseFirestore> conMunicipio({
+  Map<String, bool> modulos = const {'agua': true},
+  Map<String, dynamic>? agua,
+}) async {
+  final bd = FakeFirebaseFirestore();
+  await bd.collection('municipios').doc('teocaltiche').set({
+    'nombre': 'Teocaltiche',
+    'estado': 'Jalisco',
+    'activo': true,
+    'modulos': modulos,
+    'tema': {'primary': '#1552E0'},
+  });
+  if (agua != null) {
+    final d = DateTime.now();
+    final fecha =
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    await bd
+        .collection('municipios')
+        .doc('teocaltiche')
+        .collection('agua')
+        .doc(fecha)
+        .set(agua);
+  }
+  return bd;
+}
+
+Widget envolver(Repositorio repo) => MultiProvider(
+  providers: [
+    Provider<Repositorio>.value(value: repo),
+    ChangeNotifierProvider(create: (_) => Sesion()),
+    ChangeNotifierProvider(create: (_) => Pestanas()),
+  ],
+  child: const MaterialApp(home: Scaffold(body: InicioPagina())),
+);
+
+void main() {
+  testWidgets('muestra el nombre del municipio que viene de Firestore', (
+    tester,
+  ) async {
+    final bd = await conMunicipio();
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Teocaltiche'), findsOneWidget);
+    expect(find.text('Jalisco'), findsOneWidget);
+  });
+
+  testWidgets('pinta el estado del agua del dia', (tester) async {
+    final bd = await conMunicipio(
+      agua: {
+        'horario': '06:00 - 12:00',
+        'presion': 2.4,
+        'calidad': 'Potable',
+        'cobertura': 'Total',
+        'estado': 'activo',
+      },
+    );
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('06:00 - 12:00'), findsOneWidget);
+    expect(find.text('2.4 bar'), findsOneWidget);
+    expect(find.text('Servicio activo'), findsOneWidget);
+  });
+
+  testWidgets('sin dato de agua muestra un mensaje, no una tarjeta rota', (
+    tester,
+  ) async {
+    final bd = await conMunicipio(); // sin documento de agua
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('aun no publica'), findsOneWidget);
+  });
+
+  testWidgets('marca el corte cuando no hay servicio', (tester) async {
+    final bd = await conMunicipio(agua: {'estado': 'sin-servicio'});
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin servicio'), findsNWidgets(2)); // titulo e insignia
+  });
+
+  testWidgets('sin dato del pozo NO se muestra como servicio activo', (
+    tester,
+  ) async {
+    final bd = await conMunicipio(agua: {'estado': 'sin-dato'});
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sin informacion del pozo'), findsOneWidget);
+    expect(find.text('Sin dato'), findsOneWidget);
+    expect(find.text('Servicio activo'), findsNothing);
+  });
+
+  testWidgets('el corte con hora estimada dice cuando vuelve y el mensaje', (
+    tester,
+  ) async {
+    final bd = await conMunicipio(
+      agua: {
+        'estado': 'sin-servicio',
+        'horaEstimada': '16:00',
+        'mensaje': 'Falla en el pozo. La cuadrilla ya esta trabajando.',
+      },
+    );
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vuelve hoy ~16:00'), findsOneWidget);
+    expect(find.textContaining('Falla en el pozo'), findsOneWidget);
+  });
+
+  testWidgets('con el modulo de agua apagado no se dibuja la tarjeta', (
+    tester,
+  ) async {
+    final bd = await conMunicipio(
+      modulos: {'agua': false},
+      agua: {'horario': '06:00 - 12:00', 'estado': 'activo'},
+    );
+    await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('06:00 - 12:00'), findsNothing);
+    expect(find.text('Teocaltiche'), findsOneWidget);
+  });
+}
