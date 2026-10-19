@@ -20,6 +20,15 @@ const ana = Perfil(
   coloniaId: 'teocaltiche-centro',
 );
 
+/// Los chips viven en listas horizontales: con la fuente de pruebas (mas
+/// ancha) pueden quedar fuera de pantalla; se desplazan antes de tocarlos.
+Future<void> tocar(WidgetTester tester, Finder f) async {
+  await tester.ensureVisible(f);
+  await tester.pumpAndSettle();
+  await tester.tap(f);
+  await tester.pumpAndSettle();
+}
+
 Future<(RepositorioDemo, Sesion)> montar(
   WidgetTester tester,
   Widget home, {
@@ -86,12 +95,22 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Con Mario Bautista'), findsOneWidget);
-    expect(find.text('La Adictiva'), findsNothing); // es de la Plaza de Toros
+    expect(find.text('Todo el programa'), findsOneWidget);
 
-    await tester.tap(find.text('Plaza de Toros').first);
-    await tester.pumpAndSettle();
+    // Filtro por lugar
+    await tocar(tester, find.text('Plaza de Toros').first);
     expect(find.text('La Adictiva'), findsOneWidget);
+    expect(find.text('Joss Favela'), findsNothing);
     expect(find.text('Precio por confirmar'), findsWidgets);
+
+    // Filtro por tipo encima del lugar
+    await tocar(tester, find.text('Todos').first);
+    await tocar(tester, find.text('Certamen').first);
+    expect(find.text('2 eventos'), findsOneWidget);
+
+    // Lugar sin programa todavia
+    await tocar(tester, find.text('Teatro del Pueblo').first);
+    expect(find.textContaining('se publica pronto'), findsOneWidget);
   });
 
   testWidgets(
@@ -122,6 +141,8 @@ void main() {
 
   testWidgets('un evento gratuito no pide boleto', (tester) async {
     final (repo, _) = await montar(tester, const FeriaPagina());
+    await tocar(tester, find.text('11').first);
+    expect(find.text('Miércoles 11 de noviembre'), findsOneWidget);
     await tester.tap(find.text('Joss Favela'));
     await tester.pumpAndSettle();
     expect(find.text('Gratis'), findsOneWidget);
@@ -146,7 +167,7 @@ void main() {
     tester,
   ) async {
     final (repo, _) = await montar(tester, const FeriaPagina());
-    await tester.scrollUntilVisible(find.text('Alondra Ruvalcaba'), 300);
+    await tester.scrollUntilVisible(find.text('Alondra Ruvalcaba'), 300, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Alondra Ruvalcaba'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Votar'));

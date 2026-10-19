@@ -173,36 +173,42 @@ class FiltroChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
-        itemCount: opciones.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final o = opciones[i];
-          final activa = o == elegida;
-          return GestureDetector(
-            onTap: () => alElegir(o),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-              decoration: BoxDecoration(
-                color: activa ? primary : Colores.fondoSutil,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                o,
-                style: Tipografia.subtitulo.copyWith(
-                  color: activa
-                      ? Colores.textoInverso
-                      : Colores.textoSecundario,
-                ),
-              ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
+      child: Row(
+        children: [
+          for (final (i, o) in opciones.indexed) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Builder(
+              builder: (context) {
+                final activa = o == elegida;
+                return GestureDetector(
+                  onTap: () => alElegir(o),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: activa ? primary : Colores.fondoSutil,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      o,
+                      style: Tipografia.subtitulo.copyWith(
+                        color: activa
+                            ? Colores.textoInverso
+                            : Colores.textoSecundario,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }

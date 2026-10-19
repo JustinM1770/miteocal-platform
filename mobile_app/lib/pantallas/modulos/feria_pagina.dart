@@ -27,7 +27,26 @@ class _FeriaPaginaState extends State<FeriaPagina> {
   final _clavePase = GlobalKey();
   List<EventoFeria> _eventos = const [];
   List<Pase> _pases = const [];
-  String _escenario = 'Plaza principal';
+  static const _lugares = [
+    'Todos',
+    'Plaza principal',
+    'Plaza de Toros',
+    'Teatro del Pueblo',
+  ];
+  static const _tipos = [
+    'Todos',
+    'Musical',
+    'Cultural',
+    'Certamen',
+    'Jaripeo',
+    'Religioso',
+    'Deportivo',
+  ];
+
+  /// null = todo el programa.
+  DateTime? _dia;
+  String _lugar = 'Todos';
+  String _tipo = 'Todos';
   bool _cargando = true;
 
   @override
@@ -41,10 +60,12 @@ class _FeriaPaginaState extends State<FeriaPagina> {
     final eventos = await _repo.eventosFeria();
     final pases = perfil == null ? <Pase>[] : await _repo.misPases(perfil);
     if (!mounted) return;
+    final hoy = DateUtils.dateOnly(DateTime.now());
     setState(() {
       _eventos = eventos;
       _pases = pases;
       _cargando = false;
+      if (eventos.any((e) => DateUtils.isSameDay(e.fecha, hoy))) _dia = hoy;
     });
   }
 
@@ -76,18 +97,41 @@ class _FeriaPaginaState extends State<FeriaPagina> {
 
   @override
   Widget build(BuildContext context) {
-    final visibles = _eventos.where((e) => e.escenario == _escenario).toList();
+    final visibles = _eventos
+        .where((e) => _dia == null || DateUtils.isSameDay(e.fecha, _dia))
+        .where((e) => _lugar == 'Todos' || e.lugar == _lugar)
+        .where((e) => _tipo == 'Todos' || e.tipo == _tipo)
+        .toList();
+    final dias = {
+      for (final e in _eventos) DateUtils.dateOnly(e.fecha),
+    }.toList()..sort();
+
     return PantallaModulo(
       titulo: 'Feria de Noviembre',
       subtitulo:
           'Recinto Ferial${widget.municipio.isNotEmpty ? ' · ${widget.municipio}' : ''}',
       hijos: [
-        Lateral(
-          child: _Segmentos(
-            opciones: const ['Plaza principal', 'Plaza de Toros'],
-            elegida: _escenario,
-            alElegir: (o) => setState(() => _escenario = o),
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TiraDias(
+              dias: dias,
+              elegido: _dia,
+              alElegir: (d) => setState(() => _dia = d),
+            ),
+            const SizedBox(height: 14),
+            FiltroChips(
+              opciones: _lugares,
+              elegida: _lugar,
+              alElegir: (o) => setState(() => _lugar = o),
+            ),
+            const SizedBox(height: 8),
+            FiltroChips(
+              opciones: _tipos,
+              elegida: _tipo,
+              alElegir: (o) => setState(() => _tipo = o),
+            ),
+          ],
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,11 +140,18 @@ class _FeriaPaginaState extends State<FeriaPagina> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Cartelera', style: Tipografia.titulo),
+                  Expanded(
+                    child: Text(
+                      _dia == null ? 'Todo el programa' : _diaLargo(_dia!),
+                      style: Tipografia.titulo,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      '30 oct – 12 nov 2026',
+                      visibles.length == 1
+                          ? '1 evento'
+                          : '${visibles.length} eventos',
                       overflow: TextOverflow.ellipsis,
                       style: Tipografia.micro,
                     ),
@@ -112,13 +163,41 @@ class _FeriaPaginaState extends State<FeriaPagina> {
             if (_cargando)
               const Center(child: CircularProgressIndicator())
             else if (visibles.isEmpty)
-              const Vacio(texto: 'Sin eventos en este escenario todavía.')
+              Vacio(
+                texto:
+                    _lugar == 'Teatro del Pueblo' ||
+                        _tipo == 'Religioso' ||
+                        _tipo == 'Deportivo'
+                    ? 'El programa de ${_tipo != 'Todos' ? _tipo.toLowerCase() : _lugar} se publica pronto.'
+                    : 'No hay eventos con estos filtros.',
+              )
             else
               Lateral(
                 child: Column(
                   children: [
                     for (final (i, e) in visibles.indexed) ...[
-                      if (i > 0) const SizedBox(height: 10),
+                      // En "todo el programa" se agrupan por dia.
+                      if (_dia == null &&
+                          (i == 0 ||
+                              !DateUtils.isSameDay(
+                                visibles[i - 1].fecha,
+                                e.fecha,
+                              )))
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top: i == 0 ? 0 : 14,
+                            bottom: 8,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _diaLargo(e.fecha).toUpperCase(),
+                              style: Tipografia.etiqueta,
+                            ),
+                          ),
+                        )
+                      else if (i > 0)
+                        const SizedBox(height: 10),
                       _TarjetaEvento(evento: e, alTocar: () => _abrirEvento(e)),
                     ],
                   ],
@@ -166,7 +245,127 @@ class _FeriaPaginaState extends State<FeriaPagina> {
   }
 }
 
-/// Control segmentado "Plaza principal | Plaza de Toros".
+const _diasSemana = [
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+];
+const _mesesLargos = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+String _diaLargo(DateTime d) =>
+    '${_diasSemana[d.weekday - 1]} ${d.day} de ${_mesesLargos[d.month - 1]}';
+
+/// "Todo · JUE 30 · VIE 31 · SÁB 1 …" con scroll horizontal.
+class _TiraDias extends StatelessWidget {
+  const _TiraDias({
+    required this.dias,
+    required this.elegido,
+    required this.alElegir,
+  });
+
+  final List<DateTime> dias;
+  final DateTime? elegido;
+  final ValueChanged<DateTime?> alElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final hoy = DateUtils.dateOnly(DateTime.now());
+    Widget celda({
+      required bool activa,
+      required VoidCallback alTocar,
+      required Widget hijo,
+    }) => GestureDetector(
+      onTap: alTocar,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 54,
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: activa ? primary : Colores.fondoSutil,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: hijo,
+      ),
+    );
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
+      child: Row(
+        children: [
+          celda(
+            activa: elegido == null,
+            alTocar: () => alElegir(null),
+            hijo: Center(
+              child: Text(
+                'Todo',
+                style: Tipografia.subtitulo.copyWith(
+                  color: elegido == null ? Colors.white : Colores.textoPrimario,
+                ),
+              ),
+            ),
+          ),
+          for (final d in dias) ...[
+            const SizedBox(width: 8),
+            celda(
+              activa: elegido != null && DateUtils.isSameDay(d, elegido),
+              alTocar: () => alElegir(d),
+              hijo: Builder(
+                builder: (context) {
+                  final activa =
+                      elegido != null && DateUtils.isSameDay(d, elegido);
+                  final color = activa ? Colors.white : Colores.textoPrimario;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateUtils.isSameDay(d, hoy)
+                            ? 'HOY'
+                            : _diasSemana[d.weekday - 1]
+                                  .substring(0, 3)
+                                  .toUpperCase(),
+                        style: Tipografia.micro.copyWith(
+                          color: activa
+                              ? Colors.white70
+                              : Colores.textoSecundario,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${d.day}',
+                        style: Tipografia.titulo.copyWith(color: color),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Control segmentado (Srita. Teocaltiche | Miss Chiquitita).
 class _Segmentos extends StatelessWidget {
   const _Segmentos({
     required this.opciones,
@@ -284,7 +483,7 @@ class _TarjetaEvento extends StatelessWidget {
                   Text('Con ${e.artista}', style: Tipografia.leyenda),
                 ],
                 const SizedBox(height: 5),
-                Text(e.lugarYHora, style: Tipografia.micro),
+                Text('${e.tipo} · ${e.lugarYHora}', style: Tipografia.micro),
                 const SizedBox(height: 5),
                 Pastilla(texto: texto, fondo: fondo, color: color),
               ],
