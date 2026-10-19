@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { collection, doc, getFirestore, type Firestore } from "firebase/firestore";
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -27,5 +27,16 @@ if (firebaseListo) {
 export const auth = _auth;
 export const db = _db;
 
-export const MUNICIPIO_ID = process.env.NEXT_PUBLIC_MUNICIPIO_ID || "teocaltiche";
-export const MUNICIPIO_NOMBRE = process.env.NEXT_PUBLIC_MUNICIPIO_NOMBRE || "Teocaltiche";
+/* ─── Municipio de la sesión ────────────────────────────────
+   Sale del custom claim `municipioId` del token (lib/auth.tsx), nunca de
+   la URL ni de algo que mande el cliente. Ver docs/arquitectura-multimunicipio.md.
+   En modo demo se usa el municipio de ejemplo. */
+let municipio = "demo";
+
+export const municipioId = () => municipio;
+export function fijarMunicipio(id: string) { municipio = id; }
+
+/** Colección dentro del municipio: municipios/{id}/{ruta…} */
+export const coleccion = (ruta: string, ...resto: string[]) => collection(_db!, "municipios", municipio, ruta, ...resto);
+/** Documento dentro del municipio: municipios/{id}/{ruta…} */
+export const documento = (ruta: string, ...resto: string[]) => doc(_db!, "municipios", municipio, ruta, ...resto);

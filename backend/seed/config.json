@@ -1,0 +1,163 @@
+{
+  "colonias": {
+    "_todo": "Faltan los centroides (lat/lng): se marcan en el panel, Administración → Colonias y barrios.",
+    "lista": [
+      {
+        "id": "teocaltiche-centro",
+        "nombre": "Teocaltiche Centro",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "el-nejayote",
+        "nombre": "El Nejayote",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Barrio tradicional"
+      },
+      {
+        "id": "el-tanque",
+        "nombre": "El Tanque",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Barrio tradicional"
+      },
+      {
+        "id": "el-santuario",
+        "nombre": "El Santuario",
+        "zona": "Centro y zonas tradicionales",
+        "tipo": "Barrio tradicional"
+      },
+      {
+        "id": "bellavista",
+        "nombre": "Bellavista",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "ctm-los-organos",
+        "nombre": "CTM (Los Órganos)",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "colinas-de-la-cruz",
+        "nombre": "Colinas de la Cruz",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "san-miguel-norte",
+        "nombre": "San Miguel Norte",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "san-miguel-sur",
+        "nombre": "San Miguel Sur",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "tavares",
+        "nombre": "Tavares",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "los-angeles",
+        "nombre": "Los Ángeles",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "los-arcos",
+        "nombre": "Los Arcos",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "maravillas",
+        "nombre": "Maravillas",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "arboledas",
+        "nombre": "Arboledas",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Fraccionamiento"
+      },
+      {
+        "id": "magisterial",
+        "nombre": "Magisterial",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "san-pedro",
+        "nombre": "San Pedro",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Colonia"
+      },
+      {
+        "id": "lomas-de-teocaltiche",
+        "nombre": "Lomas de Teocaltiche",
+        "zona": "Colonias y fraccionamientos",
+        "tipo": "Fraccionamiento"
+      }
+    ]
+  },
+  "emergencias": {
+    "_todo": "PLACEHOLDER. Confirmar CADA numero con el ayuntamiento antes de publicar: un telefono de emergencia equivocado es peor que no tenerlo.",
+    "lista": [
+      {
+        "id": "emergencias",
+        "nombre": "Emergencias",
+        "telefono": "911"
+      },
+      {
+        "id": "policia",
+        "nombre": "Policia Municipal",
+        "telefono": "TODO"
+      },
+      {
+        "id": "cruz-roja",
+        "nombre": "Cruz Roja",
+        "telefono": "TODO"
+      },
+      {
+        "id": "proteccion",
+        "nombre": "Proteccion Civil",
+        "telefono": "TODO"
+      },
+      {
+        "id": "sapas",
+        "nombre": "SAPAS (agua)",
+        "telefono": "TODO"
+      }
+    ]
+  },
+  "feria": {
+    "_todo": "PLACEHOLDER. Confirmar nombre y fechas con el ayuntamiento.",
+    "nombre": "Feria de Noviembre",
+    "inicio": "",
+    "fin": ""
+  },
+  "catalogos": {
+    "_todo": "PLACEHOLDER. Escenarios, escuelas y templos reales del municipio.",
+    "escenarios": [],
+    "escuelas": [],
+    "templos": [],
+    "dependencias": [
+      "Presidencia",
+      "Agua Potable",
+      "Obras Públicas",
+      "Comunicación Social",
+      "Protección Civil",
+      "Registro Civil",
+      "DIF",
+      "Catastro",
+      "Tesorería",
+      "Secretaría General"
+    ]
+  }
+}

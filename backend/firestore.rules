@@ -1,0 +1,277 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore — MiTeocal / plataforma multi-municipio.
+//
+// Principio: el municipio de una persona SIEMPRE se lee del custom claim del
+// token, nunca de un parámetro que mande el cliente. Ver
+// docs/arquitectura-multimunicipio.md §4 y §5.
+//
+// Recordatorio al editar: cuando varios bloques `match` coinciden con la misma
+// ruta, Firestore concede el acceso si CUALQUIERA lo permite. Por eso aquí no
+// hay comodines de lectura abierta: cada colección pública se enumera a mano.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Ayudas ────────────────────────────────────────────────────────────
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // .get(clave, default) evita que la regla truene cuando el claim no existe
+    // todavía — por ejemplo, entre que alguien se registra y la Function le
+    // asigna su municipio.
+    function claim(nombre) {
+      return autenticado() ? request.auth.token.get(nombre, '') : '';
+    }
+
+    function delMunicipio(mid) {
+      return claim('municipioId') == mid;
+    }
+
+    function esFuncionario(mid) {
+      return delMunicipio(mid) && claim('rol') in ['funcionario', 'admin'];
+    }
+
+    function esAdmin(mid) {
+      return delMunicipio(mid) && claim('rol') == 'admin';
+    }
+
+    // Único rol que cruza municipios. Somos nosotros.
+    function esPlataforma() {
+      return claim('rol') == 'plataforma';
+    }
+
+    function esDuenoDe(datos) {
+      return autenticado() && datos.uid == request.auth.uid;
+    }
+
+    // Una actualización que solo toca estos campos (el resto queda igual)
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+    }
+
+    // ─── Municipios ────────────────────────────────────────────────────────
+
+    match /municipios/{mid} {
+
+      // Público a propósito: la app necesita nombre, escudo y tema ANTES de
+      // que alguien inicie sesión.
+      allow read:  if true;
+      allow write: if esPlataforma();
+
+      // Colonias y directorio de emergencias.
+      match /config/{doc} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      // ── Contenido público del municipio ──
+      // Se enumera colección por colección. NO agregar un comodín aquí: uno
+      // solo con `allow read: if true` volvería públicos los reportes.
+
+      match /agua/{fecha} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /rutasBasura/{rutaId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /noticias/{noticiaId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      // Las métricas (ventas de qboard.mx, contactos de la app) y la calificación
+      // las escribe el servidor: el panel no puede inflarle las ventas a nadie.
+      match /comercios/{comercioId} {
+        allow read:   if true;
+        allow create: if esFuncionario(mid)
+                      && !request.resource.data.keys().hasAny(['metricas', 'calificacion', 'resenas']);
+        allow update: if esFuncionario(mid)
+                      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['metricas', 'calificacion', 'resenas']);
+        allow delete: if false;   // se ocultan con activo = false
+      }
+
+      match /obras/{obraId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      match /eventos/{eventoId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
+      // ── Reportes ciudadanos ──
+      // Un vecino ve los suyos; el funcionario ve los de su municipio.
+
+      match /reportes/{folio} {
+        allow create: if delMunicipio(mid)
+                      && esDuenoDe(request.resource.data)
+                      && request.resource.data.estado == 'recibido';
+
+        allow read:   if esFuncionario(mid)
+                      || (delMunicipio(mid) && esDuenoDe(resource.data));
+
+        // El vecino no edita su reporte una vez enviado; lo atiende el municipio.
+        allow update: if esFuncionario(mid);
+
+        // Un reporte es evidencia: se cierra, no se desaparece.
+        allow delete: if false;
+      }
+
+      // ═══ Colecciones del panel (panel_nodex) ═════════════════════════════
+
+      // ── Historial y bitácora: inmutables ──
+      // Toda publicación del panel queda aquí aunque además tenga un espejo
+      // en agua/, noticias/ u obras/. Una corrección es una publicación nueva.
+      match /publicaciones/{id} {
+        allow read:   if esFuncionario(mid)
+                      || (resource.data.canal == 'publico' && resource.data.publicarEn <= request.time);
+        allow create: if esFuncionario(mid) && request.resource.data.autorUid == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /auditoria/{id} {
+        allow read:   if esFuncionario(mid);
+        allow create: if esFuncionario(mid);
+        allow update, delete: if false;
+      }
+
+      // Cola de notificaciones: el panel encola, una Cloud Function envía con
+      // el Admin SDK y marca el resultado. El cliente nunca la modifica.
+      match /notificaciones/{id} {
+        allow read:   if esFuncionario(mid);
+        allow create: if esFuncionario(mid) && request.resource.data.estado == 'pendiente';
+        allow update, delete: if false;
+      }
+
+      // ── Feria ──
+      match /candidatas/{id} {
+        allow read:           if true;
+        allow create, update: if esFuncionario(mid);
+        allow delete:         if false;
+      }
+
+      match /certamenes/{id} {
+        allow read:           if true;
+        allow create, update: if esFuncionario(mid);
+        allow delete:         if false;
+      }
+
+      // Un voto por vecino y certamen: el id ES `<certamen>_<uid>`, así un
+      // segundo voto choca con el primero. Solo con la votación abierta.
+      match /votos/{id} {
+        allow create: if delMunicipio(mid)
+                      && esDuenoDe(request.resource.data)
+                      && id == request.resource.data.certamen + '_' + request.auth.uid
+                      && get(/databases/$(database)/documents/municipios/$(mid)/certamenes/$(request.resource.data.certamen)).data.votacionAbierta == true;
+        allow read:   if esFuncionario(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
+        allow update, delete: if false;
+      }
+
+      match /transmisiones/{id} {
+        allow read:           if true;
+        allow create, update: if esFuncionario(mid);
+        allow delete:         if false;
+      }
+
+      match /registrosPaisanos/{id} {
+        allow create: if delMunicipio(mid) && esDuenoDe(request.resource.data);
+        allow read:   if esFuncionario(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
+        allow update, delete: if false;
+      }
+
+      // ── Pagos (simulados por ahora) ──
+      // El personal solo registra ventas de taquilla. Los pagos en línea los
+      // creará una Cloud Function al confirmar la pasarela, nunca el cliente.
+      match /pagos/{id} {
+        allow read:   if esFuncionario(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
+        allow create: if esFuncionario(mid) && request.resource.data.canal == 'taquilla';
+        // Compra de prueba desde el panel: siempre marcada, nunca cuenta como venta
+        allow create: if esFuncionario(mid) && request.resource.data.canal == 'simulacion'
+                      && request.resource.data.simulado == true;
+        allow update: if esFuncionario(mid) && soloCambia(['usado', 'usadoEn', 'estado']);
+        allow delete: if false;
+      }
+
+      // Calificaciones de la app: traen nombre y colonia, son del CRM (admin).
+      match /calificaciones/{id} {
+        allow create: if delMunicipio(mid) && esDuenoDe(request.resource.data);
+        allow read:   if esAdmin(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
+        allow update: if esAdmin(mid) && soloCambia(['respuesta']);
+        allow delete: if false;
+      }
+
+      // ── Escuelas ──
+      // Públicas: el papá las busca y las sigue. `seguidores` lo mantiene una
+      // Cloud Function; el panel no lo puede alterar.
+      match /escuelas/{id} {
+        allow read:   if true;
+        allow create: if esFuncionario(mid) && !request.resource.data.keys().hasAny(['seguidores']);
+        allow update: if esFuncionario(mid)
+                      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['seguidores']);
+        allow delete: if false;   // se ocultan con activa = false
+      }
+
+      // ── Trámites y citas ──
+      match /tramites/{id} {
+        allow read:           if resource.data.activo == true || esFuncionario(mid);
+        allow create, update: if esFuncionario(mid);
+        allow delete:         if false;   // se ocultan con activo = false
+      }
+
+      match /agendas/{id} {
+        allow read:           if true;    // la app calcula los horarios libres
+        allow create, update: if esFuncionario(mid);
+        allow delete:         if false;
+      }
+
+      match /solicitudes/{id} {
+        allow create: if delMunicipio(mid) && esDuenoDe(request.resource.data)
+                      && request.resource.data.estado == 'recibida';
+        allow create: if esFuncionario(mid) && request.resource.data.canal == 'ventanilla';
+        allow read:   if esFuncionario(mid) || (delMunicipio(mid) && esDuenoDe(resource.data));
+        allow update: if esFuncionario(mid)
+                      && soloCambia(['estado', 'documentos', 'notas', 'pago', 'cita', 'actualizadoEn']);
+        // El vecino solo vuelve a subir documentos cuando se los piden
+        allow update: if delMunicipio(mid) && esDuenoDe(resource.data)
+                      && resource.data.estado == 'falta_documento'
+                      && request.resource.data.estado == 'recibida'
+                      && soloCambia(['documentos', 'estado', 'actualizadoEn']);
+        allow delete: if false;
+      }
+    }
+
+    // ─── Usuarios ──────────────────────────────────────────────────────────
+    // Vive en la raíz, no dentro del municipio: una persona puede mudarse y
+    // Firebase Auth ya es global. El vínculo lo lleva el campo municipioId.
+
+    match /usuarios/{uid} {
+
+      allow read: if autenticado()
+                  && (request.auth.uid == uid || esAdmin(resource.data.municipioId));
+
+      // `rol` y `municipioId` NUNCA los escribe el cliente: son espejo de los
+      // custom claims y solo los pone una Cloud Function con el Admin SDK.
+      // Sin esto, cualquiera se asciende a admin editando su propio perfil.
+      allow create: if autenticado()
+                    && request.auth.uid == uid
+                    && !request.resource.data.keys().hasAny(['rol', 'municipioId']);
+
+      // Lista blanca a proposito, no lista negra: si manana alguien agrega un
+      // campo sensible al perfil, queda cerrado por omision en vez de abierto.
+      allow update: if autenticado()
+                    && request.auth.uid == uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['nombre', 'telefono', 'colonia', 'fcmTokens']);
+
+      allow delete: if false;
+    }
+  }
+}

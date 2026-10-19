@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { cfg } from "@/lib/config";
 
 /**
  * Puente manual a redes sociales.
@@ -16,7 +17,8 @@ export default function CompartirRedes({
 }: { titulo: string; cuerpo: string; colonia: string }) {
   const [copiado, setCopiado] = useState<string | null>(null);
 
-  const texto = `${titulo.toUpperCase()}\n\n${cuerpo}\n\nConsulta el estado en tiempo real en la app Nodex.\n\n#${colonia.replace(/\s/g, "")} #Teocaltiche`;
+  const hashtag = (t: string) => `#${t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, "")}`;
+  const texto = `${titulo.toUpperCase()}\n\n${cuerpo}\n\nConsulta el estado en tiempo real en la app.\n\n${hashtag(colonia)} ${cfg().nombre ? hashtag(cfg().nombre) : ""}`.trim();
 
   async function copiar(destino: string) {
     try {

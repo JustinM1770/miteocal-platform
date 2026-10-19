@@ -1,3 +1,6 @@
+import { cfg } from "./config";
+import { firebaseListo } from "./firebase";
+
 /* Mapas (Mapbox). Las coordenadas van como { lng, lat } porque Firestore
    no acepta arreglos anidados. */
 
@@ -5,11 +8,18 @@ export interface Punto { lng: number; lat: number }
 
 export const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-/** Centro del municipio de esta instalación (lng,lat). Teocaltiche por defecto. */
-export const CENTRO: Punto = (() => {
-  const [lng, lat] = (process.env.NEXT_PUBLIC_MUNICIPIO_CENTRO ?? "-102.5764,21.4271").split(",").map(Number);
-  return { lng, lat };
-})();
+/**
+ * Centro del mapa: promedio de los centroides de las colonias del municipio
+ * (config/colonias). Si no tienen coordenadas, NEXT_PUBLIC_MUNICIPIO_CENTRO
+ * ("lng,lat"); si tampoco, el centro de México.
+ */
+export function centro(): Punto {
+  const con = cfg().colonias.filter((c) => typeof c.lat === "number" && typeof c.lng === "number");
+  if (con.length) return { lng: con.reduce((s, c) => s + c.lng!, 0) / con.length, lat: con.reduce((s, c) => s + c.lat!, 0) / con.length };
+  const env = process.env.NEXT_PUBLIC_MUNICIPIO_CENTRO;
+  if (env) { const [lng, lat] = env.split(",").map(Number); if (!isNaN(lng) && !isNaN(lat)) return { lng, lat }; }
+  return firebaseListo ? { lng: -102.55, lat: 23.63 } : { lng: -102.5764, lat: 21.4271 };
+}
 
 /** Une los puntos siguiendo las calles (Mapbox Directions, perfil de manejo) */
 export async function trazarPorCalles(puntos: Punto[]): Promise<{ trazo: Punto[]; metros: number } | null> {

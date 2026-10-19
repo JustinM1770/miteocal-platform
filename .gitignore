@@ -1,6 +1,6 @@
 # ==========================================================
 # MiTeocal Platform — .gitignore
-# Stack: Flutter (mobile_app) · Node.js (backend) · React/Vite (admin_panel) · Firebase
+# Stack: Flutter (mobile_app) · Node.js (backend) · Next.js (panel_nodex) · Firebase
 # ==========================================================
 
 # ----------------------------------------------------------
@@ -79,7 +79,7 @@ emulator-data/
 .runtimeconfig.json
 
 # ----------------------------------------------------------
-# 3. NODE.JS  (backend / admin_panel)
+# 3. NODE.JS  (backend / panel_nodex)
 # ----------------------------------------------------------
 node_modules/
 jspm_packages/
@@ -222,3 +222,14 @@ temp/
 *.pid
 *.seed
 *.swn
+
+# Firebase — emulador y artefactos locales
+*-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+database-debug.log
+.firebase/
+backend/seed/.datos/
+node_modules/

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { pesos } from "@/lib/almacen";
 import {
-  CATEGORIAS, ESCENARIOS, FERIA, guardarEvento, listarEventos, listarPagos, vendidos,
+  CATEGORIAS, escenarios, feria, guardarEvento, listarEventos, listarBoletos, vendidos,
   type CategoriaEvento, type Evento, type Pago, type Zona,
 } from "@/lib/feria";
 
@@ -28,7 +28,7 @@ export default function Programa() {
   const [nuevo, setNuevo] = useState(false);
 
   const cargar = useCallback(async () => {
-    const [e, p] = await Promise.all([listarEventos(), listarPagos()]);
+    const [e, p] = await Promise.all([listarEventos(), listarBoletos()]);
     setEventos(e); setPagos(p);
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
@@ -109,8 +109,8 @@ function NuevoEvento({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
   const { sesion } = useAuth();
   const [categoria, setCategoria] = useState<CategoriaEvento>("concierto");
   const [titulo, setTitulo] = useState("");
-  const [escenario, setEscenario] = useState(ESCENARIOS[0]);
-  const [fecha, setFecha] = useState(FERIA.inicio);
+  const [escenario, setEscenario] = useState(escenarios()[0] ?? "");
+  const [fecha, setFecha] = useState(feria().inicio || new Date().toLocaleDateString("en-CA"));
   const [hora, setHora] = useState("21:00");
   const [descripcion, setDescripcion] = useState("");
   const [libre, setLibre] = useState(false);
@@ -118,7 +118,7 @@ function NuevoEvento({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
   const [transmitir, setTransmitir] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  const listo = titulo.trim() && fecha && hora && (libre || zonas.every((z) => z.nombre && z.precio > 0 && z.cupo > 0));
+  const listo = titulo.trim() && escenario && fecha && hora && (libre || zonas.every((z) => z.nombre && z.precio > 0 && z.cupo > 0));
   const cat = CATEGORIAS[categoria];
   const cambiarZona = (i: number, c: Partial<Zona>) => setZonas((l) => l.map((z, j) => (j === i ? { ...z, ...c } : z)));
 
@@ -147,12 +147,13 @@ function NuevoEvento({ onCerrar, onGuardado }: { onCerrar: () => void; onGuardad
               <div className="field grow">
                 <label className="section-label">ESCENARIO</label>
                 <select className="select" value={escenario} onChange={(e) => setEscenario(e.target.value)}>
-                  {ESCENARIOS.map((s) => <option key={s}>{s}</option>)}
+                  {escenarios().map((s) => <option key={s}>{s}</option>)}
+                  {escenarios().length === 0 && <option value="">Agrega escenarios en Administración → Municipio</option>}
                 </select>
               </div>
               <div className="field" style={{ width: 160 }}>
                 <label className="section-label">FECHA</label>
-                <input className="input" type="date" min={FERIA.inicio} max={FERIA.fin} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+                <input className="input" type="date" min={feria().inicio || undefined} max={feria().fin || undefined} value={fecha} onChange={(e) => setFecha(e.target.value)} />
               </div>
               <div className="field" style={{ width: 120 }}>
                 <label className="section-label">HORA</label>

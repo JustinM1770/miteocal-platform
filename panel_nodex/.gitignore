@@ -8,3 +8,5 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 .DS_Store
+.vercel
+.env*.local

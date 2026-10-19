@@ -298,10 +298,22 @@ a { color: var(--brand); text-decoration: none; }
 
 .spinner-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: var(--sec); }
 
+.hamburguesa { display: none; padding: 6px 10px; font-size: 16px; }
+.sidebar-fondo { display: none; }
+
 @media (max-width: 900px) {
-  .sidebar { display: none; }
+  /* El menú se vuelve un cajón que abre el botón ☰ de la barra superior */
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 60; transform: translateX(-100%); transition: transform 0.2s; }
+  .sidebar.abierta { transform: none; box-shadow: 8px 0 30px rgba(0,0,0,0.25); }
+  .sidebar-fondo { display: block; position: fixed; inset: 0; background: rgba(5, 8, 13, 0.4); z-index: 55; }
+  .hamburguesa { display: inline-flex; }
+  .solo-escritorio { display: none; }
+  .topbar { padding: 0 14px; }
+  .content { padding: 16px 14px 28px; }
   .row { flex-direction: column; }
-  .row > * { width: 100%; }
+  .row > * { width: 100% !important; flex-basis: auto !important; }
+  .tabla { display: block; overflow-x: auto; }
+  .drawer { width: 100%; }
 }
 
 /* ─── Vista previa tipo teléfono (calca las pantallas del Figma MiTeocal) ── */
@@ -436,3 +448,11 @@ button.dia { cursor: pointer; }
 .mapa-vacio { width: 100%; border-radius: var(--r-lg); background: var(--subtle); display: grid; place-items: center; color: var(--sec); font-size: 13px; text-align: center; padding: 20px; }
 .pin-mapa { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; cursor: pointer; font-family: inherit; }
 .mapboxgl-popup-content { border-radius: 10px; padding: 10px 12px; font-family: inherit; box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+
+/* Foco visible para quien navega con teclado */
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+tr.click:focus-visible td { background: var(--brand-soft); }
+
+/* Columnas numéricas: encabezado y cifras alineados a la derecha, angostas;
+   la primera columna (el nombre) se queda con el espacio sobrante */
+.tabla th.num, .tabla td.num { text-align: right; width: 1%; white-space: nowrap; padding-left: 28px; padding-right: 4px; }

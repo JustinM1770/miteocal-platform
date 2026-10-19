@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Pestanas } from "@/components/graficas";
-import { COLONIAS } from "@/lib/datos";
-import { listarVecinos, type Vecino } from "@/lib/vecinos";
+import SubirImagen from "@/components/SubirImagen";
+import { aSlug } from "@/lib/config";
+import { alcanceDe, colonias } from "@/lib/config";
 import {
   CERTAMENES, cambiarCertamen, guardarCandidata, listarCandidatas, listarCertamenes, listarVotos,
   type Candidata, type Certamen, type EstadoCertamen, type Voto,
@@ -19,13 +20,12 @@ export default function Reinas() {
   const [cands, setCands] = useState<Candidata[]>([]);
   const [estados, setEstados] = useState<EstadoCertamen[]>([]);
   const [votos, setVotos] = useState<Voto[]>([]);
-  const [vecinos, setVecinos] = useState<Vecino[]>([]);
   const [nueva, setNueva] = useState(false);
   const [confirmarGanadora, setConfirmarGanadora] = useState<Candidata | null>(null);
 
   const cargar = useCallback(async () => {
-    const [c, e, v, n] = await Promise.all([listarCandidatas(), listarCertamenes(), listarVotos(), listarVecinos()]);
-    setCands([...c]); setEstados([...e]); setVotos(v); setVecinos(n);
+    const [c, e, v] = await Promise.all([listarCandidatas(), listarCertamenes(), listarVotos()]);
+    setCands([...c]); setEstados([...e]); setVotos(v);
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -35,8 +35,8 @@ export default function Reinas() {
   const total = votosC.length;
   const cuenta = (id: string) => votosC.filter((v) => v.candidataId === id).length;
   const orden = [...lista].sort((a, b) => cuenta(b.id!) - cuenta(a.id!));
-  const vecinoDe = new Map(vecinos.map((v) => [v.id, v]));
-  const participacion = Math.round((total / Math.max(1, vecinos.length)) * 100);
+  const conApp = alcanceDe(null);
+  const participacion = conApp ? Math.round((total / conApp) * 100) : null;
 
   return (
     <>
@@ -51,7 +51,7 @@ export default function Reinas() {
               <span className={`pill ${estado.ganadoraId ? "publico" : estado.votacionAbierta ? "activo" : "sin_dato"}`}>
                 {estado.ganadoraId ? "GANADORA PUBLICADA" : estado.votacionAbierta ? "VOTACIÓN ABIERTA" : "VOTACIÓN CERRADA"}
               </span>
-              <strong>{total.toLocaleString("es-MX")} votos · {participacion}% de los vecinos</strong>
+              <strong>{total.toLocaleString("es-MX")} votos{participacion !== null ? ` · ${participacion}% de los vecinos` : ""}</strong>
             </div>
             <span className="muted" style={{ fontSize: 13 }}>
               Un voto por cuenta verificada por SMS. Cierra el {new Date(estado.cierraEn).toLocaleString("es-MX", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.
@@ -76,8 +76,8 @@ export default function Reinas() {
           const ganadora = estado?.ganadoraId === c.id;
           return (
             <div key={c.id} className="card col" style={{ gap: 10, padding: 14, borderColor: ganadora ? "var(--brand)" : undefined, borderWidth: ganadora ? 2 : 1 }}>
-              <div className="foto-cand" style={{ background: c.color, position: "relative" }}>
-                {iniciales(c.nombre)}
+              <div className="foto-cand" style={{ background: c.foto ? `center/cover url(${c.foto})` : c.color, position: "relative" }}>
+                {!c.foto && iniciales(c.nombre)}
                 {i === 0 && total > 0 && !ganadora && <span className="tag naranja" style={{ position: "absolute", top: 8, left: 8 }}>Va en 1.º</span>}
                 {ganadora && <span className="tag azul" style={{ position: "absolute", top: 8, left: 8 }}>♛ Ganadora</span>}
               </div>
@@ -111,13 +111,13 @@ export default function Reinas() {
               <tr><th>COLONIA</th>{orden.map((c) => <th key={c.id} className="num">{c.nombre.split(" ")[0].toUpperCase()}</th>)}<th className="num">PAISANOS</th><th className="num">TOTAL</th></tr>
             </thead>
             <tbody>
-              {COLONIAS.map((col) => {
-                const vs = votosC.filter((v) => vecinoDe.get(v.vecinoId)?.colonia === col.nombre);
+              {colonias().map((col) => {
+                const vs = votosC.filter((v) => v.colonia === col.nombre);
                 return (
                   <tr key={col.nombre}>
                     <td><strong>{col.nombre}</strong></td>
                     {orden.map((c) => <td key={c.id} className="num">{vs.filter((v) => v.candidataId === c.id).length}</td>)}
-                    <td className="num muted">{vs.filter((v) => vecinoDe.get(v.vecinoId)?.tipo === "paisano").length}</td>
+                    <td className="num muted">{vs.filter((v) => v.tipo === "paisano").length}</td>
                     <td className="num"><strong>{vs.length}</strong></td>
                   </tr>
                 );
@@ -156,9 +156,10 @@ function NuevaCandidata({ certamen, onCerrar, onGuardar }: {
 }) {
   const [nombre, setNombre] = useState("");
   const [edad, setEdad] = useState(certamen === "reina" ? 18 : 6);
-  const [representa, setRepresenta] = useState(COLONIAS[0].nombre);
+  const [representa, setRepresenta] = useState(colonias()[0]?.nombre ?? "");
   const [semblanza, setSemblanza] = useState("");
   const [color, setColor] = useState(COLORES[0]);
+  const [foto, setFoto] = useState("");
   const rango = certamen === "reina" ? [17, 25] : [4, 9];
   const listo = nombre.trim() && semblanza.trim() && edad >= rango[0] && edad <= rango[1];
 
@@ -174,25 +175,27 @@ function NuevaCandidata({ certamen, onCerrar, onGuardar }: {
               <input className="input" type="number" min={rango[0]} max={rango[1]} value={edad} onChange={(e) => setEdad(+e.target.value)} /></div>
             <div className="field grow"><label className="section-label">REPRESENTA A</label>
               <select className="select" value={representa} onChange={(e) => setRepresenta(e.target.value)}>
-                {COLONIAS.map((c) => <option key={c.nombre}>{c.nombre}</option>)}
+                {colonias().map((c) => <option key={c.id}>{c.nombre}</option>)}
                 <option>Hijos Ausentes</option>
               </select></div>
           </div>
           <span className="muted" style={{ fontSize: 12 }}>Edad permitida: {rango[0]} a {rango[1]} años.</span>
           <div className="field"><label className="section-label">SEMBLANZA</label>
             <textarea className="textarea" value={semblanza} onChange={(e) => setSemblanza(e.target.value)} placeholder="Una o dos frases: estudios, a qué se dedica, qué la representa." /></div>
-          <div className="field"><label className="section-label">FOTO</label>
-            <div className="row" style={{ gap: 8, alignItems: "center" }}>
-              {COLORES.map((c) => (
-                <button key={c} type="button" aria-label="Color de fondo" onClick={() => setColor(c)}
-                  style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2px solid var(--brand)" : "1px solid var(--border)" }} />
-              ))}
-              <span className="muted" style={{ fontSize: 12 }}>La foto se sube cuando el almacenamiento de Firebase esté activo.</span>
-            </div></div>
+          <SubirImagen carpeta="candidatas" id={aSlug(nombre || "candidata")} valor={foto} onCambio={setFoto} etiqueta="Foto" />
+          {!foto && (
+            <div className="field"><label className="section-label">COLOR DE FONDO SIN FOTO</label>
+              <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                {COLORES.map((c) => (
+                  <button key={c} type="button" aria-label="Color de fondo" onClick={() => setColor(c)}
+                    style={{ width: 28, height: 28, borderRadius: 8, background: c, border: color === c ? "2px solid var(--brand)" : "1px solid var(--border)" }} />
+                ))}
+              </div></div>
+          )}
           <div className="row" style={{ justifyContent: "flex-end", gap: 10 }}>
             <button className="btn ghost" type="button" onClick={onCerrar}>Cancelar</button>
             <button className="btn primary" type="button" disabled={!listo}
-              onClick={() => onGuardar({ certamen, nombre: nombre.trim(), edad, representa, semblanza: semblanza.trim(), color })}>
+              onClick={() => onGuardar({ certamen, nombre: nombre.trim(), edad, representa, semblanza: semblanza.trim(), color, ...(foto ? { foto } : {}) })}>
               Registrar candidata
             </button>
           </div>
@@ -202,7 +205,7 @@ function NuevaCandidata({ certamen, onCerrar, onGuardar }: {
           <div className="phone">
             <div className="phone-head"><span className="back">‹</span><div><strong>{CERTAMENES[certamen]}</strong><span>Vota por tu favorita</span></div></div>
             <div className="acard" style={{ padding: 10 }}>
-              <div className="foto-cand" style={{ background: color, height: 110 }}>{nombre ? iniciales(nombre) : "?"}</div>
+              <div className="foto-cand" style={{ background: foto ? `center/cover url(${foto})` : color, height: 110 }}>{!foto && (nombre ? iniciales(nombre) : "?")}</div>
               <span className="t">{nombre || "Nombre"}</span>
               <span className="s">{edad} años · {representa}</span>
               <span className="s">{semblanza || "Semblanza"}</span>

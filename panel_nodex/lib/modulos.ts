@@ -1,4 +1,5 @@
 import type { Canal, Tipo } from "./datos";
+import { cfg } from "./config";
 
 /* ─── Módulos ───────────────────────────────────────────────
    Cada pantalla de la app ciudadana (Figma MiTeocal) que se
@@ -13,8 +14,9 @@ export interface Campo {
   clave: string;
   etiqueta: string;
   /** seg = botones de color (como los chips de la app); dias = L M X J V S D */
-  tipo: "texto" | "area" | "fecha" | "hora" | "select" | "seg" | "dias" | "colonia" | "tel" | "url" | "tramo";
-  opciones?: string[];
+  tipo: "texto" | "area" | "fecha" | "hora" | "select" | "seg" | "dias" | "colonia" | "tel" | "url" | "tramo" | "imagen";
+  /** fijas, o leídas de la configuración del municipio al momento de mostrarse */
+  opciones?: string[] | (() => string[]);
   /** color de cada opción de un seg, en el mismo orden: azul, rojo, naranja, verde, morado, gris */
   colores?: string[];
   placeholder?: string;
@@ -111,7 +113,7 @@ export const MODULOS: Modulo[] = [
     slug: "escuelas", tipo: "escuela", canal: "publico", nombre: "Escuelas", pantalla: "16 · Escuelas",
     descripcion: "Suspensiones y avisos. Solo los reciben los papás que siguen esa escuela.",
     campos: [
-      { clave: "escuela", etiqueta: "Escuela", tipo: "select", opciones: ["CBTIS 247", "Secundaria Federal 20", "Primaria Benito Juárez", "Primaria Rafael Ramírez", "Jardín de Niños Rosaura Zapata"] },
+      { clave: "escuela", etiqueta: "Escuela", tipo: "select", opciones: () => cfg().escuelas, ayuda: "Las escuelas se dan de alta en Servicios → Escuelas." },
       { clave: "categoria", etiqueta: "Tipo de aviso", tipo: "seg", opciones: ["Suspensión de clases", "Aviso", "Examen de ingreso", "Evento"], colores: ["rojo", "azul", "verde", "morado"] },
       { clave: "fecha", etiqueta: "Fecha", tipo: "fecha" },
       { clave: "mensaje", etiqueta: "Mensaje", tipo: "area", placeholder: "Viernes 16: no hay clases por junta de consejo técnico." },
@@ -128,7 +130,7 @@ export const MODULOS: Modulo[] = [
       { clave: "titulo", etiqueta: "Titular", tipo: "texto", placeholder: "Rehabilitación de calle Benito Juárez inicia el lunes" },
       { clave: "fuente", etiqueta: "Fuente", tipo: "texto", opcional: true, placeholder: "Obras Públicas" },
       { clave: "mensaje", etiqueta: "Nota", tipo: "area", placeholder: "Dos o tres párrafos cortos." },
-      { clave: "imagen", etiqueta: "Imagen (URL)", tipo: "url", opcional: true },
+      { clave: "imagen", etiqueta: "Imagen", tipo: "imagen", opcional: true },
       COLONIA_OPC,
     ],
     caducaHoras: null, notificarPorDefecto: false, accion: "Publicar nota",
@@ -138,7 +140,7 @@ export const MODULOS: Modulo[] = [
     slug: "parroquia", tipo: "parroquia", canal: "publico", nombre: "Avisos parroquiales", pantalla: "02 · Noticias y Comunidad",
     descripcion: "Misas y avisos de los templos del municipio.",
     campos: [
-      { clave: "templo", etiqueta: "Templo", tipo: "select", opciones: ["Parroquia de San Miguel Arcángel", "Templo de El Señor de Las Maravillas"] },
+      { clave: "templo", etiqueta: "Templo", tipo: "select", opciones: () => cfg().catalogos.templos },
       { clave: "titulo", etiqueta: "Aviso", tipo: "texto", placeholder: "Misa dominical" },
       { clave: "fecha", etiqueta: "Fecha", tipo: "fecha" },
       { clave: "hora", etiqueta: "Hora", tipo: "hora" },
@@ -201,22 +203,10 @@ export const MODULOS: Modulo[] = [
     resumen: (d) => d.categoria ?? "",
   },
   {
-    slug: "directorio", tipo: "contacto", canal: "publico", nombre: "Directorio de emergencia", pantalla: "04 · Servicios · Emergencias",
-    descripcion: "Teléfonos que el vecino puede marcar con un toque. Verifícalos cada mes.",
-    campos: [
-      { clave: "titulo", etiqueta: "Nombre", tipo: "texto", placeholder: "Cruz Roja" },
-      { clave: "telefono", etiqueta: "Teléfono", tipo: "tel" },
-      { clave: "categoria", etiqueta: "Categoría", tipo: "seg", opciones: ["Emergencias", "Seguridad", "Salud", "Servicios"], colores: ["naranja", "azul", "rojo", "verde"] },
-      { clave: "mensaje", etiqueta: "Horario o nota", tipo: "texto", placeholder: "Atención 24 horas." },
-    ],
-    caducaHoras: null, notificarPorDefecto: false, accion: "Guardar contacto",
-    resumen: (d) => unir(d.categoria, d.telefono),
-  },
-  {
     slug: "avisos-internos", tipo: "aviso_interno", canal: "interno", nombre: "Avisos internos", pantalla: "Solo panel",
     descripcion: "Para el personal del ayuntamiento. No sale a la app.",
     campos: [
-      { clave: "area", etiqueta: "Para", tipo: "select", opciones: ["Todas", "Agua Potable", "Obras Públicas", "Comunicación Social", "Protección Civil"] },
+      { clave: "area", etiqueta: "Para", tipo: "select", opciones: () => ["Todas", ...cfg().catalogos.dependencias] },
       { clave: "prioridad", etiqueta: "Prioridad", tipo: "seg", opciones: ["Normal", "Urgente"], colores: ["gris", "rojo"] },
       { clave: "titulo", etiqueta: "Asunto", tipo: "texto", placeholder: "Junta de dependencias del viernes" },
       { clave: "mensaje", etiqueta: "Mensaje", tipo: "area" },
@@ -238,3 +228,6 @@ export const MODULOS: Modulo[] = [
 ];
 
 export const moduloPorSlug = (slug: string) => MODULOS.find((m) => m.slug === slug);
+
+/** Opciones de un campo, resolviendo las que dependen de la configuración */
+export const opcionesDe = (c: Campo): string[] => (typeof c.opciones === "function" ? c.opciones() : c.opciones ?? []);

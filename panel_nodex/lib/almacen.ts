@@ -1,10 +1,13 @@
 import {
-  collection, getDocs, query, where, addDoc, updateDoc, doc, Timestamp,
+  getDocs, query, addDoc, updateDoc, setDoc, orderBy, limit, startAfter, where,
+  getCountFromServer, runTransaction, Timestamp, writeBatch,
+  type QueryConstraint, type QueryDocumentSnapshot, type DocumentData,
 } from "firebase/firestore";
-import { db, firebaseListo, MUNICIPIO_ID } from "./firebase";
+import { coleccion, db, documento, firebaseListo, municipioId } from "./firebase";
 
-/* Lectura y escritura genérica para las colecciones de feria, pagos y
-   vecinos. En modo demo trabaja sobre el arreglo en memoria que se le pasa. */
+/* Lectura y escritura genérica para las colecciones del municipio
+   (municipios/{id}/{col}). En modo demo trabaja sobre el arreglo en
+   memoria que se le pasa. */
 
 export type Fecha = Date | Timestamp;
 
@@ -13,19 +16,57 @@ export function f(v: Fecha | null | undefined): Date {
   return v instanceof Date ? v : v.toDate();
 }
 
-export async function leer<T extends { id?: string }>(col: string, demo: T[]): Promise<T[]> {
+/** Tope de seguridad: ninguna pantalla trae una colección completa sin límite */
+export const MAX_LECTURA = 2000;
+
+export async function leer<T extends { id?: string }>(
+  col: string, demo: T[], opciones: { orden?: string; max?: number; filtros?: [string, unknown][] } = {},
+): Promise<T[]> {
   if (!firebaseListo || !db) return demo;
-  const snap = await getDocs(query(collection(db, col), where("municipioId", "==", MUNICIPIO_ID)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as T));
+  const restricciones: QueryConstraint[] = (opciones.filtros ?? []).map(([c, v]) => where(c, "==", v));
+  if (opciones.orden) restricciones.push(orderBy(opciones.orden, "desc"));
+  restricciones.push(limit(opciones.max ?? MAX_LECTURA));
+  const snap = await getDocs(query(coleccion(col), ...restricciones));
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as T));
 }
 
-export async function crear<T extends { id?: string }>(col: string, demo: T[], data: Omit<T, "id">): Promise<T> {
+export interface Pagina<T> { items: T[]; cursor: QueryDocumentSnapshot<DocumentData> | null; hayMas: boolean }
+
+/** Página de una colección ordenada; `cursor` es el último documento de la página anterior */
+export async function leerPagina<T extends { id?: string }>(
+  col: string, demo: T[], orden: string, n: number, cursor: QueryDocumentSnapshot<DocumentData> | null,
+  filtros: [string, unknown][] = [],
+): Promise<Pagina<T>> {
+  if (!firebaseListo || !db) return { items: demo, cursor: null, hayMas: false };
+  const r: QueryConstraint[] = [...filtros.map(([c, v]) => where(c, "==", v)), orderBy(orden, "desc")];
+  if (cursor) r.push(startAfter(cursor));
+  r.push(limit(n));
+  const snap = await getDocs(query(coleccion(col), ...r));
+  return {
+    items: snap.docs.map((d) => ({ ...d.data(), id: d.id } as T)),
+    cursor: snap.docs[snap.docs.length - 1] ?? null,
+    hayMas: snap.docs.length === n,
+  };
+}
+
+/** Cuenta en el servidor, sin descargar documentos */
+export async function contar<T>(col: string, demo: T[], filtros: [string, unknown][] = []): Promise<number> {
   if (!firebaseListo || !db) {
-    const nuevo = { ...data, id: `${col}-${Date.now()}` } as T;
+    return demo.filter((x) => filtros.every(([c, v]) => (x as Record<string, unknown>)[c] === v)).length;
+  }
+  const snap = await getCountFromServer(query(coleccion(col), ...filtros.map(([c, v]) => where(c, "==", v))));
+  return snap.data().count;
+}
+
+export async function crear<T extends { id?: string }>(col: string, demo: T[], data: Omit<T, "id">, id?: string): Promise<T> {
+  if (!firebaseListo || !db) {
+    const nuevo = { ...data, id: id ?? `${col}-${Date.now()}-${Math.round(Math.random() * 1e6)}` } as T;
     demo.unshift(nuevo);
     return nuevo;
   }
-  const ref = await addDoc(collection(db, col), { ...data, municipioId: MUNICIPIO_ID });
+  const datos = { ...data, municipioId: municipioId() };
+  if (id) { await setDoc(documento(col, id), datos); return { ...data, id } as T; }
+  const ref = await addDoc(coleccion(col), datos);
   return { ...data, id: ref.id } as T;
 }
 
@@ -35,7 +76,52 @@ export async function actualizar<T extends { id?: string }>(col: string, demo: T
     if (x) Object.assign(x, cambios);
     return;
   }
-  await updateDoc(doc(db, col, id), cambios as Record<string, unknown>);
+  // `id` vive en la ruta, no en el documento
+  const { id: _omitido, ...resto } = cambios as Record<string, unknown>;
+  void _omitido;
+  await updateDoc(documento(col, id), resto);
+}
+
+/**
+ * Crea o actualiza varios documentos por id (merge): volver a importar el mismo
+ * renglón lo actualiza en vez de duplicarlo. Lotes de 400 (el límite es 500).
+ */
+export async function guardarVarios<T extends { id?: string }>(col: string, demo: T[], items: { id: string; datos: Partial<T> }[]): Promise<{ nuevos: number; actualizados: number }> {
+  let nuevos = 0, actualizados = 0;
+  if (!firebaseListo || !db) {
+    for (const { id, datos } of items) {
+      const x = demo.find((d) => d.id === id);
+      if (x) { Object.assign(x, datos); actualizados++; } else { demo.push({ ...datos, id } as T); nuevos++; }
+    }
+    return { nuevos, actualizados };
+  }
+  for (let i = 0; i < items.length; i += 400) {
+    const lote = writeBatch(db);
+    for (const { id, datos } of items.slice(i, i + 400)) lote.set(documento(col, id), { ...datos, municipioId: municipioId() }, { merge: true });
+    await lote.commit();
+  }
+  // En Firestore no se distingue sin leer antes; se reporta el total
+  return { nuevos: items.length, actualizados: 0 };
+}
+
+/* ─── Folios consecutivos ───────────────────────────────────
+   Mismo contador que usa la Cloud Function de reportes:
+   municipios/{id}/config/contadores, un campo por tipo. Se incrementa en una
+   transacción: dos taquillas al mismo tiempo nunca reciben el mismo folio. */
+const contadoresDemo: Record<string, number> = {};
+
+export async function siguienteFolio(tipo: string, prefijo: string, inicio = 10000): Promise<string> {
+  if (!firebaseListo || !db) {
+    contadoresDemo[tipo] = (contadoresDemo[tipo] ?? inicio) + 1;
+    return `${prefijo}-${contadoresDemo[tipo]}`;
+  }
+  const ref = documento("config", "contadores");
+  const n = await runTransaction(db, async (tx) => {
+    const actual = (await tx.get(ref)).get(tipo) ?? inicio;
+    tx.set(ref, { [tipo]: actual + 1 }, { merge: true });
+    return actual + 1;
+  });
+  return `${prefijo}-${n}`;
 }
 
 /** Generador pseudoaleatorio con semilla: los datos demo salen iguales en cada recarga */
@@ -56,3 +142,6 @@ export function azar(semilla: number) {
 
 export const pesos = (n: number, moneda = "MXN") =>
   n.toLocaleString("es-MX", { style: "currency", currency: moneda, maximumFractionDigits: 0 });
+
+/** Fecha local AAAA-MM-DD (la de un <input type="date">), sin desfase por UTC */
+export const diaLocal = (d: Date = new Date()) => d.toLocaleDateString("en-CA");

@@ -6,9 +6,12 @@ import { useAuth } from "@/lib/auth";
 import ModalConfirmar from "@/components/ModalConfirmar";
 import VistaApp, { type Item } from "@/components/VistaApp";
 import TramoMapa from "@/components/TramoMapa";
-import { moduloPorSlug, type Campo } from "@/lib/modulos";
+import SubirImagen from "@/components/SubirImagen";
+import { moduloPorSlug, opcionesDe, type Campo } from "@/lib/modulos";
+import { alcanceDe, coloniasDeZona, textoAlcance, zonas } from "@/lib/config";
+import { f } from "@/lib/almacen";
 import {
-  COLONIAS, ZONAS, alcanceDe, haceTexto, publicacionesDeTipo, publicar, type Publicacion,
+  haceTexto, publicacionesDeTipo, publicar, yaPublicada, type Publicacion,
 } from "@/lib/datos";
 
 const DEL_DOC = new Set(["titulo", "mensaje", "colonia"]);
@@ -33,9 +36,13 @@ export default function PaginaModulo() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  // Al cambiar de módulo se limpia el formulario
+  // Al cambiar de módulo se limpia el formulario; si llega ?campo=valor (p. ej. desde
+  // Escuelas → «Publicar aviso»), ese campo viene ya lleno
   useEffect(() => {
-    setValores({}); setNotificar(mod?.notificarPorDefecto ?? false);
+    const previos: Record<string, string> = {};
+    const q = new URLSearchParams(window.location.search);
+    for (const c of mod?.campos ?? []) { const v = q.get(c.clave); if (v) previos[c.clave] = v; }
+    setValores(previos); setNotificar(mod?.notificarPorDefecto ?? false);
     setProgramar(false); setCuando(""); setAviso(null);
   }, [mod]);
 
@@ -76,10 +83,10 @@ export default function PaginaModulo() {
       titulo, mensaje, horaEstimada: null,
       publicarEn: sale,
       caducaEn: mod!.caducaHoras ? new Date(+sale + mod!.caducaHoras * 3600_000) : null,
-      notificar: publico && conAviso, alcance: publico ? alcance : 0,
+      notificar: publico && conAviso, alcance: publico ? alcance : null,
       autorNombre: sesion!.nombre, autorUid: sesion!.uid,
       datos,
-    }, `Publicó en ${mod!.nombre}`);
+    }, { accion: `Publicó en ${mod!.nombre}` });
     setConfirmando(false);
     setValores({});
     setProgramar(false); setCuando("");
@@ -125,7 +132,7 @@ export default function PaginaModulo() {
                 <div className="col grow" style={{ gap: 2 }}>
                   <strong>Enviar notificación al teléfono</strong>
                   <span className="muted" style={{ fontSize: 13 }}>
-                    {alcance} vecinos recibirán una alerta. No se puede deshacer.
+                    Le llega una alerta a {textoAlcance(colonia)}. No se puede deshacer.
                   </span>
                 </div>
                 <button type="button" className={`toggle${notificar ? " on" : ""}`}
@@ -182,7 +189,8 @@ export default function PaginaModulo() {
           </div>
           <VistaApp mod={mod} items={[
             { titulo, mensaje, colonia, datos, creadoEn: new Date(), nuevo: true } satisfies Item,
-            ...lista.map((p) => ({ id: p.id, titulo: p.titulo, mensaje: p.mensaje, colonia: p.colonia, datos: p.datos ?? {}, creadoEn: p.creadoEn })),
+            // La app solo muestra lo que ya salió; las programadas aparecen abajo en la lista
+            ...lista.filter(yaPublicada).map((p) => ({ id: p.id, titulo: p.titulo, mensaje: p.mensaje, colonia: p.colonia, datos: p.datos ?? {}, creadoEn: p.creadoEn })),
           ]} />
           {programadoPara && (
             <span className="muted" style={{ fontSize: 12 }}>
@@ -208,9 +216,12 @@ export default function PaginaModulo() {
                   <span className="muted" style={{ fontSize: 12 }}>
                     {[mod.resumen?.(p.datos ?? {}), p.colonia].filter(Boolean).join(" · ") || p.mensaje}
                   </span>
-                  <span className="muted" style={{ fontSize: 11 }}>{haceTexto(p.creadoEn)} · {p.autorNombre}</span>
+                  <span className="muted" style={{ fontSize: 11 }}>
+                    {yaPublicada(p) ? haceTexto(p.publicarEn) : `Programada para el ${f(p.publicarEn).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`} · {p.autorNombre}
+                  </span>
                 </div>
-                {p.notificar && <span className="pill publico">NOTIFICADO</span>}
+                {!yaPublicada(p) && <span className="pill programado">PROGRAMADA</span>}
+                {yaPublicada(p) && p.notificar && <span className="pill publico">NOTIFICADO</span>}
               </div>
             ))}
           </div>
@@ -244,14 +255,14 @@ function CampoForm({ campo, valor, onCambio }: { campo: Campo; valor: string; on
       control = (
         <select className="select" value={valor} onChange={(e) => onCambio(e.target.value)}>
           <option value="">Elige una opción</option>
-          {campo.opciones!.map((o) => <option key={o} value={o}>{o}</option>)}
+          {opcionesDe(campo).map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
       );
       break;
     case "seg":
       control = (
         <div className="seg">
-          {campo.opciones!.map((o, i) => (
+          {opcionesDe(campo).map((o, i) => (
             <button key={o} type="button" className={valor === o ? `on ${campo.colores?.[i] ?? "azul"}` : ""}
               onClick={() => onCambio(valor === o && campo.opcional ? "" : o)}>{o}</button>
           ))}
@@ -272,6 +283,9 @@ function CampoForm({ campo, valor, onCambio }: { campo: Campo; valor: string; on
       );
       break;
     }
+    case "imagen":
+      // La subida tiene su propia etiqueta y avance
+      return <SubirImagen carpeta="noticias" id={`pub-${new Date().toISOString().slice(0, 10)}`} valor={valor} onCambio={onCambio} etiqueta={campo.etiqueta} />;
     case "tramo":
       control = <TramoMapa valor={valor} onCambio={onCambio} />;
       break;
@@ -279,9 +293,12 @@ function CampoForm({ campo, valor, onCambio }: { campo: Campo; valor: string; on
       control = (
         <select className="select" value={valor} onChange={(e) => onCambio(e.target.value)}>
           <option value="">{campo.opcional ? "Todo el municipio" : "Elige una colonia"}</option>
-          {ZONAS.map((z) => (
+          {zonas().map((z) => (
             <optgroup key={z} label={z}>
-              {COLONIAS.filter((c) => c.zona === z).map((c) => <option key={c.nombre} value={c.nombre}>{c.nombre} · {c.vecinos} vecinos</option>)}
+              {coloniasDeZona(z).map((c) => {
+                const n = alcanceDe(c.nombre);
+                return <option key={c.id} value={c.nombre}>{c.nombre}{n !== null ? ` · ${n} vecinos` : ""}</option>;
+              })}
             </optgroup>
           ))}
         </select>
