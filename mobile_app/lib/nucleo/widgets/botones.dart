@@ -49,10 +49,14 @@ class BotonPrimario extends StatelessWidget {
                   Icon(icono, size: 17, color: Colores.textoInverso),
                 if (cargando || icono != null)
                   const SizedBox(width: Medidas.e8),
-                Text(
-                  texto,
-                  style: Tipografia.cuerpo.copyWith(
-                    color: Colores.textoInverso,
+                Flexible(
+                  child: Text(
+                    texto,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tipografia.cuerpo.copyWith(
+                      color: Colores.textoInverso,
+                    ),
                   ),
                 ),
               ],

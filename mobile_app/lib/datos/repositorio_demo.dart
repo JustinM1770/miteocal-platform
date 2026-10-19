@@ -479,26 +479,100 @@ class RepositorioDemo implements Repositorio {
       30,
       'Inauguración · Certamen Srita. Teocaltiche',
       artista: 'Mario Bautista',
+      tipo: 'Certamen',
+      descripcion:
+          'Arranca la feria con la elección de Srita. Teocaltiche 2026 y la presentación de Mario Bautista.',
     ),
     _plaza(
       'e02',
       31,
       'Certamen Miss Chiquitita',
       artista: 'Tributo Las Guerreras del K-pop',
+      tipo: 'Certamen',
+      descripcion:
+          'Las niñas del municipio compiten por la corona de Miss Chiquitita. Después, tributo a Las Guerreras del K-pop.',
     ),
-    _plaza('e03', 1, 'Los Cadetes de Linares'),
-    _plaza('e04', 2, 'Talentos Locales'),
-    _plaza('e05', 3, 'Talentos Locales'),
-    _plaza('e06', 4, 'Talentos Locales'),
-    _toros('e07', 5, 'Jaripeo con Ulises Quintero'),
-    _toros('e08', 6, 'Lenin Ramírez'),
-    _toros('e09', 7, 'La Adictiva'),
-    _toros('e10', 8, 'La Arrolladora Banda El Limón'),
-    _plaza('e11', 9, 'La Sonora Dinamita'),
-    _plaza('e12', 10, 'Banda La Fresa'),
-    _plaza('e13', 11, 'Joss Favela'),
-    _plaza('e14', 12, 'Talentos Locales'),
+    _plaza(
+      'e03',
+      1,
+      'Los Cadetes de Linares',
+      descripcion: 'Música norteña en la plaza principal.',
+    ),
+    _plaza(
+      'e04',
+      2,
+      'Talentos Locales',
+      tipo: 'Cultural',
+      descripcion: _talentos,
+    ),
+    _plaza(
+      'e05',
+      3,
+      'Talentos Locales',
+      tipo: 'Cultural',
+      descripcion: _talentos,
+    ),
+    _plaza(
+      'e06',
+      4,
+      'Talentos Locales',
+      tipo: 'Cultural',
+      descripcion: _talentos,
+    ),
+    _toros(
+      'e07',
+      5,
+      'Jaripeo con Ulises Quintero',
+      tipo: 'Jaripeo',
+      descripcion: 'Jaripeo y música en la Plaza de Toros.',
+    ),
+    _toros(
+      'e08',
+      6,
+      'Lenin Ramírez',
+      descripcion: 'Concierto en la Plaza de Toros.',
+    ),
+    _toros(
+      'e09',
+      7,
+      'La Adictiva',
+      descripcion: 'Banda sinaloense en la Plaza de Toros.',
+    ),
+    _toros(
+      'e10',
+      8,
+      'La Arrolladora Banda El Limón',
+      descripcion: 'Banda sinaloense en la Plaza de Toros.',
+    ),
+    _plaza(
+      'e11',
+      9,
+      'La Sonora Dinamita',
+      descripcion: 'Cumbia en la plaza principal.',
+    ),
+    _plaza(
+      'e12',
+      10,
+      'Banda La Fresa',
+      descripcion: 'Banda en la plaza principal.',
+    ),
+    _plaza(
+      'e13',
+      11,
+      'Joss Favela',
+      descripcion: 'Concierto en la plaza principal.',
+    ),
+    _plaza(
+      'e14',
+      12,
+      'Talentos Locales',
+      tipo: 'Cultural',
+      descripcion: 'Cierre de la feria con artistas de Teocaltiche.',
+    ),
   ];
+
+  static const _talentos =
+      'Artistas de Teocaltiche en el escenario de la plaza.';
 
   static DateTime _dia(int d) => DateTime(2026, d >= 30 ? 10 : 11, d);
 
@@ -508,10 +582,14 @@ class RepositorioDemo implements Repositorio {
     int dia,
     String titulo, {
     String artista = '',
+    String tipo = 'Musical',
+    String descripcion = '',
   }) => EventoFeria(
     id: id,
     titulo: titulo,
     artista: artista,
+    tipo: tipo,
+    descripcion: descripcion,
     fecha: _dia(dia),
     hora: '',
     lugar: 'Plaza principal',
@@ -520,9 +598,17 @@ class RepositorioDemo implements Repositorio {
   );
 
   /// Con costo en la Plaza de Toros.
-  static EventoFeria _toros(String id, int dia, String titulo) => EventoFeria(
+  static EventoFeria _toros(
+    String id,
+    int dia,
+    String titulo, {
+    String tipo = 'Musical',
+    String descripcion = '',
+  }) => EventoFeria(
     id: id,
     titulo: titulo,
+    tipo: tipo,
+    descripcion: descripcion,
     fecha: _dia(dia),
     hora: '',
     lugar: 'Plaza de Toros',

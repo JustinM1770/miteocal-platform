@@ -3,12 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../datos/modelos/contenido.dart';
-import '../../datos/modelos/perfil.dart';
 import '../../datos/repositorio.dart';
 import '../../datos/sesion.dart';
 import '../../nucleo/tema/tema.dart';
-import '../../nucleo/widgets/botones.dart';
 import '../../nucleo/widgets/comunes.dart';
+import 'evento_pagina.dart';
 
 /// 05 · Feria: cartelera por escenario, mapa del recinto y pase digital.
 ///
@@ -50,15 +49,16 @@ class _FeriaPaginaState extends State<FeriaPagina> {
   }
 
   Future<void> _abrirEvento(EventoFeria e) async {
-    final comprado = await showModalBottomSheet<Pase>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      backgroundColor: Colores.fondoTarjeta,
-      builder: (_) => _HojaEvento(
-        evento: e,
-        repo: _repo,
-        perfil: context.read<Sesion>().perfil,
+    final mismaNoche = _eventos
+        .where((x) => x.id != e.id && DateUtils.isSameDay(x.fecha, e.fecha))
+        .toList();
+    final comprado = await Navigator.of(context).push<Pase>(
+      MaterialPageRoute(
+        builder: (_) => EventoPagina(
+          evento: e,
+          mismaNoche: mismaNoche,
+          municipio: widget.municipio,
+        ),
       ),
     );
     if (comprado == null || !mounted) return;
@@ -295,129 +295,6 @@ class _TarjetaEvento extends StatelessWidget {
             Text(_precio(e.precio), style: Tipografia.cuerpo),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _HojaEvento extends StatefulWidget {
-  const _HojaEvento({
-    required this.evento,
-    required this.repo,
-    required this.perfil,
-  });
-
-  final EventoFeria evento;
-  final Repositorio repo;
-  final Perfil? perfil;
-
-  @override
-  State<_HojaEvento> createState() => _HojaEventoState();
-}
-
-class _HojaEventoState extends State<_HojaEvento> {
-  bool _comprando = false;
-
-  Future<void> _comprar() async {
-    final perfil = widget.perfil;
-    if (perfil == null) return;
-    setState(() => _comprando = true);
-    try {
-      final pase = await widget.repo.comprarBoleto(widget.evento, perfil);
-      if (mounted) Navigator.of(context).pop(pase);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _comprando = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('No se pudo comprar: $e')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final e = widget.evento;
-    final (texto, fondo, color) = _etiquetaEvento(e);
-    const meses = [
-      'enero',
-      'febrero',
-      'marzo',
-      'abril',
-      'mayo',
-      'junio',
-      'julio',
-      'agosto',
-      'septiembre',
-      'octubre',
-      'noviembre',
-      'diciembre',
-    ];
-    final gratis = e.gratuito;
-    final agotado = e.disponibilidad == Disponibilidad.agotado;
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(e.titulo, style: Tipografia.tituloPantalla),
-            if (e.artista.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text('Con ${e.artista}', style: Tipografia.cuerpo),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              '${e.fecha.day} de ${meses[e.fecha.month - 1]} · ${e.lugarYHora}',
-              style: Tipografia.leyenda,
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                if (!gratis && e.precio != null)
-                  Pastilla(texto: texto, fondo: fondo, color: color),
-                const Spacer(),
-                Flexible(
-                  flex: 3,
-                  child: Text(
-                    gratis
-                        ? 'Entrada libre'
-                        : e.precio == null
-                        ? 'Precio por confirmar'
-                        : '${_precio(e.precio)} MXN',
-                    textAlign: TextAlign.end,
-                    style: Tipografia.titulo,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            if (gratis)
-              Text(
-                'Evento gratuito en ${e.lugar}. No necesitas boleto. ¡Te esperamos!',
-                style: Tipografia.leyenda,
-              )
-            else ...[
-              BotonPrimario(
-                texto: agotado
-                    ? 'Agotado'
-                    : e.precio == null
-                    ? 'Apartar boleto'
-                    : 'Comprar boleto · ${_precio(e.precio)}',
-                cargando: _comprando,
-                alPresionar: agotado ? null : _comprar,
-              ),
-              const SizedBox(height: 10),
-              Center(
-                child: Text(
-                  'Pago simulado para la demostración: no se cobra nada.',
-                  style: Tipografia.micro,
-                ),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

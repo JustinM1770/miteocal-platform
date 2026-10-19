@@ -278,11 +278,15 @@ class InterruptorAviso extends StatefulWidget {
     required this.titulo,
     required this.detalle,
     this.inicial = true,
+    this.sinMargen = false,
   });
 
   final String titulo;
   final String detalle;
   final bool inicial;
+
+  /// true cuando el padre ya aplica el margen de 20.
+  final bool sinMargen;
 
   @override
   State<InterruptorAviso> createState() => _InterruptorAvisoState();
@@ -293,34 +297,33 @@ class _InterruptorAvisoState extends State<InterruptorAviso> {
 
   @override
   Widget build(BuildContext context) {
-    return Lateral(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colores.soft,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.titulo, style: Tipografia.subtitulo),
-                  const SizedBox(height: 2),
-                  Text(widget.detalle, style: Tipografia.micro),
-                ],
-              ),
+    final fila = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colores.soft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.titulo, style: Tipografia.subtitulo),
+                const SizedBox(height: 2),
+                Text(widget.detalle, style: Tipografia.micro),
+              ],
             ),
-            Switch.adaptive(
-              value: _activo,
-              activeTrackColor: Theme.of(context).colorScheme.primary,
-              onChanged: (v) => setState(() => _activo = v),
-            ),
-          ],
-        ),
+          ),
+          Switch.adaptive(
+            value: _activo,
+            activeTrackColor: Theme.of(context).colorScheme.primary,
+            onChanged: (v) => setState(() => _activo = v),
+          ),
+        ],
       ),
     );
+    return widget.sinMargen ? fila : Lateral(child: fila);
   }
 }
 

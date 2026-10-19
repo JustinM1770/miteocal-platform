@@ -133,6 +133,9 @@ class EventoFeria {
     required this.escenario,
     required this.precio,
     this.artista = '',
+    this.tipo = 'Musical',
+    this.descripcion = '',
+    this.foto,
     this.disponibilidad = Disponibilidad.disponible,
   });
 
@@ -141,6 +144,13 @@ class EventoFeria {
 
   /// Artista invitado cuando el evento es un certamen ("con Mario Bautista").
   final String artista;
+
+  /// 'Musical' | 'Certamen' | 'Cultural' | 'Jaripeo' | 'Religioso' | 'Deportivo'
+  final String tipo;
+  final String descripcion;
+
+  /// Cartel o foto del artista (URL). null = degradado del tipo.
+  final String? foto;
   final DateTime fecha;
   final String hora;
   final String lugar;
@@ -170,6 +180,9 @@ class EventoFeria {
       escenario: _texto(m, 'escenario'),
       precio: (m['precio'] as num?)?.toInt(),
       artista: _texto(m, 'artista'),
+      tipo: _texto(m, 'tipo').isEmpty ? 'Musical' : _texto(m, 'tipo'),
+      descripcion: _texto(m, 'descripcion'),
+      foto: m['foto'] as String?,
       disponibilidad: quedan == null
           ? Disponibilidad.disponible
           : quedan <= 0

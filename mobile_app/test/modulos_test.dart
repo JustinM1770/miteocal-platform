@@ -124,8 +124,22 @@ void main() {
     final (repo, _) = await montar(tester, const FeriaPagina());
     await tester.tap(find.text('Joss Favela'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('No necesitas boleto'), findsOneWidget);
+    expect(find.text('Gratis'), findsOneWidget);
+    expect(find.text('Agregar a mi agenda'), findsOneWidget);
+    expect(find.text('Apartar boleto'), findsNothing);
     expect(repo.pases, isEmpty);
+
+    await tester.tap(find.text('Agregar a mi agenda'));
+    await tester.pumpAndSettle();
+    expect(find.text('En mi agenda'), findsOneWidget);
+  });
+
+  testWidgets('el certamen muestra el evento de esa misma noche', (tester) async {
+    await montar(tester, const FeriaPagina());
+    await tester.tap(find.text('Inauguración · Certamen Srita. Teocaltiche'));
+    await tester.pumpAndSettle();
+    expect(find.text('Con Mario Bautista'), findsOneWidget);
+    expect(find.text('CERTAMEN · PLAZA PRINCIPAL'), findsOneWidget);
   });
 
   testWidgets('votar por una candidata registra un solo voto por certamen', (
