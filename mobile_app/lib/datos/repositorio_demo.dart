@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/painting.dart' show Color;
+import 'package:latlong2/latlong.dart';
 
 import 'modelos/agua.dart';
 import 'modelos/colonia.dart';
@@ -729,9 +730,19 @@ class RepositorioDemo implements Repositorio {
         avanzaPor: 'Morelos',
         dias: dias,
         llegaA: c?.nombre ?? '',
+        trazo: _rutaHacia(LatLng(c?.lat ?? 21.4271, c?.lng ?? -102.5764)),
       ),
     );
   }
+
+  /// Recorrido de demo en forma de L que termina en el domicilio. La app lo
+  /// ajusta a las calles con Mapbox Directions cuando hay token.
+  static List<LatLng> _rutaHacia(LatLng casa) => [
+    LatLng(casa.latitude - 0.0055, casa.longitude - 0.0032),
+    LatLng(casa.latitude - 0.0018, casa.longitude - 0.0032),
+    LatLng(casa.latitude - 0.0018, casa.longitude + 0.0006),
+    casa,
+  ];
 
   /// "Martes y viernes, 7:00 hrs" → [2, 5]
   static List<int> _diasDeBasura(String texto) {
@@ -752,8 +763,8 @@ class RepositorioDemo implements Repositorio {
   }
 
   @override
-  Future<List<Cierre>> cierres() => _tras(const [
-    Cierre(
+  Future<List<Cierre>> cierres() => _tras([
+    const Cierre(
       id: 'o1',
       tipo: TipoCierre.total,
       calle: 'Calle Zaragoza',
@@ -761,8 +772,9 @@ class RepositorioDemo implements Repositorio {
       vigencia: 'Hasta el 7 de noviembre',
       distanciaM: 350,
       rutaAlterna: 'Toma Morelos y regresa por Hidalgo.',
+      trazo: [LatLng(21.4277, -102.5790), LatLng(21.4277, -102.5764)],
     ),
-    Cierre(
+    const Cierre(
       id: 'o2',
       tipo: TipoCierre.obra,
       calle: 'Av. Juárez',
@@ -770,8 +782,9 @@ class RepositorioDemo implements Repositorio {
       vigencia: 'Hasta el 20 de noviembre',
       distanciaM: 700,
       rutaAlterna: 'Usa el carril sur con precaución.',
+      trazo: [LatLng(21.4300, -102.5752), LatLng(21.4300, -102.5722)],
     ),
-    Cierre(
+    const Cierre(
       id: 'o3',
       tipo: TipoCierre.temporal,
       calle: 'Calles del centro',
@@ -779,6 +792,7 @@ class RepositorioDemo implements Repositorio {
       vigencia: '8 de noviembre, 10:00 a 14:00',
       distanciaM: 900,
       rutaAlterna: 'Circula por el libramiento.',
+      trazo: [LatLng(21.4262, -102.5771), LatLng(21.4249, -102.5771)],
     ),
   ]);
 

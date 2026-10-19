@@ -45,7 +45,7 @@ void abrirModulo(
       direccion: direccion,
       alReportar: alReportarBasura,
     ),
-    Modulo.cierres => CierresPagina(direccion: direccion),
+    Modulo.cierres => CierresPagina(direccion: direccion, colonia: colonia),
     Modulo.escuelas => EscuelasPagina(municipio: nombre),
     Modulo.feria => FeriaPagina(municipio: nombre),
     Modulo.paisanos => PaisanosPagina(municipio: nombre),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../datos/modelos/colonia.dart';
@@ -6,6 +8,7 @@ import '../../datos/modelos/contenido.dart';
 import '../../datos/repositorio.dart';
 import '../../nucleo/tema/tema.dart';
 import '../../nucleo/widgets/comunes.dart';
+import '../../nucleo/widgets/mapa.dart';
 
 /// 14 · Basura en vivo
 ///
@@ -33,9 +36,20 @@ class BasuraPagina extends StatefulWidget {
 class _BasuraPaginaState extends State<BasuraPagina>
     with SingleTickerProviderStateMixin {
   late final Repositorio _repo = context.read<Repositorio>();
-  late final Future<RutaBasura?> _ruta = _repo.rutaBasura(
-    widget.colonia?.id ?? '',
-  );
+
+  /// Recorrido ajustado a las calles (Mapbox Directions).
+  List<LatLng> _calles = const [];
+
+  late final Future<RutaBasura?> _ruta = _cargarRuta();
+
+  Future<RutaBasura?> _cargarRuta() async {
+    final r = await _repo.rutaBasura(widget.colonia?.id ?? '');
+    if (r != null && r.trazo.length >= 2) {
+      final calles = await trazarPorCalles(r.trazo);
+      if (mounted) setState(() => _calles = calles);
+    }
+    return r;
+  }
 
   // Demo: el camion recorre la ruta en un ciclo para que se vea "en vivo".
   late final AnimationController _avance = AnimationController(
@@ -62,37 +76,9 @@ class _BasuraPaginaState extends State<BasuraPagina>
               : '${r.nombre} · ${r.unidad}',
           hijos: [
             Lateral(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(Medidas.radioModulo),
-                child: SizedBox(
-                  height: 296,
-                  child: AnimatedBuilder(
-                    animation: _avance,
-                    builder: (context, _) => CustomPaint(
-                      painter: _MapaRuta(
-                        avance: r?.minutos == null ? 0 : _avance.value,
-                      ),
-                      child: Stack(
-                        children: [
-                          const Positioned(
-                            left: 66,
-                            top: 95,
-                            child: _Marcador(texto: 'Tu casa'),
-                          ),
-                          if (r?.minutos != null)
-                            Positioned(
-                              left: 196,
-                              top: 26,
-                              child: _Marcador(
-                                texto: 'Llega ~${_horaLlegada(r!.minutos!)}',
-                                verde: true,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+              child: AnimatedBuilder(
+                animation: _avance,
+                builder: (context, _) => _mapa(r),
               ),
             ),
             if (r != null)
@@ -177,6 +163,106 @@ class _BasuraPaginaState extends State<BasuraPagina>
           ],
         );
       },
+    );
+  }
+
+  Widget _mapa(RutaBasura? r) {
+    final enRuta = r?.minutos != null;
+    final trazo = _calles.length >= 2
+        ? _calles
+        : (r?.trazo ?? const <LatLng>[]);
+    final casa = trazo.isNotEmpty ? trazo.last : centroMunicipio;
+    final camion = puntoEnRuta(trazo, 0.25 + 0.65 * _avance.value);
+    return MapaMunicipio(
+      centro: trazo.isEmpty
+          ? casa
+          : LatLng(
+              (trazo.first.latitude + casa.latitude) / 2,
+              (trazo.first.longitude + casa.longitude) / 2,
+            ),
+      zoom: 15,
+      alto: 296,
+      trazos: [
+        if (trazo.length >= 2)
+          Polyline(
+            points: trazo,
+            strokeWidth: 5,
+            color: Colores.exito.withValues(alpha: 0.85),
+          ),
+      ],
+      marcadores: [
+        Marker(
+          point: casa,
+          width: 90,
+          height: 56,
+          alignment: Alignment.topCenter,
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              EtiquetaMapa(texto: 'Tu casa'),
+              SizedBox(height: 4),
+              PuntoMapa(color: Colores.primary),
+            ],
+          ),
+        ),
+        if (enRuta && trazo.length >= 2)
+          Marker(
+            point: camion,
+            width: 110,
+            height: 64,
+            alignment: Alignment.topCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EtiquetaMapa(
+                  texto: 'Llega ~${_horaLlegada(r!.minutos!)}',
+                  fondo: Colores.exito,
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 4),
+                const PuntoMapa(
+                  color: Colores.exito,
+                  tam: 28,
+                  icono: LucideIcons.truck,
+                ),
+              ],
+            ),
+          ),
+      ],
+      respaldo: _ilustracion(r),
+    );
+  }
+
+  Widget _ilustracion(RutaBasura? r) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(Medidas.radioModulo),
+      child: SizedBox(
+        height: 296,
+        child: AnimatedBuilder(
+          animation: _avance,
+          builder: (context, _) => CustomPaint(
+            painter: _MapaRuta(avance: r?.minutos == null ? 0 : _avance.value),
+            child: Stack(
+              children: [
+                const Positioned(
+                  left: 66,
+                  top: 95,
+                  child: _Marcador(texto: 'Tu casa'),
+                ),
+                if (r?.minutos != null)
+                  Positioned(
+                    left: 196,
+                    top: 26,
+                    child: _Marcador(
+                      texto: 'Llega ~${_horaLlegada(r!.minutos!)}',
+                      verde: true,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

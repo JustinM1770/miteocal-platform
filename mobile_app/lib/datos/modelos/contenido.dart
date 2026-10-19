@@ -3,6 +3,7 @@
 // tumbar la pantalla, se muestra vacio.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:latlong2/latlong.dart';
 
 DateTime _fecha(dynamic v) {
   if (v is Timestamp) return v.toDate();
@@ -302,6 +303,7 @@ class RutaBasura {
     required this.avanzaPor,
     required this.dias,
     this.llegaA = '',
+    this.trazo = const [],
   });
 
   final String nombre;
@@ -315,6 +317,9 @@ class RutaBasura {
   /// 1 = lunes … 7 = domingo (DateTime.weekday).
   final List<int> dias;
   final String llegaA;
+
+  /// Recorrido de la unidad por las calles (del primer punto al domicilio).
+  final List<LatLng> trazo;
 }
 
 // ─── 15 · Cierres y obras ─────────────────────────────────────────────────
@@ -330,6 +335,7 @@ class Cierre {
     required this.vigencia,
     this.distanciaM,
     this.rutaAlterna = '',
+    this.trazo = const [],
   });
 
   final String id;
@@ -339,6 +345,9 @@ class Cierre {
   final String vigencia;
   final int? distanciaM;
   final String rutaAlterna;
+
+  /// Tramo cerrado, como lo dibuja el panel (obras/{id}.geo).
+  final List<LatLng> trazo;
 
   bool get esObra => tipo == TipoCierre.obra;
 
@@ -357,6 +366,10 @@ class Cierre {
       detalle: _texto(m, 'descripcion'),
       vigencia: fin.isNotEmpty ? 'Hasta el $fin' : _texto(m, 'inicio'),
       rutaAlterna: _texto(m, 'rutaAlterna'),
+      trazo: [
+        for (final g in (m['geo'] as List?) ?? const [])
+          if (g is GeoPoint) LatLng(g.latitude, g.longitude),
+      ],
     );
   }
 }

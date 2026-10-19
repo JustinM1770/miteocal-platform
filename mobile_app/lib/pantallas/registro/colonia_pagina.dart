@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +12,7 @@ import '../../nucleo/tema/tema.dart';
 import '../../nucleo/widgets/botones.dart';
 import '../../nucleo/widgets/campos.dart';
 import '../../nucleo/widgets/hoja_colonias.dart';
+import '../../nucleo/widgets/mapa.dart';
 import 'flujo_registro.dart';
 
 /// 12 · Colonia detectada
@@ -112,7 +114,45 @@ class _ColoniaPaginaState extends State<ColoniaPagina> {
       contenido: [
         const Align(alignment: Alignment.centerLeft, child: Progreso(paso: 3)),
         const SizedBox(height: 24),
-        const _MiniMapa(),
+        Builder(
+          builder: (context) {
+            final p = widget.borrador.punto;
+            final col = _colonia;
+            final centro = col != null && col.tieneCentro
+                ? LatLng(col.lat!, col.lng!)
+                : p != null
+                ? LatLng(p.lat, p.lng)
+                : centroMunicipio;
+            return MapaMunicipio(
+              // La clave fuerza a recentrar cuando cambia la colonia.
+              key: ValueKey(centro),
+              centro: centro,
+              zoom: 15.5,
+              alto: 178,
+              interactivo: false,
+              marcadores: [
+                Marker(
+                  point: centro,
+                  width: 58,
+                  height: 58,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.18),
+                    ),
+                    alignment: Alignment.center,
+                    child: PuntoMapa(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+              respaldo: const _MiniMapa(),
+            );
+          },
+        ),
         const SizedBox(height: 24),
         Text(
           titulo,

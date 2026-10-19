@@ -1,29 +1,96 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../datos/modelos/contenido.dart';
 import '../../datos/repositorio.dart';
 import '../../nucleo/tema/tema.dart';
+import '../../datos/modelos/colonia.dart';
 import '../../nucleo/widgets/comunes.dart';
+import '../../nucleo/widgets/mapa.dart';
 
 /// 15 · Cierres y obras
 ///
 /// TODO(Mapbox): el mapa es la ilustracion del Figma. Con datos reales se
 /// dibujan los trazos que el panel guarda en obras/{id}.geo.
 class CierresPagina extends StatefulWidget {
-  const CierresPagina({super.key, this.direccion = ''});
+  const CierresPagina({super.key, this.direccion = '', this.colonia});
 
   final String direccion;
+
+  /// Centroide de la colonia del vecino ("Tu domicilio" en el mapa).
+  final Colonia? colonia;
 
   @override
   State<CierresPagina> createState() => _CierresPaginaState();
 }
 
 class _CierresPaginaState extends State<CierresPagina> {
-  late final Future<List<Cierre>> _cierres = context
-      .read<Repositorio>()
-      .cierres();
+  late final Future<List<Cierre>> _cierres = _cargar();
+
+  /// Trazos ajustados a las calles, por id de cierre.
+  final Map<String, List<LatLng>> _calles = {};
+
+  Future<List<Cierre>> _cargar() async {
+    final lista = await context.read<Repositorio>().cierres();
+    for (final c in lista.where((c) => c.trazo.length >= 2)) {
+      trazarPorCalles(c.trazo).then((t) {
+        if (mounted) setState(() => _calles[c.id] = t);
+      });
+    }
+    return lista;
+  }
+
+  static Color colorDe(Cierre c) =>
+      c.esObra ? const Color(0xFFD98A1A) : const Color(0xFFD93A3A);
+
+  Widget _mapa(List<Cierre> visibles, Widget ilustracion) {
+    final col = widget.colonia;
+    final casa = col != null && col.tieneCentro
+        ? LatLng(col.lat!, col.lng!)
+        : centroMunicipio;
+    return MapaMunicipio(
+      centro: casa,
+      zoom: 15.3,
+      alto: 240,
+      trazos: [
+        for (final c in visibles)
+          if ((_calles[c.id] ?? c.trazo).length >= 2)
+            Polyline(
+              points: _calles[c.id] ?? c.trazo,
+              strokeWidth: 7,
+              color: colorDe(c).withValues(alpha: 0.85),
+            ),
+      ],
+      marcadores: [
+        for (final c in visibles)
+          if (c.trazo.length >= 2)
+            Marker(
+              point: puntoEnRuta(_calles[c.id] ?? c.trazo, 0.5),
+              width: 26,
+              height: 26,
+              child: PuntoMapa(color: colorDe(c), tam: 24),
+            ),
+        Marker(
+          point: casa,
+          width: 110,
+          height: 56,
+          alignment: Alignment.topCenter,
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              EtiquetaMapa(texto: 'Tu domicilio'),
+              SizedBox(height: 4),
+              PuntoMapa(color: Colores.primary),
+            ],
+          ),
+        ),
+      ],
+      respaldo: ilustracion,
+    );
+  }
+
   String _filtro = 'Todos';
 
   @override
@@ -44,48 +111,51 @@ class _CierresPaginaState extends State<CierresPagina> {
               : 'Cerca de tu domicilio',
           hijos: [
             Lateral(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(Medidas.radioModulo),
-                child: SizedBox(
-                  height: 218,
-                  child: CustomPaint(
-                    painter: _MapaCierres(cierres: todos),
-                    child: Align(
-                      alignment: Alignment.bottomLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(10, 6, 11, 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(999),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x1F000000),
-                                blurRadius: 6,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(
-                                  color: Colores.primary,
-                                  shape: BoxShape.circle,
+              child: _mapa(
+                visibles,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(Medidas.radioModulo),
+                  child: SizedBox(
+                    height: 218,
+                    child: CustomPaint(
+                      painter: _MapaCierres(cierres: todos),
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(10, 6, 11, 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x1F000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
                                 ),
-                              ),
-                              const SizedBox(width: 7),
-                              Text(
-                                'Tu domicilio',
-                                style: Tipografia.micro.copyWith(
-                                  color: Colores.textoPrimario,
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Colores.primary,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 7),
+                                Text(
+                                  'Tu domicilio',
+                                  style: Tipografia.micro.copyWith(
+                                    color: Colores.textoPrimario,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

@@ -13,6 +13,10 @@ flutter devices                # ver tu celular o emulador
 flutter run                    # modo demo: datos de ejemplo, sin Firebase
 ```
 
+**Mapas (Mapbox):** copia `.env.example` como `.env`, pon el token público (`pk.…`, el mismo del
+panel) y corre `flutter run --dart-define-from-file=.env`. Sin token, los mapas muestran la
+ilustración del Figma. El `.env` no se sube al repo.
+
 - **Modo demo (por defecto).** Datos de Teocaltiche en memoria (`lib/datos/repositorio_demo.dart`).
   No necesitas acceso a Firebase para trabajar en las pantallas.
 - **Modo Firebase.** `flutter run --dart-define=FUENTE=firebase`. Requiere `firebase_options.dart`
@@ -84,7 +88,7 @@ feria y las candidatas, que dio el municipio. Precios y horarios de la Plaza de 
 | Tarea | Dónde |
 |---|---|
 | Firebase Auth con números de prueba (sin SMS reales) | 10, 11 |
-| Mapas reales con Mapbox (camión y cierres) | 14, 15 |
+| Ubicación real del camión (GPS de la unidad) | 14 |
 | Notificaciones push (FCM) para los interruptores "Avísame" | 13, 14, 16 |
 | "Mis reportes" con su estado | — |
 | Colecciones del panel que faltan: esquelas, vacantes, clasificados, escuelas, rutas | Firestore |
