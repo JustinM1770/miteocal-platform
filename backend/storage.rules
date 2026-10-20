@@ -1,0 +1,68 @@
+rules_version = '2';
+
+// Reglas de Storage — mismo criterio que Firestore: la primera carpeta SIEMPRE
+// es el municipio, y el claim del token se valida contra esa carpeta.
+// Ver docs/arquitectura-multimunicipio.md §6.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function claim(nombre) {
+      return autenticado() ? request.auth.token.get(nombre, '') : '';
+    }
+
+    function delMunicipio(mid) {
+      return claim('municipioId') == mid;
+    }
+
+    function esFuncionario(mid) {
+      return delMunicipio(mid) && claim('rol') in ['funcionario', 'admin'];
+    }
+
+    function esImagen() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function pesaMenosDe(mb) {
+      return request.resource.size < mb * 1024 * 1024;
+    }
+
+    match /municipios/{mid} {
+
+      // Escudo e identidad: público, porque la app los pinta antes del login.
+      match /escudo.png {
+        allow read:  if true;
+        allow write: if esFuncionario(mid) && esImagen() && pesaMenosDe(2);
+      }
+
+      // Fotos de reportes ciudadanos. Las sube el vecino, las lee el municipio.
+      // No son públicas: pueden mostrar el frente de una casa.
+      match /reportes/{folio}/{archivo} {
+        allow read:   if esFuncionario(mid) || delMunicipio(mid);
+        allow create: if delMunicipio(mid) && esImagen() && pesaMenosDe(10);
+        allow update, delete: if false;
+      }
+
+      // Portadas del directorio de comercios: públicas.
+      match /comercios/{comercioId}/{archivo} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid) && esImagen() && pesaMenosDe(5);
+      }
+
+      // Imágenes de noticias y cartelera de la feria: públicas.
+      match /noticias/{noticiaId}/{archivo} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid) && esImagen() && pesaMenosDe(5);
+      }
+
+      match /eventos/{eventoId}/{archivo} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid) && esImagen() && pesaMenosDe(5);
+      }
+    }
+  }
+}

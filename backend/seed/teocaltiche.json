@@ -1,0 +1,26 @@
+{
+  "nombre": "Teocaltiche",
+  "estado": "Jalisco",
+  "activo": true,
+  "modulos": {
+    "agua": true,
+    "basura": true,
+    "reportes": true,
+    "comercio": true,
+    "noticias": true,
+    "escuelas": false,
+    "feria": true,
+    "paisanos": true
+  },
+  "tema": {
+    "primary": "#1552E0",
+    "primarySoft": "#EDF2FE",
+    "success": "#12A150",
+    "danger": "#D93A3A"
+  },
+  "escudo": "gs://miteocal/municipios/teocaltiche/escudo.png",
+  "contacto": {
+    "portal": "https://teocaltiche.gob.mx",
+    "telefono": "TODO-telefono-oficial"
+  }
+}
