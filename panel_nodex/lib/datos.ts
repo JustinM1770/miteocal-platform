@@ -6,6 +6,7 @@ import { coleccion, db, documento, firebaseListo, municipioId } from "./firebase
 import { alcanceDe } from "./config";
 import { diaLocal, f } from "./almacen";
 import { deJSON } from "./mapas";
+import { MUNICIPIO_DEMO } from "./demo-municipio";
 
 /* ─── Modelo ────────────────────────────────────────────────
    municipios/{id}/publicaciones es el HISTORIAL inmutable de todo lo que
@@ -387,7 +388,47 @@ const semillaReportes = (): Reporte[] => [
   { id: "r2", folio: "TEC-8488", tipo: "fuga", colonia: "San Miguel Norte", direccion: "Morelos 8", descripcion: "Sale agua de la banqueta desde ayer.", fotoUrl: null, lat: 21.4313, lng: -102.5702, estado: "en_proceso", respuesta: "La cuadrilla va en camino.", vecinoNombre: "Pedro L.", telefono: "346 ••• 1190", historial: [{ estado: "en_proceso", mensaje: "La cuadrilla va en camino.", autor: "Laura M.", fecha: hace(6) }], creadoEn: hace(9) },
   { id: "r3", folio: "TEC-8475", tipo: "luminaria", colonia: "El Tanque", direccion: "Hidalgo 12", descripcion: "La lámpara de la esquina no prende.", fotoUrl: null, lat: 21.4236, lng: -102.5812, estado: "recibido", respuesta: null, vecinoNombre: "Rosa M.", telefono: "+1 312 ••• 7742", historial: [], creadoEn: hace(20) },
   { id: "r4", folio: "TEC-8460", tipo: "basura", colonia: "Teocaltiche Centro", direccion: "Plaza principal", descripcion: "No pasó el camión el martes.", fotoUrl: null, lat: 21.4268, lng: -102.5759, estado: "resuelto", respuesta: "Se hizo una ruta extra el miércoles.", vecinoNombre: "Luis C.", telefono: "346 ••• 3307", historial: [{ estado: "resuelto", mensaje: "Se hizo una ruta extra el miércoles.", autor: "Jorge R.", fecha: hace(30) }], creadoEn: hace(52) },
+  ...historialDemo(),
 ];
+
+/* Doce semanas de reportes inventados para que el mapa de zonas críticas y las
+   tendencias tengan qué mostrar en modo demo. Generador fijo (mismo resultado
+   en cada recarga) y cargado hacia unas cuantas colonias, como pasa en la vida real. */
+function historialDemo(): Reporte[] {
+  let semilla = 20261103;
+  const azar = () => ((semilla = (semilla * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const elegir = <T,>(l: [T, number][]): T => {
+    let x = azar() * l.reduce((s, [, p]) => s + p, 0);
+    for (const [v, p] of l) if ((x -= p) <= 0) return v;
+    return l[0][0];
+  };
+  const carga: Record<string, number> = { "Teocaltiche Centro": 9, "San Miguel Norte": 7, "El Tanque": 5, "San Miguel Sur": 4, "CTM (Los Órganos)": 3 };
+  const colonias = MUNICIPIO_DEMO.colonias.map((c) => [c, carga[c.nombre] ?? 1] as [typeof c, number]);
+  const tipos: [TipoReporte, number][] = [["bache", 5], ["fuga", 4], ["basura", 3], ["luminaria", 3], ["drenaje", 2], ["otro", 1]];
+  const calles = ["Hidalgo", "Morelos", "Zaragoza", "Juárez", "Allende", "Independencia", "Guerrero", "Madero"];
+  const nombres = ["María", "José", "Guadalupe", "Juan", "Rosa", "Miguel", "Carmen", "Jesús"];
+  return Array.from({ length: 140 }, (_, i) => {
+    // Más reportes en las semanas recientes: la app se va adoptando
+    const horas = Math.round((1 - Math.sqrt(azar())) * 84 * 24) + 60;
+    const c = elegir(colonias);
+    const tipo = elegir(tipos);
+    const respuesta = 2 + azar() * 30, resolucion = respuesta + 6 + azar() * 90;
+    const estado: EstadoReporte = horas > resolucion ? "resuelto" : horas > respuesta ? "en_proceso" : "recibido";
+    const historial: EventoReporte[] = estado === "recibido" ? [] : [
+      { estado: "en_proceso", mensaje: "Ya lo tiene la cuadrilla.", autor: "Laura M.", fecha: hace(horas - Math.min(respuesta, horas)) },
+      ...(estado === "resuelto" ? [{ estado: "resuelto" as const, mensaje: "Quedó atendido.", autor: "Jorge R.", fecha: hace(Math.max(0, horas - resolucion)) }] : []),
+    ];
+    return {
+      id: `h${i}`, folio: `TEC-${8300 - i}`, tipo, colonia: c.nombre,
+      direccion: `${calles[Math.floor(azar() * calles.length)]} ${1 + Math.floor(azar() * 120)}`,
+      descripcion: `${ETIQUETA_REPORTE[tipo]} reportado por un vecino.`, fotoUrl: null,
+      lat: c.lat! + (azar() - 0.5) * 0.003, lng: c.lng! + (azar() - 0.5) * 0.003,
+      estado, respuesta: historial[historial.length - 1]?.mensaje ?? null,
+      vecinoNombre: `${nombres[Math.floor(azar() * nombres.length)]} ${String.fromCharCode(65 + Math.floor(azar() * 20))}.`,
+      historial, creadoEn: hace(horas),
+    };
+  });
+}
 const demoReportes: Reporte[] = firebaseListo ? [] : semillaReportes();
 
 export async function listarReportes(max = 300): Promise<Reporte[]> {

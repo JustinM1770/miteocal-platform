@@ -8,15 +8,18 @@ import { centro, MAPBOX_TOKEN, type Punto } from "@/lib/mapas";
 export interface Linea { id: string; puntos: Punto[]; color: string; ancho?: number; punteada?: boolean }
 export interface Marcador { id: string; punto: Punto; color: string; texto?: string; onClick?: () => void }
 export interface Globo { punto: Punto; titulo: string; lineas: string[] }
+/** Punto del mapa de calor; `peso` multiplica su intensidad */
+export interface Calor { punto: Punto; peso?: number }
 
 /* Mapa declarativo: las props describen qué se ve y el componente sincroniza
    Mapbox. `ajustar` encuadra el mapa cuando cambia su `clave`. */
 export default function Mapa({
-  lineas = [], marcadores = [], globo = null, onClick, ajustar, alto = 420, zoom = 14.5, editando = false,
+  lineas = [], marcadores = [], globo = null, calor = [], onClick, ajustar, alto = 420, zoom = 14.5, editando = false,
 }: {
   lineas?: Linea[];
   marcadores?: Marcador[];
   globo?: Globo | null;
+  calor?: Calor[];
   onClick?: (p: Punto) => void;
   ajustar?: { clave: string; puntos: Punto[] };
   alto?: number | string;
@@ -45,6 +48,19 @@ export default function Mapa({
       map.addControl(new mb.AttributionControl({ compact: true }));
       map.on("click", (e) => clic.current?.({ lng: e.lngLat.lng, lat: e.lngLat.lat }));
       map.on("load", () => {
+        // El calor va debajo de las calles con nombre para que se sigan leyendo
+        map.addSource("calor", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({
+          id: "calor", type: "heatmap", source: "calor",
+          paint: {
+            "heatmap-weight": ["get", "peso"],
+            "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 12, 0.6, 16, 1.4],
+            "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 12, 18, 14, 34, 17, 70],
+            "heatmap-opacity": 0.75,
+            "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"],
+              0, "rgba(255,214,102,0)", 0.2, "#ffd666", 0.45, "#f5a524", 0.7, "#e8590c", 1, "#c92a2a"],
+          },
+        });
         map.addSource("lineas", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         const base = { type: "line" as const, source: "lineas", layout: { "line-cap": "round" as const, "line-join": "round" as const } };
         map.addLayer({ ...base, id: "lineas-borde", paint: { "line-color": "#ffffff", "line-width": ["+", ["get", "ancho"], 3] } });
@@ -69,6 +85,15 @@ export default function Mapa({
       })),
     });
   }, [listo, lineas]);
+
+  // Mapa de calor
+  useEffect(() => {
+    if (!listo || !mapa.current) return;
+    (mapa.current.getSource("calor") as GeoJSONSource).setData({
+      type: "FeatureCollection",
+      features: calor.map((c) => ({ type: "Feature", properties: { peso: c.peso ?? 1 }, geometry: { type: "Point", coordinates: [c.punto.lng, c.punto.lat] } })),
+    });
+  }, [listo, calor]);
 
   // Marcadores
   useEffect(() => {

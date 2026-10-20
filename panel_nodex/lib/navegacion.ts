@@ -48,6 +48,7 @@ export const SECCIONES: Seccion[] = [
   ] },
   { nombre: "Vecinos", paginas: [
     { href: "/panel/reportes", nombre: "Reportes", modulo: "reportes" },
+    { href: "/panel/reportes/zonas", nombre: "Zonas críticas", modulo: "reportes" },
     { href: "/panel/crm", nombre: "CRM", admin: true },
     { href: "/panel/pagos", nombre: "Pagos en línea" },
   ] },
