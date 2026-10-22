@@ -159,7 +159,7 @@ class _EventoPaginaState extends State<EventoPagina> {
     setState(() => _comprando = true);
     try {
       final pase = await context.read<Repositorio>().comprarBoleto(e, perfil);
-      await Hapticos.exito();
+      Hapticos.exito();
       if (mounted) Navigator.of(context).pop(pase);
     } catch (err) {
       if (!mounted) return;

@@ -70,7 +70,7 @@ class _ContenidoSelectorState extends State<_ContenidoSelector> {
   }
 
   Future<void> _elegir(Municipio m) async {
-    await Hapticos.exito();
+    Hapticos.exito();
     if (!mounted) return;
     final sesion = context.read<Sesion>();
     final repo = context.read<Repositorio>();

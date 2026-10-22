@@ -146,7 +146,7 @@ class ReporteCiudadanoState extends State<ReporteCiudadano> {
         ),
         perfil,
       );
-      await Hapticos.exito();
+      Hapticos.exito();
       if (!mounted) return;
       setState(() => _enviando = false);
       await mostrarReporteEnviado(context, reporte);

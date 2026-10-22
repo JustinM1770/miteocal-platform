@@ -808,7 +808,7 @@ class _CertamenesState extends State<_Certamenes> {
     setState(() => _enviando = c.id);
     try {
       await _repo.votar(c, perfil);
-      await Hapticos.exito();
+      Hapticos.exito();
       if (!mounted) return;
       setState(() => _votos[c.certamen] = c.id);
       ScaffoldMessenger.of(context).showSnackBar(
