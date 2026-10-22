@@ -9,6 +9,7 @@ import '../../datos/modelos/colonia.dart';
 import '../../datos/modelos/reporte.dart';
 import '../../datos/repositorio.dart';
 import '../../datos/sesion.dart';
+import '../../nucleo/servicios/hapticos.dart';
 import '../../nucleo/servicios/ubicacion.dart';
 import '../../nucleo/tema/tema.dart';
 import '../../nucleo/widgets/botones.dart';
@@ -145,6 +146,7 @@ class ReporteCiudadanoState extends State<ReporteCiudadano> {
         ),
         perfil,
       );
+      await Hapticos.exito();
       if (!mounted) return;
       setState(() => _enviando = false);
       await mostrarReporteEnviado(context, reporte);

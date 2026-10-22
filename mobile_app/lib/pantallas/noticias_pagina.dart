@@ -8,6 +8,7 @@ import '../datos/modelos/noticia.dart';
 import '../datos/repositorio.dart';
 import '../nucleo/tema/tema.dart';
 import '../nucleo/widgets/comunes.dart';
+import '../nucleo/widgets/shimmer_placeholders.dart';
 import 'inicio/widgets/carrusel_noticias.dart';
 
 /// 02 · Noticias y Comunidad
@@ -64,10 +65,7 @@ class _NoticiasPaginaState extends State<NoticiasPagina> {
                 ],
                 if (snap.connectionState == ConnectionState.waiting &&
                     todas.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+                  const Lateral(child: ShimmerLista(cantidad: 3, alto: 100))
                 else if (visibles.isEmpty)
                   const Vacio(
                     texto: 'El municipio todavía no publica noticias.',

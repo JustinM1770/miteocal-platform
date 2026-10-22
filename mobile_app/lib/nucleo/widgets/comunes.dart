@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../tema/tema.dart';
 import 'botones.dart';
+import 'shimmer_placeholders.dart';
 
 /// Pantalla de modulo (13–16, 05, 06): regresar + titulo + subtitulo, y el
 /// contenido con scroll debajo.
@@ -467,10 +468,16 @@ class Vacio extends StatelessWidget {
 
 /// Carga una lista del repositorio una vez y la entrega al builder.
 class Cargar<T> extends StatefulWidget {
-  const Cargar({super.key, required this.futuro, required this.builder});
+  const Cargar({
+    super.key,
+    required this.futuro,
+    required this.builder,
+    this.placeholder,
+  });
 
   final Future<T> Function() futuro;
   final Widget Function(BuildContext context, T? datos) builder;
+  final Widget? placeholder;
 
   @override
   State<Cargar<T>> createState() => _CargarState<T>();
@@ -482,7 +489,12 @@ class _CargarState<T> extends State<Cargar<T>> {
   @override
   Widget build(BuildContext context) => FutureBuilder<T>(
     future: _f,
-    builder: (context, s) => widget.builder(context, s.data),
+    builder: (context, s) {
+      if (s.connectionState == ConnectionState.waiting && !s.hasData) {
+        return widget.placeholder ?? const Lateral(child: ShimmerLista(cantidad: 2));
+      }
+      return widget.builder(context, s.data);
+    },
   );
 }
 

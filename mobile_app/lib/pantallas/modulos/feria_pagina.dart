@@ -5,8 +5,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../datos/modelos/contenido.dart';
 import '../../datos/repositorio.dart';
 import '../../datos/sesion.dart';
+import '../../nucleo/servicios/hapticos.dart';
 import '../../nucleo/tema/tema.dart';
+import '../../nucleo/widgets/animaciones.dart';
 import '../../nucleo/widgets/comunes.dart';
+import '../../nucleo/widgets/shimmer_placeholders.dart';
 import 'evento_pagina.dart';
 
 /// 05 · Feria: cartelera por escenario, mapa del recinto y pase digital.
@@ -74,8 +77,8 @@ class _FeriaPaginaState extends State<FeriaPagina> {
         .where((x) => x.id != e.id && DateUtils.isSameDay(x.fecha, e.fecha))
         .toList();
     final comprado = await Navigator.of(context).push<Pase>(
-      MaterialPageRoute(
-        builder: (_) => EventoPagina(
+      transicionDetalle(
+        EventoPagina(
           evento: e,
           mismaNoche: mismaNoche,
           municipio: widget.municipio,
@@ -161,7 +164,7 @@ class _FeriaPaginaState extends State<FeriaPagina> {
             ),
             const SizedBox(height: 14),
             if (_cargando)
-              const Center(child: CircularProgressIndicator())
+              const Lateral(child: ShimmerLista(cantidad: 4))
             else if (visibles.isEmpty)
               Vacio(
                 texto:
@@ -466,34 +469,37 @@ class _TarjetaEvento extends StatelessWidget {
   Widget build(BuildContext context) {
     final e = evento;
     final (texto, fondo, color) = _etiquetaEvento(e);
-    return TarjetaBorde(
-      relleno: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-      alTocar: alTocar,
-      child: Row(
-        children: [
-          CajaFecha(fecha: e.fecha),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(e.titulo, style: Tipografia.cuerpo),
-                if (e.artista.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text('Con ${e.artista}', style: Tipografia.leyenda),
+    return Hero(
+      tag: 'evento-${e.id}',
+      child: TarjetaBorde(
+        relleno: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+        alTocar: alTocar,
+        child: Row(
+          children: [
+            CajaFecha(fecha: e.fecha),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(e.titulo, style: Tipografia.cuerpo),
+                  if (e.artista.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text('Con ${e.artista}', style: Tipografia.leyenda),
+                  ],
+                  const SizedBox(height: 5),
+                  Text('${e.tipo} · ${e.lugarYHora}', style: Tipografia.micro),
+                  const SizedBox(height: 5),
+                  Pastilla(texto: texto, fondo: fondo, color: color),
                 ],
-                const SizedBox(height: 5),
-                Text('${e.tipo} · ${e.lugarYHora}', style: Tipografia.micro),
-                const SizedBox(height: 5),
-                Pastilla(texto: texto, fondo: fondo, color: color),
-              ],
+              ),
             ),
-          ),
-          if (e.precio != null && e.precio! > 0) ...[
-            const SizedBox(width: 8),
-            Text(_precio(e.precio), style: Tipografia.cuerpo),
+            if (e.precio != null && e.precio! > 0) ...[
+              const SizedBox(width: 8),
+              Text(_precio(e.precio), style: Tipografia.cuerpo),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -802,6 +808,7 @@ class _CertamenesState extends State<_Certamenes> {
     setState(() => _enviando = c.id);
     try {
       await _repo.votar(c, perfil);
+      await Hapticos.exito();
       if (!mounted) return;
       setState(() => _votos[c.certamen] = c.id);
       ScaffoldMessenger.of(context).showSnackBar(

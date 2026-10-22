@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/painting.dart' show Color;
@@ -30,7 +31,7 @@ class RepositorioDemo implements Repositorio {
   /// certamen → id de candidata
   final Map<String, String> votos = {};
 
-  static const _municipio = Municipio(
+  static const _municipioTeocaltiche = Municipio(
     id: 'teocaltiche',
     nombre: 'Teocaltiche',
     estado: 'Jalisco',
@@ -54,6 +55,51 @@ class RepositorioDemo implements Repositorio {
     ),
     prefijoFolio: 'TEC',
   );
+
+  static const _municipioVillaHidalgo = Municipio(
+    id: 'villa-hidalgo',
+    nombre: 'Villa Hidalgo',
+    estado: 'Jalisco',
+    activo: true,
+    modulos: {
+      'agua': true,
+      'noticias': true,
+      'reportes': true,
+      'basura': true,
+      'feria': false,
+      'cierres': true,
+      'escuelas': true,
+      'paisanos': false,
+      'comercio': true,
+    },
+    tema: TemaMunicipio(
+      primary: Color(0xFF0F766E),
+      primarySoft: Color(0xFFE6FFFA),
+      success: Color(0xFF10B981),
+      danger: Color(0xFFEF4444),
+    ),
+    prefijoFolio: 'VHI',
+  );
+
+  String _municipioActualId = 'teocaltiche';
+
+  Municipio get _municipio =>
+      _municipioActualId == 'villa-hidalgo'
+          ? _municipioVillaHidalgo
+          : _municipioTeocaltiche;
+
+  final StreamController<Municipio?> _controladorMunicipio =
+      StreamController<Municipio?>.broadcast();
+
+  @override
+  void cambiarMunicipio(String id) {
+    _municipioActualId = id;
+    _controladorMunicipio.add(_municipio);
+  }
+
+  @override
+  Future<List<Municipio>> municipiosDisponibles() =>
+      _tras([_municipioTeocaltiche, _municipioVillaHidalgo]);
 
   static const _colonias = [
     Colonia(
@@ -262,7 +308,15 @@ class RepositorioDemo implements Repositorio {
   });
 
   @override
-  Stream<Municipio?> municipio() => _flujo(() => _municipio);
+  Stream<Municipio?> municipio() => Stream.multi((c) {
+    _tras(_municipio).then((v) {
+      if (!c.isClosed) c.add(v);
+      final sub = _controladorMunicipio.stream.listen((m) {
+        if (!c.isClosed) c.add(m);
+      });
+      c.onCancel = () => sub.cancel();
+    });
+  });
 
   @override
   Stream<EstadoAgua?> aguaDeHoy() => _flujo(

@@ -6,6 +6,7 @@ import '../datos/modelos/contenido.dart';
 import '../datos/repositorio.dart';
 import '../nucleo/tema/tema.dart';
 import '../nucleo/widgets/comunes.dart';
+import '../nucleo/widgets/shimmer_placeholders.dart';
 import 'inicio/widgets/carrusel_noticias.dart' show haceCuanto;
 
 /// 03 · Comercio y Empleo
@@ -110,10 +111,7 @@ class _ComercioPaginaState extends State<ComercioPagina> {
             ),
             const SizedBox(height: 20),
             if (_cargando)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              )
+              const Lateral(child: ShimmerLista(cantidad: 3, alto: 110))
             else if (visibles.isEmpty)
               Vacio(
                 texto: q.isEmpty

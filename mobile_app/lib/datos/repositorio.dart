@@ -33,6 +33,12 @@ String hoy() {
 abstract class Repositorio {
   Stream<Municipio?> municipio();
 
+  /// Lista de municipios dados de alta en el sistema (para el selector demo/multi-municipio).
+  Future<List<Municipio>> municipiosDisponibles();
+
+  /// Cambia el municipio activo para cargar sus configuraciones, temas y módulos.
+  void cambiarMunicipio(String id);
+
   /// Estado del agua de hoy. null si el municipio todavia no lo publico —
   /// la pantalla debe saber verse bien sin dato.
   Stream<EstadoAgua?> aguaDeHoy();

@@ -7,6 +7,7 @@ import '../../datos/modelos/contenido.dart';
 import '../../datos/repositorio.dart';
 import '../../nucleo/tema/tema.dart';
 import '../../nucleo/widgets/comunes.dart';
+import '../../nucleo/widgets/shimmer_placeholders.dart';
 import '../inicio/widgets/carrusel_noticias.dart' show haceCuanto;
 
 /// 16 · Escuelas: el vecino sigue planteles y ve sus avisos.
@@ -101,7 +102,7 @@ class _EscuelasPaginaState extends State<EscuelasPagina> {
       return const PantallaModulo(
         titulo: 'Escuelas',
         subtitulo: 'Avisos de los planteles que sigues',
-        hijos: [Center(child: CircularProgressIndicator())],
+        hijos: [Lateral(child: ShimmerLista(cantidad: 3))],
       );
     }
 
