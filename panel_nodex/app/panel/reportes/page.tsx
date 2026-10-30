@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { auth, firebaseListo } from "@/lib/firebase";
 import Mapa, { type Globo } from "@/components/Mapa";
 import { f } from "@/lib/almacen";
 import {
-  ETIQUETA_ESTADO_REPORTE, ETIQUETA_REPORTE, cambiarEstadoReporte, haceTexto, listarReportes,
-  type EstadoReporte, type Reporte,
+  AREAS_RESPONSABLES, ETIQUETA_ESTADO_REPORTE, ETIQUETA_REPORTE, TIPOS_REPORTE,
+  cambiarEstadoReporte, detectarReportesDuplicados, guardarClasificacionFinalReporte, haceTexto, listarReportes,
+  type AreaResponsableReporte, type ClasificacionIASugerida, type EstadoReporte, type Reporte, type TipoReporte, type UrgenciaReporte,
 } from "@/lib/datos";
 
 const PILL: Record<EstadoReporte, string> = { recibido: "sin_servicio", en_proceso: "programado", resuelto: "activo" };
@@ -16,12 +18,20 @@ const FILTROS: (EstadoReporte | "pendientes" | "todos")[] = ["pendientes", "reci
 
 export default function Reportes() {
   const { sesion } = useAuth();
+  const intentosClasificacion = useRef(new Set<string>());
+  const seleccionActual = useRef<string | null>(null);
   const [lista, setLista] = useState<Reporte[]>([]);
   const [filtro, setFiltro] = useState<(typeof FILTROS)[number]>("pendientes");
   const [sel, setSel] = useState<Reporte | null>(null);
   const [estado, setEstado] = useState<EstadoReporte>("en_proceso");
   const [respuesta, setRespuesta] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [guardandoClasificacion, setGuardandoClasificacion] = useState(false);
+  const [tipoFinal, setTipoFinal] = useState<TipoReporte>("otro");
+  const [urgenciaFinal, setUrgenciaFinal] = useState<UrgenciaReporte>("media");
+  const [areaFinal, setAreaFinal] = useState<AreaResponsableReporte>("Por determinar");
+  const [estadoIA, setEstadoIA] = useState<{ id: string; estado: "analizando" | "error"; mensaje?: string } | null>(null);
+  const [errorGuardarClasificacion, setErrorGuardarClasificacion] = useState("");
   const [vista, setVista] = useState<"lista" | "mapa">("lista");
   const [enfoque, setEnfoque] = useState<{ clave: string; puntos: { lng: number; lat: number }[] } | undefined>();
 
@@ -35,11 +45,118 @@ export default function Reportes() {
   }
 
   function abrir(r: Reporte) {
+    seleccionActual.current = r.id ?? null;
     setSel(r);
     setEstado(r.estado === "recibido" ? "en_proceso" : r.estado);
     setRespuesta(r.respuesta ?? "");
+    const clasificacion = r.clasificacionFinal ?? r.clasificacionIASugerida;
+    setTipoFinal(clasificacion?.tipo ?? r.tipo);
+    setUrgenciaFinal(clasificacion?.urgencia ?? "media");
+    setAreaFinal(clasificacion?.area ?? "Por determinar");
+    setErrorGuardarClasificacion("");
   }
 
+  useEffect(() => {
+    const usuario = auth?.currentUser;
+    if (!sel?.id || sel.clasificacionIASugerida || !firebaseListo || !usuario) return;
+    const reporteId = sel.id;
+    if (intentosClasificacion.current.has(reporteId)) return;
+    intentosClasificacion.current.add(reporteId);
+    setEstadoIA({ id: reporteId, estado: "analizando" });
+
+    void (async () => {
+      try {
+        const token = await usuario.getIdToken();
+        const response = await fetch("/api/reportes/clasificar", {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+          body: JSON.stringify({ reporteId }),
+        });
+        const body: unknown = await response.json();
+        if (!response.ok) {
+          const mensaje = typeof body === "object" && body !== null && "error" in body && typeof body.error === "string"
+            ? body.error
+            : "No se pudo clasificar el reporte.";
+          throw new Error(mensaje);
+        }
+        if (typeof body !== "object" || body === null || !("clasificacion" in body) || typeof body.clasificacion !== "object" || body.clasificacion === null) {
+          throw new Error("La respuesta de clasificación no tiene el formato esperado.");
+        }
+        const valor = body.clasificacion;
+        if (
+          !("tipo" in valor) || typeof valor.tipo !== "string" || !TIPOS_REPORTE.includes(valor.tipo as TipoReporte)
+          || !("urgencia" in valor) || !["baja", "media", "alta"].includes(String(valor.urgencia))
+          || !("area" in valor) || typeof valor.area !== "string" || !AREAS_RESPONSABLES.includes(valor.area as AreaResponsableReporte)
+          || !("confianza" in valor) || typeof valor.confianza !== "number"
+          || !("modelo" in valor) || typeof valor.modelo !== "string"
+          || !("clasificadaEn" in valor) || typeof valor.clasificadaEn !== "string"
+        ) {
+          throw new Error("La respuesta de clasificación contiene datos inválidos.");
+        }
+        const sugerencia = {
+          tipo: valor.tipo as TipoReporte,
+          urgencia: valor.urgencia as UrgenciaReporte,
+          area: valor.area as AreaResponsableReporte,
+          confianza: valor.confianza,
+          modelo: valor.modelo,
+          clasificadaEn: new Date(valor.clasificadaEn),
+        };
+        if (Number.isNaN(sugerencia.clasificadaEn.getTime())) {
+          throw new Error("La respuesta de clasificación contiene una fecha inválida.");
+        }
+
+        const actualizada = { ...sel, clasificacionIASugerida: sugerencia };
+        setLista((actual) => actual.map((r) => r.id === reporteId ? { ...r, clasificacionIASugerida: sugerencia } : r));
+        if (seleccionActual.current === reporteId) {
+          setSel(actualizada);
+          setTipoFinal(actualizada.clasificacionFinal?.tipo ?? sugerencia.tipo);
+          setUrgenciaFinal(actualizada.clasificacionFinal?.urgencia ?? sugerencia.urgencia);
+          setAreaFinal(actualizada.clasificacionFinal?.area ?? sugerencia.area);
+        }
+        if (seleccionActual.current === reporteId) setEstadoIA(null);
+      } catch (error) {
+        if (seleccionActual.current === reporteId) {
+          setEstadoIA({
+            id: reporteId,
+            estado: "error",
+            mensaje: error instanceof Error ? error.message : "No se pudo clasificar el reporte.",
+          });
+        }
+      }
+    })();
+  }, [sel]);
+
+  async function guardarClasificacion(
+    origen: "ia" | "funcionario",
+    valores?: Pick<ClasificacionIASugerida, "tipo" | "urgencia" | "area">,
+  ) {
+    if (!sel || !sesion) return;
+    const reporteSeleccionado = sel;
+    setGuardandoClasificacion(true);
+    setErrorGuardarClasificacion("");
+    try {
+      const final = await guardarClasificacionFinalReporte(
+        reporteSeleccionado,
+        { tipo: valores?.tipo ?? tipoFinal, urgencia: valores?.urgencia ?? urgenciaFinal, area: valores?.area ?? areaFinal, origen },
+        sesion.nombre,
+        sesion.uid,
+      );
+      const actualizada = { ...reporteSeleccionado, tipo: final.tipo, clasificacionFinal: final };
+      setLista((actual) => actual.map((r) => r.id === reporteSeleccionado.id ? actualizada : r));
+      if (seleccionActual.current === reporteSeleccionado.id) {
+        setSel(actualizada);
+        setTipoFinal(final.tipo);
+        setUrgenciaFinal(final.urgencia);
+        setAreaFinal(final.area);
+      }
+    } catch (error) {
+      setErrorGuardarClasificacion(error instanceof Error ? error.message : "No se pudo guardar la clasificación.");
+    } finally {
+      setGuardandoClasificacion(false);
+    }
+  }
+
+  const duplicados = sel ? detectarReportesDuplicados(sel, lista) : [];
   const visibles = lista.filter((r) =>
     filtro === "todos" ? true : filtro === "pendientes" ? r.estado !== "resuelto" : r.estado === filtro);
   const cuenta = (f: (typeof FILTROS)[number]) =>
@@ -105,6 +222,90 @@ export default function Reportes() {
             {sel.fotoUrl
               ? <img src={sel.fotoUrl} alt="Foto del reporte" style={{ width: "100%", borderRadius: 10 }} />
               : <span className="muted" style={{ fontSize: 12 }}>Sin foto.</span>}
+            <div className="acard flat col" style={{ gap: 10 }}>
+              <span className="section-label">CLASIFICACIÓN DEL REPORTE</span>
+              {sel.clasificacionIASugerida ? (
+                <div className="col" style={{ gap: 3 }}>
+                  <strong>
+                    Sugerido: {ETIQUETA_REPORTE[sel.clasificacionIASugerida.tipo]} · urgencia {sel.clasificacionIASugerida.urgencia}
+                  </strong>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {sel.clasificacionIASugerida.area} · confianza estimada {sel.clasificacionIASugerida.confianza}% · {sel.clasificacionIASugerida.modelo}
+                  </span>
+                  {sel.clasificacionFinal && (
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      Clasificación guardada: {ETIQUETA_REPORTE[sel.clasificacionFinal.tipo]} · urgencia {sel.clasificacionFinal.urgencia} · {sel.clasificacionFinal.area}
+                    </span>
+                  )}
+                  <button className="btn ghost" type="button" disabled={guardandoClasificacion}
+                    onClick={() => void guardarClasificacion("ia", sel.clasificacionIASugerida)}>
+                    Aceptar sugerencia
+                  </button>
+                </div>
+              ) : estadoIA && estadoIA.id === sel.id && estadoIA.estado === "analizando" ? (
+                <span className="muted" style={{ fontSize: 13 }}>Analizando el texto y la foto con Claude Haiku…</span>
+              ) : estadoIA && estadoIA.id === sel.id && estadoIA.estado === "error" ? (
+                <div className="col" style={{ gap: 6 }}>
+                  <span role="alert" style={{ fontSize: 13 }}>{estadoIA?.mensaje ?? "Falló el análisis con IA."} La clasificación manual sigue disponible.</span>
+                  <button className="btn ghost" type="button" onClick={() => {
+                    intentosClasificacion.current.delete(sel.id!);
+                    setSel({ ...sel });
+                  }}>Reintentar análisis</button>
+                </div>
+              ) : !firebaseListo ? (
+                <span className="muted" style={{ fontSize: 13 }}>
+                  La IA requiere Firebase y la llave de Anthropic configurada como secreto del servidor. Puedes clasificar manualmente.
+                </span>
+              ) : null}
+              {sel.clasificacionFinal && !sel.clasificacionIASugerida && (
+                <span className="muted" style={{ fontSize: 12 }}>
+                  Clasificación guardada: {ETIQUETA_REPORTE[sel.clasificacionFinal.tipo]} · urgencia {sel.clasificacionFinal.urgencia} · {sel.clasificacionFinal.area}
+                </span>
+              )}
+              <div className="field">
+                <label className="section-label" htmlFor="tipo-clasificacion">TIPO</label>
+                <select id="tipo-clasificacion" className="select" value={tipoFinal} onChange={(e) => setTipoFinal(e.target.value as TipoReporte)}>
+                  {TIPOS_REPORTE.map((tipo) => <option key={tipo} value={tipo}>{ETIQUETA_REPORTE[tipo]}</option>)}
+                </select>
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <div className="field grow">
+                  <label className="section-label" htmlFor="urgencia-clasificacion">URGENCIA</label>
+                  <select id="urgencia-clasificacion" className="select" value={urgenciaFinal} onChange={(e) => setUrgenciaFinal(e.target.value as UrgenciaReporte)}>
+                    {(["baja", "media", "alta"] as UrgenciaReporte[]).map((urgencia) => <option key={urgencia} value={urgencia}>{urgencia}</option>)}
+                  </select>
+                </div>
+                <div className="field grow">
+                  <label className="section-label" htmlFor="area-clasificacion">ÁREA</label>
+                  <select id="area-clasificacion" className="select" value={areaFinal} onChange={(e) => setAreaFinal(e.target.value as AreaResponsableReporte)}>
+                    {AREAS_RESPONSABLES.map((area) => <option key={area} value={area}>{area}</option>)}
+                  </select>
+                </div>
+              </div>
+              {errorGuardarClasificacion && <span role="alert" style={{ fontSize: 13 }}>{errorGuardarClasificacion}</span>}
+              <button className="btn primary" type="button" disabled={guardandoClasificacion}
+                onClick={() => void guardarClasificacion("funcionario")}>
+                {guardandoClasificacion ? "Guardando…" : sel.clasificacionIASugerida ? "Guardar corrección" : "Guardar clasificación manual"}
+              </button>
+            </div>
+            <div className="acard flat col" style={{ gap: 6 }}>
+              <span className="section-label">POSIBLES REPORTES DUPLICADOS</span>
+              <span className="muted" style={{ fontSize: 12 }}>
+                Mismo tipo, a menos de 50 m y con menos de 7 días de diferencia. Son sugerencias para revisión; no se combinan ni cierran automáticamente.
+              </span>
+              {sel.lat === null || sel.lng === null ? (
+                <span className="muted" style={{ fontSize: 12 }}>No se puede buscar coincidencias porque este reporte no tiene ubicación GPS.</span>
+              ) : duplicados.length === 0 ? (
+                <span className="muted" style={{ fontSize: 12 }}>No se encontraron coincidencias con los criterios configurados.</span>
+              ) : duplicados.map(({ reporte, distanciaMetros }) => (
+                <button key={reporte.id} type="button" className="list-row"
+                style={{ border: "none", background: "var(--subtle)", textAlign: "left", width: "100%", padding: 8, borderRadius: 8 }}
+                  onClick={() => abrir(reporte)}>
+                  <strong>{reporte.folio} · {ETIQUETA_REPORTE[reporte.tipo]}</strong>
+                  <span className="muted" style={{ fontSize: 12 }}>{distanciaMetros} m · {reporte.colonia} · {haceTexto(reporte.creadoEn)}</span>
+                </button>
+              ))}
+            </div>
             <div className="acard flat" style={{ gap: 4 }}>
               <span className="section-label">QUIÉN LO REPORTÓ</span>
               <span className="t" style={{ fontSize: 13 }}>{sel.vecinoNombre}</span>
