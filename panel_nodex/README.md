@@ -16,6 +16,19 @@ npm run dev            # http://localhost:3000
   contraseña entra. Sirve para enseñar el panel y trabajar en diseño.
 - **Con Firebase**: copia `.env.example` a `.env.local` y llénalo con la
   configuración de la app web del proyecto (`firebase apps:sdkconfig WEB`).
+- Para clasificar reportes con Claude, agrega también a `.env.local` las variables
+  de servidor `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+  y `ANTHROPIC_API_KEY`. En Vercel deben configurarse como variables privadas del
+  servidor; no uses el prefijo `NEXT_PUBLIC_` para estas credenciales. La llave
+  de Anthropic nunca se incluye en la app móvil ni en el navegador.
+
+Al abrir un reporte sin sugerencia guardada, el panel solicita una clasificación
+de tipo, urgencia y área. La persona funcionaria puede aceptarla o corregirla.
+La confianza que devuelve el modelo es una estimación, no una probabilidad
+calibrada. También se señalan posibles duplicados del mismo tipo, a menos de
+50 m y dentro de un intervalo menor a 7 días; el sistema no los combina ni los
+cierra automáticamente. Si la IA falla, el reporte sigue disponible para
+clasificación manual.
 
 | Comando | Qué hace |
 |---|---|

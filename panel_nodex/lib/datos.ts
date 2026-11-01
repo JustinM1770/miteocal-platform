@@ -7,6 +7,17 @@ import { alcanceDe } from "./config";
 import { diaLocal, f } from "./almacen";
 import { deJSON } from "./mapas";
 import { MUNICIPIO_DEMO } from "./demo-municipio";
+import {
+  AREAS_RESPONSABLES, ETIQUETA_REPORTE, TIPOS_REPORTE,
+  type AreaResponsableReporte, type ClasificacionFinalReporte, type ClasificacionIASugerida,
+  type TipoReporte, type UrgenciaReporte,
+} from "./reportes-modelo";
+
+export {
+  AREAS_RESPONSABLES, ETIQUETA_REPORTE, TIPOS_REPORTE,
+  type AreaResponsableReporte, type ClasificacionFinalReporte, type ClasificacionIASugerida,
+  type TipoReporte, type UrgenciaReporte,
+} from "./reportes-modelo";
 
 /* ─── Modelo ────────────────────────────────────────────────
    municipios/{id}/publicaciones es el HISTORIAL inmutable de todo lo que
@@ -332,13 +343,8 @@ export function haceTexto(v: Timestamp | Date | null | undefined): string {
    El panel los atiende: cambia el estado y agrega al historial.
    ───────────────────────────────────────────────────────── */
 
-export type TipoReporte = "bache" | "fuga" | "drenaje" | "basura" | "luminaria" | "otro";
 export type EstadoReporte = "recibido" | "en_proceso" | "resuelto";
 
-export const ETIQUETA_REPORTE: Record<TipoReporte, string> = {
-  bache: "Bache", fuga: "Fuga de agua", drenaje: "Drenaje",
-  basura: "Basura", luminaria: "Luminaria", otro: "Otro",
-};
 export const ETIQUETA_ESTADO_REPORTE: Record<EstadoReporte, string> = {
   recibido: "Recibido", en_proceso: "En proceso", resuelto: "Resuelto",
 };
@@ -361,15 +367,64 @@ export interface Reporte {
   telefono?: string;
   /** uid del vecino en la app; con él ve solo sus propios reportes */
   vecinoUid?: string;
+  clasificacionIASugerida?: ClasificacionIASugerida;
+  clasificacionFinal?: ClasificacionFinalReporte;
   historial: EventoReporte[];
   creadoEn: Timestamp | Date;
+}
+
+function esTipoReporte(valor: unknown): valor is TipoReporte {
+  return typeof valor === "string" && TIPOS_REPORTE.includes(valor as TipoReporte);
+}
+
+function esUrgenciaReporte(valor: unknown): valor is UrgenciaReporte {
+  return valor === "baja" || valor === "media" || valor === "alta";
+}
+
+function esAreaResponsableReporte(valor: unknown): valor is AreaResponsableReporte {
+  return typeof valor === "string" && AREAS_RESPONSABLES.includes(valor as AreaResponsableReporte);
+}
+
+function fechaReporte(valor: unknown): Timestamp | Date {
+  if (valor instanceof Date || valor instanceof Timestamp) return valor;
+  return Timestamp.now();
 }
 
 /** Del documento que escribe la app al formato del panel */
 function normalizarReporte(id: string, d: Record<string, unknown>): Reporte {
   const geo = d.geo as GeoPoint | undefined;
   const historial = (d.historial as EventoReporte[] | undefined) ?? [];
-  const tipo = (d.tipo as string) in ETIQUETA_REPORTE ? (d.tipo as TipoReporte) : "otro";
+  const tipo = esTipoReporte(d.tipo) ? d.tipo : "otro";
+  const sugerida = d.clasificacionIASugerida as Record<string, unknown> | undefined;
+  const final = d.clasificacionFinal as Record<string, unknown> | undefined;
+  const clasificacionIASugerida = sugerida
+    && esTipoReporte(sugerida.tipo)
+    && esUrgenciaReporte(sugerida.urgencia)
+    && esAreaResponsableReporte(sugerida.area)
+    && typeof sugerida.confianza === "number"
+    && typeof sugerida.modelo === "string"
+    ? {
+        tipo: sugerida.tipo,
+        urgencia: sugerida.urgencia,
+        area: sugerida.area,
+        confianza: sugerida.confianza,
+        modelo: sugerida.modelo,
+        clasificadaEn: fechaReporte(sugerida.clasificadaEn),
+      }
+    : undefined;
+  const clasificacionFinal = final
+    && esTipoReporte(final.tipo)
+    && esUrgenciaReporte(final.urgencia)
+    && esAreaResponsableReporte(final.area)
+    && (final.origen === "ia" || final.origen === "funcionario")
+    ? {
+        tipo: final.tipo,
+        urgencia: final.urgencia,
+        area: final.area,
+        origen: final.origen === "ia" ? "ia" as const : "funcionario" as const,
+        actualizadoEn: fechaReporte(final.actualizadoEn),
+      }
+    : undefined;
   return {
     id, folio: (d.folio as string) ?? id, tipo,
     colonia: (d.colonia as string) ?? "", direccion: (d.direccion as string) ?? "",
@@ -379,6 +434,7 @@ function normalizarReporte(id: string, d: Record<string, unknown>): Reporte {
     respuesta: (d.respuesta as string) ?? [...historial].reverse().find((h) => h.mensaje)?.mensaje ?? null,
     vecinoNombre: (d.nombre as string) ?? (d.vecinoNombre as string) ?? "Vecino",
     telefono: (d.telefono as string) ?? undefined, vecinoUid: (d.uid as string) ?? undefined,
+    clasificacionIASugerida, clasificacionFinal,
     historial, creadoEn: (d.creadoEn as Timestamp) ?? Timestamp.now(),
   };
 }
@@ -466,6 +522,80 @@ export async function cambiarEstadoReporte(r: Reporte, estado: EstadoReporte, re
     });
   }
   await lote.commit();
+}
+
+export async function guardarClasificacionFinalReporte(
+  reporte: Reporte,
+  clasificacion: Omit<ClasificacionFinalReporte, "actualizadoEn">,
+  autorNombre: string,
+  autorUid: string,
+): Promise<ClasificacionFinalReporte> {
+  if (!reporte.id) throw new Error("No se puede guardar la clasificación: falta el identificador del reporte.");
+  const actualizadoEn = firebaseListo ? Timestamp.now() : new Date();
+  const final: ClasificacionFinalReporte = { ...clasificacion, actualizadoEn };
+  const detalle = `${reporte.folio} · ${ETIQUETA_REPORTE[final.tipo]} · urgencia ${final.urgencia} · ${final.area}`;
+
+  if (!firebaseListo || !db) {
+    const guardado = demoReportes.find((x) => x.id === reporte.id);
+    if (guardado) {
+      guardado.tipo = final.tipo;
+      guardado.clasificacionFinal = final;
+    }
+    demo.audit.unshift({ accion: "Clasificó reporte", detalle, canal: "publico", autorNombre, creadoEn: new Date() });
+    return final;
+  }
+
+  const lote = writeBatch(db);
+  const ahora = serverTimestamp();
+  lote.update(documento("reportes", reporte.id!), {
+    tipo: final.tipo,
+    clasificacionFinal: { ...clasificacion, actualizadoEn: ahora },
+  });
+  lote.set(doc(coleccion("auditoria")), {
+    accion: "Clasificó reporte",
+    detalle,
+    canal: "publico",
+    autorNombre,
+    autorUid,
+    creadoEn: ahora,
+  });
+  await lote.commit();
+  return final;
+}
+
+export interface ReporteDuplicado {
+  reporte: Reporte;
+  distanciaMetros: number;
+}
+
+function distanciaMetros(a: Reporte, b: Reporte): number {
+  const radianes = (grados: number) => (grados * Math.PI) / 180;
+  const dLat = radianes(b.lat! - a.lat!);
+  const dLng = radianes(b.lng! - a.lng!);
+  const latA = radianes(a.lat!);
+  const latB = radianes(b.lat!);
+  const haversine = Math.sin(dLat / 2) ** 2
+    + Math.cos(latA) * Math.cos(latB) * Math.sin(dLng / 2) ** 2;
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+export function detectarReportesDuplicados(reporte: Reporte, reportes: Reporte[]): ReporteDuplicado[] {
+  if (reporte.lat === null || reporte.lng === null) return [];
+  const creadoEn = f(reporte.creadoEn).getTime();
+  const sieteDias = 7 * 24 * 60 * 60 * 1000;
+
+  return reportes.flatMap((candidato) => {
+    if (
+      candidato.id === reporte.id
+      || candidato.tipo !== reporte.tipo
+      || candidato.lat === null
+      || candidato.lng === null
+      || Math.abs(f(candidato.creadoEn).getTime() - creadoEn) >= sieteDias
+    ) return [];
+
+    const distancia = distanciaMetros(reporte, candidato);
+    return distancia < 50 ? [{ reporte: candidato, distanciaMetros: Math.round(distancia) }] : [];
+  });
 }
 
 /* ─── Personal ──────────────────────────────────────────── */
