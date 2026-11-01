@@ -19,13 +19,14 @@ export interface Orden {
   respuesta: string;
 }
 
+/** Colores del panel por tipo de reporte */
 export const COLOR_TIPO: Record<TipoReporte, string> = {
-  fuga: "#38bdf8",
-  drenaje: "#a78bfa",
-  bache: "#f59e0b",
-  luminaria: "#facc15",
-  basura: "#34d399",
-  otro: "#94a3b8",
+  fuga: "#1552e0",
+  drenaje: "#6b3db8",
+  bache: "#c77700",
+  luminaria: "#d9a400",
+  basura: "#12a150",
+  otro: "#5a6270",
 };
 
 export const ALTURA_URGENCIA: Record<UrgenciaReporte, number> = { alta: 140, media: 80, baja: 45 };

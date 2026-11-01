@@ -1,202 +1,62 @@
-/* Centro de mando: pantalla completa, fondo oscuro, estilo sala de control */
+/* Centro de mando con el diseño del panel. Solo lo que globals.css no tiene. */
 
-.raiz {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: #03060c;
-  color: #dbeafe;
-  font-family: Inter, system-ui, sans-serif;
+.mapaCaja {
+  position: relative;
+  height: 620px;
+  border-radius: var(--r-lg);
   overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--subtle);
 }
-
+/* En pantalla completa (para la pantalla grande de la oficina) */
+.mapaCaja:fullscreen { height: 100vh; border-radius: 0; border: 0; }
 .mapa { position: absolute; inset: 0; }
 
-/* Velo en los bordes para que el mapa se funda con la interfaz */
-.vineta {
+.sobreMapa {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(3, 6, 12, 0.85) 100%);
-}
-
-.vidrio {
-  background: rgba(8, 18, 36, 0.72);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  box-shadow: 0 0 24px rgba(56, 189, 248, 0.08), inset 0 0 18px rgba(56, 189, 248, 0.05);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 14px;
-}
-
-.arriba {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
+  left: 12px;
+  right: 12px;
+  top: 12px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
   pointer-events: none;
 }
-.arriba > * { pointer-events: auto; }
+.sobreMapa > * { pointer-events: auto; }
 
-.titulo { padding: 12px 16px; }
-.marca {
-  font-size: 11px;
-  letter-spacing: 0.28em;
-  color: #38bdf8;
-  font-weight: 600;
-}
-.municipio { font-size: 22px; font-weight: 700; letter-spacing: 0.02em; color: #f0f9ff; margin-top: 2px; }
-.reloj { font-variant-numeric: tabular-nums; font-size: 12px; color: #93c5fd; margin-top: 2px; }
-.demo {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.4);
-  border-radius: 999px;
-  padding: 2px 8px;
+.flotante {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 16px rgba(14, 17, 22, 0.08);
+  padding: 8px;
 }
 
-.kpis { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-.kpi { padding: 10px 14px; min-width: 112px; }
-.kpiValor { font-size: 26px; font-weight: 700; color: #f0f9ff; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.kpiNombre { font-size: 10px; letter-spacing: 0.14em; color: #7dd3fc; text-transform: uppercase; margin-top: 2px; }
-.kpiAlerta .kpiValor { color: #f87171; text-shadow: 0 0 12px rgba(248, 113, 113, 0.6); }
-
-.botones { display: flex; gap: 8px; }
-.boton {
-  background: rgba(8, 18, 36, 0.72);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #e0f2fe;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.boton:hover { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.35); }
-.botonActivo { background: rgba(56, 189, 248, 0.2); border-color: #38bdf8; }
-
-/* Lista de lo que va entrando */
-.feed {
+.leyenda {
   position: absolute;
-  top: 128px;
-  right: 16px;
-  bottom: 96px;
-  width: 300px;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-}
-.seccion { font-size: 10px; letter-spacing: 0.2em; color: #38bdf8; font-weight: 600; margin-bottom: 8px; }
-.lista { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
-.item {
-  text-align: left;
-  background: rgba(15, 30, 55, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.12);
-  border-left-width: 3px;
-  border-radius: 10px;
-  padding: 8px 10px;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-}
-.item:hover { border-color: rgba(56, 189, 248, 0.5); }
-.itemNuevo { animation: entrar 0.6s ease-out, brillo 2.4s ease-in-out 3; }
-.itemTitulo { font-size: 13px; font-weight: 600; color: #f0f9ff; display: flex; justify-content: space-between; gap: 6px; }
-.itemDetalle { font-size: 11px; color: #93c5fd; margin-top: 2px; }
-.etiquetaNuevo { font-size: 9px; letter-spacing: 0.1em; color: #03060c; background: #38bdf8; border-radius: 4px; padding: 1px 5px; }
-
-@keyframes entrar { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
-@keyframes brillo { 50% { box-shadow: 0 0 18px rgba(56, 189, 248, 0.55); } }
-
-/* Informe y respuesta del centro */
-.voz {
-  position: absolute;
-  left: 16px;
-  top: 128px;
-  width: 340px;
-  padding: 12px 14px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #e0f2fe;
-}
-
-/* Capas y orden */
-.abajo {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
+  left: 12px;
+  bottom: 12px;
   display: flex;
   gap: 10px;
-  align-items: center;
   flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--sec);
 }
-.capas { display: flex; gap: 6px; padding: 6px; flex-wrap: wrap; }
-.capa {
-  background: transparent;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  color: #93c5fd;
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.capaActiva { color: #03060c; background: #38bdf8; border-color: #38bdf8; font-weight: 600; }
+.punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
 
-.orden { flex: 1; min-width: 260px; display: flex; gap: 6px; padding: 6px; }
-.entrada {
-  flex: 1;
-  background: rgba(3, 6, 12, 0.6);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  color: #f0f9ff;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  outline: none;
-}
-.entrada:focus { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.35); }
-.entrada::placeholder { color: #64748b; }
-.microfono { min-width: 40px; }
-.escuchando { background: #ef4444; border-color: #ef4444; animation: latido 1s ease-in-out infinite; }
-@keyframes latido { 50% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); } }
-.motor { font-size: 10px; color: #64748b; padding: 0 6px; white-space: nowrap; align-self: center; }
+.lista { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 520px; padding-right: 2px; }
+.item { text-align: left; font: inherit; color: inherit; cursor: pointer; border-left-width: 3px !important; }
+.item:hover { border-color: var(--brand); }
+.nuevo { animation: entrar 0.5s ease-out, resalte 2.4s ease-in-out 2; }
+@keyframes entrar { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes resalte { 50% { background: var(--brand-soft); } }
 
-/* Ventana del modelo de Catastro */
-.velo {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  background: rgba(3, 6, 12, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-.ventana { width: min(1200px, 100%); height: min(760px, 100%); display: flex; flex-direction: column; padding: 10px; }
-.ventanaBarra { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 10px; gap: 10px; }
-.credito { font-size: 11px; color: #93c5fd; }
-.marco { flex: 1; border: 0; border-radius: 10px; background: #000; }
+.escuchando { background: var(--danger) !important; color: #fff !important; animation: latido 1s ease-in-out infinite; }
+@keyframes latido { 50% { box-shadow: 0 0 0 6px var(--danger-soft); } }
 
-.sinToken {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 24px;
-  color: #93c5fd;
-}
+.marco { width: 100%; height: 70vh; border: 0; border-radius: var(--r-md); background: #000; }
 
-@media (max-width: 900px) {
-  .feed { display: none; }
-  .voz { width: auto; right: 16px; }
-  .kpis { display: none; }
+@media (max-width: 1100px) {
+  .lateral { width: 100% !important; flex: 1 1 100% !important; }
+  .mapaCaja { height: 460px; }
 }
