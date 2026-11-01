@@ -18,6 +18,7 @@ const mod = (slug: string, nombre?: string, modulo?: Modulo): Pagina => {
 
 export const SECCIONES: Seccion[] = [
   { nombre: "Escritorio", paginas: [{ href: "/panel", nombre: "Escritorio" }] },
+  { nombre: "Centro de mando", paginas: [{ href: "/panel/centro", nombre: "Centro de mando", modulo: "reportes" }] },
   { nombre: "Servicios", paginas: [
     { href: "/panel/agua", nombre: "Agua", modulo: "agua" }, mod("cortes", "Cortes", "agua"), mod("incidente", "Incidente", "agua"),
     { href: "/panel/basura", nombre: "Basura", modulo: "basura" }, mod("cierres", "Cierres y obras"),
