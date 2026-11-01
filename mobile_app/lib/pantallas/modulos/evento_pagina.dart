@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../datos/modelos/contenido.dart';
 import '../../datos/repositorio.dart';
 import '../../datos/sesion.dart';
+import '../../nucleo/servicios/hapticos.dart';
 import '../../nucleo/tema/tema.dart';
 import '../../nucleo/widgets/botones.dart';
 import '../../nucleo/widgets/comunes.dart';
@@ -158,6 +159,7 @@ class _EventoPaginaState extends State<EventoPagina> {
     setState(() => _comprando = true);
     try {
       final pase = await context.read<Repositorio>().comprarBoleto(e, perfil);
+      Hapticos.exito();
       if (mounted) Navigator.of(context).pop(pase);
     } catch (err) {
       if (!mounted) return;
@@ -370,8 +372,12 @@ class _Cartel extends StatelessWidget {
       ),
     );
 
-    return Container(
-      height: 300 + arriba,
+    return Hero(
+      tag: 'evento-${e.id}',
+      child: Material(
+        type: MaterialType.transparency,
+        child: Container(
+          height: 300 + arriba,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -463,7 +469,9 @@ class _Cartel extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

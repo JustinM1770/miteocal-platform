@@ -1,0 +1,8 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/imagenes/escudo.jpg"
+  adaptive_icon_background: "#1552E0"
+  adaptive_icon_foreground: "assets/imagenes/escudo.jpg"
+  min_sdk_android: 21
+  remove_alpha_ios: true

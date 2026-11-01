@@ -15,17 +15,22 @@ import 'modelos/perfil.dart';
 /// Para el demo se usan numeros de prueba de Firebase (no mandan SMS).
 class Sesion extends ChangeNotifier {
   static const _clave = 'perfil';
+  static const _claveMunicipio = 'municipio_id';
 
   Perfil? _perfil;
+  String? _municipioId;
   bool _cargada = false;
 
   Perfil? get perfil => _perfil;
+  String? get municipioId => _municipioId;
   bool get cargada => _cargada;
   bool get registrado => _perfil != null;
+  bool get municipioElegido => _municipioId != null;
 
   Future<void> cargar() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _municipioId = prefs.getString(_claveMunicipio);
       final crudo = prefs.getString(_clave);
       if (crudo != null) {
         _perfil = Perfil.desdeMapa(jsonDecode(crudo) as Map<String, dynamic>);
@@ -36,6 +41,13 @@ class Sesion extends ChangeNotifier {
     }
     _cargada = true;
     notifyListeners();
+  }
+
+  Future<void> guardarMunicipio(String id) async {
+    _municipioId = id;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_claveMunicipio, id);
   }
 
   Future<void> guardar(Perfil perfil) async {
@@ -51,11 +63,20 @@ class Sesion extends ChangeNotifier {
     await guardar(p.copiarCon(coloniaId: coloniaId));
   }
 
+  Future<void> resetearMunicipio() async {
+    _municipioId = null;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_claveMunicipio);
+  }
+
   Future<void> cerrar() async {
     _perfil = null;
+    _municipioId = null;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_clave);
+    await prefs.remove(_claveMunicipio);
   }
 
   static String nuevoUid() {

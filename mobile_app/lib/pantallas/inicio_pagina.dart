@@ -11,9 +11,12 @@ import '../datos/sesion.dart';
 import '../navegacion/modulos.dart';
 import '../navegacion/pestanas.dart';
 import '../nucleo/tema/tema.dart';
+import '../nucleo/widgets/animaciones.dart';
 import '../nucleo/widgets/hoja_colonias.dart';
+import '../nucleo/widgets/shimmer_placeholders.dart';
 import 'inicio/widgets/carrusel_noticias.dart';
 import 'inicio/widgets/hero_agua.dart';
+import 'selector_municipio.dart';
 
 /// 01 · Inicio
 class InicioPagina extends StatefulWidget {
@@ -91,20 +94,26 @@ class _InicioPaginaState extends State<InicioPagina> {
                     ),
                     child: StreamBuilder<EstadoAgua?>(
                       stream: _agua,
-                      builder: (context, snapAgua) => GestureDetector(
-                        onTap: () => abrirModulo(
-                          context,
-                          Modulo.agua,
-                          municipio: municipio,
-                          colonia: colonia,
-                          perfil: perfil,
-                        ),
-                        child: HeroAgua(
-                          estado: snapAgua.data,
-                          color: municipio!.tema.primary,
-                          colonia: colonia,
-                        ),
-                      ),
+                      builder: (context, snapAgua) {
+                        if (snapAgua.connectionState == ConnectionState.waiting &&
+                            !snapAgua.hasData) {
+                          return const ShimmerHeroAgua();
+                        }
+                        return GestureDetector(
+                          onTap: () => abrirModulo(
+                            context,
+                            Modulo.agua,
+                            municipio: municipio,
+                            colonia: colonia,
+                            perfil: perfil,
+                          ),
+                          child: HeroAgua(
+                            estado: snapAgua.data,
+                            color: municipio!.tema.primary,
+                            colonia: colonia,
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: Medidas.separacionSeccion),
@@ -132,11 +141,23 @@ class _InicioPaginaState extends State<InicioPagina> {
                     ),
                   ),
                   const SizedBox(height: Medidas.separacionSeccion),
+                ] else ...[
+                  const ShimmerModulos(),
+                  const SizedBox(height: Medidas.separacionSeccion),
                 ],
 
                 StreamBuilder<List<Noticia>>(
                   stream: _noticias,
                   builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting &&
+                        !snap.hasData) {
+                      return const Padding(
+                        padding: EdgeInsets.only(
+                          bottom: Medidas.separacionSeccion,
+                        ),
+                        child: ShimmerNoticias(),
+                      );
+                    }
                     final noticias = snap.data ?? const [];
                     if (noticias.isEmpty) return const SizedBox.shrink();
                     return Padding(
@@ -161,7 +182,11 @@ class _InicioPaginaState extends State<InicioPagina> {
 
                 const _TituloSeccion(titulo: 'Accesos directos'),
                 const SizedBox(height: 14),
-                const _AccesosDirectos(),
+                const ListaEscalonada(
+                  children: [
+                    _AccesosDirectos(),
+                  ],
+                ),
               ],
             ),
           ),
@@ -235,6 +260,23 @@ class _Encabezado extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => mostrarSelectorMunicipio(context),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: Colores.fondoSutil,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                LucideIcons.landmark,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           // TODO: bandeja de avisos. El punto rojo indica avisos sin leer.
           Container(
             width: 42,

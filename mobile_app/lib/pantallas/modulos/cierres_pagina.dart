@@ -9,6 +9,7 @@ import '../../nucleo/tema/tema.dart';
 import '../../datos/modelos/colonia.dart';
 import '../../nucleo/widgets/comunes.dart';
 import '../../nucleo/widgets/mapa.dart';
+import '../../nucleo/widgets/shimmer_placeholders.dart';
 
 /// 15 · Cierres y obras
 ///
@@ -170,7 +171,7 @@ class _CierresPaginaState extends State<CierresPagina> {
               alElegir: (f) => setState(() => _filtro = f),
             ),
             if (s.connectionState != ConnectionState.done)
-              const Center(child: CircularProgressIndicator())
+              const Lateral(child: ShimmerLista(cantidad: 3))
             else if (visibles.isEmpty)
               const Vacio(texto: 'No hay cierres ni obras cerca de ti. 🎉')
             else

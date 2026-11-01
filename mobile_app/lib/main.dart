@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'datos/modelos/municipio.dart';
 import 'datos/repositorio.dart';
 import 'datos/repositorio_demo.dart';
 import 'datos/repositorio_firestore.dart';
@@ -10,6 +11,7 @@ import 'navegacion/pestanas.dart';
 import 'nucleo/firebase/arranque.dart';
 import 'nucleo/tema/tema.dart';
 import 'pantallas/registro/flujo_registro.dart';
+import 'pantallas/selector_municipio.dart';
 
 /// De donde salen los datos:
 ///
@@ -35,6 +37,10 @@ Future<void> main() async {
   final sesion = Sesion();
   await sesion.cargar();
 
+  if (sesion.municipioId != null) {
+    repositorio.cambiarMunicipio(sesion.municipioId!);
+  }
+
   runApp(AppMiTeocal(repositorio: repositorio, sesion: sesion));
 }
 
@@ -56,16 +62,35 @@ class AppMiTeocal extends StatelessWidget {
         ChangeNotifierProvider<Sesion>.value(value: sesion),
         ChangeNotifierProvider<Pestanas>(create: (_) => Pestanas()),
       ],
-      child: MaterialApp(
-        title: 'MiTeocal',
-        debugShowCheckedModeBanner: false,
-        // TODO: construir el tema con los colores del documento del municipio
-        // (municipio.tema), no con los valores por defecto.
-        theme: TemaMiTeocal.claro(),
-        home: Consumer<Sesion>(
-          builder: (context, s, _) =>
-              s.registrado ? const ConchaPrincipal() : const FlujoRegistro(),
-        ),
+      child: StreamBuilder<Municipio?>(
+        stream: repositorio.municipio(),
+        builder: (context, snap) {
+          final m = snap.data;
+          final tema = m != null
+              ? TemaMiTeocal.claro(
+                  primary: m.tema.primary,
+                  primarySoft: m.tema.primarySoft,
+                  success: m.tema.success,
+                  danger: m.tema.danger,
+                )
+              : TemaMiTeocal.claro();
+
+          return MaterialApp(
+            title: m?.nombre ?? 'MiTeocal',
+            debugShowCheckedModeBanner: false,
+            theme: tema,
+            home: Consumer<Sesion>(
+              builder: (context, s, _) {
+                if (!s.municipioElegido) {
+                  return const SelectorMunicipioPagina();
+                }
+                return s.registrado
+                    ? const ConchaPrincipal()
+                    : const FlujoRegistro();
+              },
+            ),
+          );
+        },
       ),
     );
   }

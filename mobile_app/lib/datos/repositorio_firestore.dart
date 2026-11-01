@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/painting.dart' show Color;
 
 import 'modelos/agua.dart';
 import 'modelos/colonia.dart';
@@ -17,11 +18,53 @@ import 'repositorio.dart';
 /// municipio es una fuga de datos entre clientes — checklist de PRs,
 /// seccion 8 del documento de arquitectura.
 class RepositorioFirestore implements Repositorio {
-  RepositorioFirestore({FirebaseFirestore? bd, this.id = municipioId})
-    : _bd = bd ?? FirebaseFirestore.instance;
+  RepositorioFirestore({FirebaseFirestore? bd, String id = municipioId})
+    : _bd = bd ?? FirebaseFirestore.instance,
+      _id = id;
 
   final FirebaseFirestore _bd;
-  final String id;
+  String _id;
+  String get id => _id;
+
+  @override
+  void cambiarMunicipio(String nuevoId) {
+    _id = nuevoId;
+  }
+
+  @override
+  Future<List<Municipio>> municipiosDisponibles() async {
+    try {
+      final q = await _bd.collection('municipios').get();
+      if (q.docs.isNotEmpty) {
+        return q.docs.map((d) => Municipio.desdeMapa(d.id, d.data())).toList();
+      }
+    } catch (_) {}
+    return const [
+      Municipio(
+        id: 'teocaltiche',
+        nombre: 'Teocaltiche',
+        estado: 'Jalisco',
+        activo: true,
+        modulos: {
+          'agua': true,
+          'noticias': true,
+          'reportes': true,
+          'basura': true,
+          'feria': true,
+          'cierres': true,
+          'escuelas': true,
+          'paisanos': true,
+          'comercio': true,
+        },
+        tema: TemaMunicipio(
+          primary: Color(0xFF1552E0),
+          primarySoft: Color(0xFFEDF2FE),
+          success: Color(0xFF12A150),
+          danger: Color(0xFFD93A3A),
+        ),
+      ),
+    ];
+  }
 
   DocumentReference<Map<String, dynamic>> get _raiz =>
       _bd.collection('municipios').doc(id);
