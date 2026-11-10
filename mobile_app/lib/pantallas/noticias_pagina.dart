@@ -42,7 +42,11 @@ class _NoticiasPaginaState extends State<NoticiasPagina> {
               : todas.where((n) => n.categoria == _filtro).toList();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 12, bottom: 24),
+            // En iPhone la barra de pestañas flota sobre el contenido
+            padding: EdgeInsets.only(
+              top: 12,
+              bottom: 24 + MediaQuery.paddingOf(context).bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

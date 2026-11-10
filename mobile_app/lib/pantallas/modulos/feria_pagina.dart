@@ -17,9 +17,12 @@ import 'evento_pagina.dart';
 /// La compra es SIMULADA: no se cobra nada. El QR lleva la misma carga que
 /// valida el escaner del panel (MITEOCAL1|municipio|folio|pagoId).
 class FeriaPagina extends StatefulWidget {
-  const FeriaPagina({super.key, this.municipio = ''});
+  const FeriaPagina({super.key, this.municipio = '', this.hoy});
 
   final String municipio;
+
+  /// Fecha de "hoy"; solo las pruebas la fijan para no depender del calendario.
+  final DateTime? hoy;
 
   @override
   State<FeriaPagina> createState() => _FeriaPaginaState();
@@ -63,7 +66,7 @@ class _FeriaPaginaState extends State<FeriaPagina> {
     final eventos = await _repo.eventosFeria();
     final pases = perfil == null ? <Pase>[] : await _repo.misPases(perfil);
     if (!mounted) return;
-    final hoy = DateUtils.dateOnly(DateTime.now());
+    final hoy = DateUtils.dateOnly(widget.hoy ?? DateTime.now());
     setState(() {
       _eventos = eventos;
       _pases = pases;

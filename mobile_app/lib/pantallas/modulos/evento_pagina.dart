@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -12,6 +13,7 @@ import '../../nucleo/servicios/hapticos.dart';
 import '../../nucleo/tema/tema.dart';
 import '../../nucleo/widgets/botones.dart';
 import '../../nucleo/widgets/comunes.dart';
+import '../../nucleo/widgets/vidrio.dart';
 
 /// Colores del cartel por tipo de evento (cuando no hay foto).
 (List<Color>, IconData) estiloTipo(String tipo) => switch (tipo) {
@@ -358,19 +360,25 @@ class _Cartel extends StatelessWidget {
       IconData i,
       VoidCallback alTocar, {
       Color color = Colors.white,
-    }) => Material(
-      color: Colors.black.withValues(alpha: 0.28),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: alTocar,
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(i, size: 19, color: color),
-        ),
-      ),
-    );
+    }) => usaVidrio(context)
+        ? GlassIconButton(
+            icon: Icon(i, size: 19, color: color),
+            onPressed: alTocar,
+            size: 40,
+          )
+        : Material(
+            color: Colors.black.withValues(alpha: 0.28),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: alTocar,
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Icon(i, size: 19, color: color),
+              ),
+            ),
+          );
 
     return Hero(
       tag: 'evento-${e.id}',
@@ -378,100 +386,103 @@ class _Cartel extends StatelessWidget {
         type: MaterialType.transparency,
         child: Container(
           height: 300 + arriba,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: colores,
-        ),
-        image: e.foto != null && e.foto!.startsWith('http')
-            ? DecorationImage(image: NetworkImage(e.foto!), fit: BoxFit.cover)
-            : null,
-      ),
-      child: Stack(
-        children: [
-          if (e.foto == null)
-            Positioned(
-              right: -30,
-              top: arriba + 20,
-              child: Icon(
-                icono,
-                size: 220,
-                color: Colors.white.withValues(alpha: 0.10),
-              ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: colores,
             ),
-          // Velo inferior para que el titulo se lea sobre cualquier foto.
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x00000000),
-                    Color(0x00000000),
-                    Color(0x8C000000),
+            image: e.foto != null && e.foto!.startsWith('http')
+                ? DecorationImage(
+                    image: NetworkImage(e.foto!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: Stack(
+            children: [
+              if (e.foto == null)
+                Positioned(
+                  right: -30,
+                  top: arriba + 20,
+                  child: Icon(
+                    icono,
+                    size: 220,
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+                ),
+              // Velo inferior para que el titulo se lea sobre cualquier foto.
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0x00000000),
+                        Color(0x00000000),
+                        Color(0x8C000000),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                top: arriba + 8,
+                child: Row(
+                  children: [
+                    circulo(
+                      LucideIcons.chevronLeft,
+                      () => Navigator.of(context).maybePop(),
+                    ),
+                    const Spacer(),
+                    circulo(
+                      LucideIcons.heart,
+                      alAgenda,
+                      color: enAgenda ? const Color(0xFFFF6B8B) : Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    circulo(LucideIcons.share2, alCompartir),
                   ],
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: arriba + 8,
-            child: Row(
-              children: [
-                circulo(
-                  LucideIcons.chevronLeft,
-                  () => Navigator.of(context).maybePop(),
-                ),
-                const Spacer(),
-                circulo(
-                  LucideIcons.heart,
-                  alAgenda,
-                  color: enAgenda ? const Color(0xFFFF6B8B) : Colors.white,
-                ),
-                const SizedBox(width: 8),
-                circulo(LucideIcons.share2, alCompartir),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${e.tipo} · ${e.lugar}'.toUpperCase(),
-                  style: Tipografia.etiqueta.copyWith(
-                    color: Colors.white.withValues(alpha: 0.85),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  e.titulo,
-                  style: Tipografia.display.copyWith(color: Colors.white),
-                ),
-                if (e.artista.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Con ${e.artista}',
-                    style: Tipografia.cuerpo.copyWith(
-                      color: Colors.white.withValues(alpha: 0.9),
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: 20,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${e.tipo} · ${e.lugar}'.toUpperCase(),
+                      style: Tipografia.etiqueta.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
                     ),
-                  ),
-                ],
-              ],
-            ),
+                    const SizedBox(height: 6),
+                    Text(
+                      e.titulo,
+                      style: Tipografia.display.copyWith(color: Colors.white),
+                    ),
+                    if (e.artista.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Con ${e.artista}',
+                        style: Tipografia.cuerpo.copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 }
 

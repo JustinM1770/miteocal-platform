@@ -68,7 +68,11 @@ class _ComercioPaginaState extends State<ComercioPagina> {
     return SafeArea(
       bottom: false,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 12, bottom: 24),
+        // En iPhone la barra de pestañas flota sobre el contenido
+        padding: EdgeInsets.only(
+          top: 12,
+          bottom: 24 + MediaQuery.paddingOf(context).bottom,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

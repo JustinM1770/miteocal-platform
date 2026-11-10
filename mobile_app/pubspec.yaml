@@ -49,6 +49,7 @@ dependencies:
   latlong2: ^0.10.1
   http: ^1.6.0
   shimmer: ^3.0.0
+  liquid_glass_widgets: ^1.17.1
 
 dev_dependencies:
   flutter_test:

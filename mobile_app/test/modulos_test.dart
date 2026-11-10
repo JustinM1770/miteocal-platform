@@ -89,7 +89,7 @@ void main() {
   testWidgets('la cartelera trae el programa real y separa plaza y toros', (
     tester,
   ) async {
-    await montar(tester, const FeriaPagina(municipio: 'Teocaltiche'));
+    await montar(tester, FeriaPagina(municipio: 'Teocaltiche', hoy: _antesDeLaFeria));
     expect(
       find.text('Inauguración · Certamen Srita. Teocaltiche'),
       findsOneWidget,
@@ -118,7 +118,7 @@ void main() {
     (tester) async {
       final (repo, _) = await montar(
         tester,
-        const FeriaPagina(municipio: 'Teocaltiche'),
+        FeriaPagina(municipio: 'Teocaltiche', hoy: _antesDeLaFeria),
       );
       expect(find.byType(QrImageView), findsNothing);
 
@@ -140,7 +140,7 @@ void main() {
   );
 
   testWidgets('un evento gratuito no pide boleto', (tester) async {
-    final (repo, _) = await montar(tester, const FeriaPagina());
+    final (repo, _) = await montar(tester, FeriaPagina(hoy: _antesDeLaFeria));
     await tocar(tester, find.text('11').first);
     expect(find.text('Miércoles 11 de noviembre'), findsOneWidget);
     await tester.tap(find.text('Joss Favela'));
@@ -156,7 +156,7 @@ void main() {
   });
 
   testWidgets('el certamen muestra el evento de esa misma noche', (tester) async {
-    await montar(tester, const FeriaPagina());
+    await montar(tester, FeriaPagina(hoy: _antesDeLaFeria));
     await tester.tap(find.text('Inauguración · Certamen Srita. Teocaltiche'));
     await tester.pumpAndSettle();
     expect(find.text('Con Mario Bautista'), findsOneWidget);
@@ -166,7 +166,7 @@ void main() {
   testWidgets('votar por una candidata registra un solo voto por certamen', (
     tester,
   ) async {
-    final (repo, _) = await montar(tester, const FeriaPagina());
+    final (repo, _) = await montar(tester, FeriaPagina(hoy: _antesDeLaFeria));
     await tester.scrollUntilVisible(find.text('Alondra Ruvalcaba'), 300, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Alondra Ruvalcaba'));
     await tester.pumpAndSettle();
@@ -183,3 +183,6 @@ void main() {
     expect(find.text('Tu voto'), findsOneWidget);
   });
 }
+
+/// Antes del 30 de octubre la cartelera abre con todo el programa.
+final _antesDeLaFeria = DateTime(2026, 10, 1);

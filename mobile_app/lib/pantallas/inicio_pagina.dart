@@ -67,7 +67,11 @@ class _InicioPaginaState extends State<InicioPagina> {
         return SafeArea(
           bottom: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 12, bottom: 24),
+            // En iPhone la barra de pestañas flota sobre el contenido
+            padding: EdgeInsets.only(
+              top: 12,
+              bottom: 24 + MediaQuery.paddingOf(context).bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -95,7 +99,8 @@ class _InicioPaginaState extends State<InicioPagina> {
                     child: StreamBuilder<EstadoAgua?>(
                       stream: _agua,
                       builder: (context, snapAgua) {
-                        if (snapAgua.connectionState == ConnectionState.waiting &&
+                        if (snapAgua.connectionState ==
+                                ConnectionState.waiting &&
                             !snapAgua.hasData) {
                           return const ShimmerHeroAgua();
                         }
@@ -182,11 +187,7 @@ class _InicioPaginaState extends State<InicioPagina> {
 
                 const _TituloSeccion(titulo: 'Accesos directos'),
                 const SizedBox(height: 14),
-                const ListaEscalonada(
-                  children: [
-                    _AccesosDirectos(),
-                  ],
-                ),
+                const ListaEscalonada(children: [_AccesosDirectos()]),
               ],
             ),
           ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../nucleo/tema/tema.dart';
+import '../nucleo/widgets/vidrio.dart';
 import '../pantallas/comercio_pagina.dart';
 import '../pantallas/inicio_pagina.dart';
 import '../pantallas/noticias_pagina.dart';
@@ -34,6 +36,27 @@ class ConchaPrincipal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pestanas = context.watch<Pestanas>();
+    if (usaVidrio(context)) {
+      final primary = Theme.of(context).colorScheme.primary;
+      return Scaffold(
+        backgroundColor: Colores.fondoPantalla,
+        // El contenido corre por debajo de la barra para que el cristal lo refracte
+        extendBody: true,
+        body: IndexedStack(index: pestanas.actual, children: _paginas),
+        bottomNavigationBar: GlassTabBar.bottom(
+          tabs: [
+            for (final (etiqueta, icono) in _destinos)
+              GlassTab(icon: Icon(icono), label: etiqueta),
+          ],
+          selectedIndex: pestanas.actual,
+          onTabSelected: pestanas.ir,
+          selectedIconColor: primary,
+          selectedLabelColor: primary,
+          unselectedIconColor: Colores.textoSecundario,
+          unselectedLabelColor: Colores.textoSecundario,
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colores.fondoPantalla,
       body: IndexedStack(index: pestanas.actual, children: _paginas),

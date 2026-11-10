@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'datos/modelos/municipio.dart';
@@ -25,6 +26,8 @@ const String fuente = String.fromEnvironment('FUENTE', defaultValue: 'demo');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Precarga los shaders de Liquid Glass para que no parpadeen al aparecer
+  await LiquidGlassWidgets.initialize();
 
   final Repositorio repositorio;
   if (fuente == 'firebase') {
@@ -41,7 +44,11 @@ Future<void> main() async {
     repositorio.cambiarMunicipio(sesion.municipioId!);
   }
 
-  runApp(AppMiTeocal(repositorio: repositorio, sesion: sesion));
+  runApp(
+    LiquidGlassWidgets.wrap(
+      child: AppMiTeocal(repositorio: repositorio, sesion: sesion),
+    ),
+  );
 }
 
 class AppMiTeocal extends StatelessWidget {
