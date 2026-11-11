@@ -78,8 +78,13 @@ class MapaMunicipio extends StatelessWidget {
                   if (trazos.isNotEmpty) PolylineLayer(polylines: trazos),
                   if (marcadores.isNotEmpty) MarkerLayer(markers: marcadores),
                   // Mapbox exige mostrar la atribucion.
-                  const SimpleAttributionWidget(
-                    source: Text('© Mapbox © OpenStreetMap'),
+                  // Botón «i» discreto que despliega los créditos.
+                  const RichAttributionWidget(
+                    showFlutterMapAttribution: false,
+                    attributions: [
+                      TextSourceAttribution('Mapbox'),
+                      TextSourceAttribution('OpenStreetMap'),
+                    ],
                   ),
                 ],
               ),

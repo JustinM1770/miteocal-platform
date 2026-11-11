@@ -330,74 +330,86 @@ class _TituloSeccion extends StatelessWidget {
   }
 }
 
-/// Cuadricula de 3 columnas con los modulos contratados por el municipio.
+/// Carrusel de los módulos contratados por el municipio. Caben tres a lo
+/// ancho, repartidos de orilla a orilla; si hay más, se deslizan.
 class _Modulos extends StatelessWidget {
   const _Modulos({required this.modulos, required this.alAbrir});
 
   final List<Modulo> modulos;
   final ValueChanged<Modulo> alAbrir;
 
+  static const _separacion = 10.0;
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final ancho = (c.maxWidth - 20) / 3;
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final m in modulos)
-                SizedBox(
-                  width: ancho,
-                  child: Material(
-                    color: Colores.fondoTarjeta,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-                      onTap: () => alAbrir(m),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 14,
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: const BoxDecoration(
-                                color: Colores.fondoSutil,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                m.icono,
-                                size: 19,
-                                color: Colores.textoPrimario,
-                              ),
+    return LayoutBuilder(
+      builder: (context, c) {
+        final util = c.maxWidth - Medidas.margenLateral * 2;
+        final ancho = (util - _separacion * 2) / 3;
+        return SizedBox(
+          height: 118,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(
+              horizontal: Medidas.margenLateral,
+            ),
+            itemCount: modulos.length,
+            separatorBuilder: (_, _) => const SizedBox(width: _separacion),
+            itemBuilder: (context, i) {
+              final m = modulos[i];
+              return SizedBox(
+                width: ancho,
+                child: Material(
+                  color: Colores.fondoTarjeta,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+                    onTap: () => alAbrir(m),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 14,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              color: Colores.fondoSutil,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(height: 9),
-                            Text(
-                              m.nombre,
-                              textAlign: TextAlign.center,
-                              style: Tipografia.micro.copyWith(
-                                color: Colores.textoPrimario,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Icon(
+                              m.icono,
+                              size: 19,
+                              color: Colores.textoPrimario,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 9),
+                          Text(
+                            m.nombre,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Tipografia.micro.copyWith(
+                              color: Colores.textoPrimario,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-            ],
-          );
-        },
-      ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

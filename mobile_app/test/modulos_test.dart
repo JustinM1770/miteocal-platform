@@ -77,9 +77,23 @@ void main() {
     tester,
   ) async {
     await montar(tester, const ConchaPrincipal());
+    // Los módulos van en un carrusel horizontal: se desliza hasta cada uno
+    final carrusel = find.byWidgetPredicate(
+      (w) => w is Scrollable && w.axisDirection == AxisDirection.right,
+    );
     for (final m in Modulo.values.where((m) => m != Modulo.agua)) {
+      await tester.scrollUntilVisible(
+        find.text(m.nombre),
+        80,
+        scrollable: carrusel.first,
+      );
       expect(find.text(m.nombre), findsOneWidget, reason: m.nombre);
     }
+    await tester.scrollUntilVisible(
+      find.text('Escuelas'),
+      -80,
+      scrollable: carrusel.first,
+    );
     await tester.tap(find.text('Escuelas'));
     await tester.pumpAndSettle();
     expect(find.text('TUS ESCUELAS'), findsOneWidget);
