@@ -38,7 +38,8 @@ class ConchaPrincipal extends StatelessWidget {
   Widget build(BuildContext context) {
     final pestanas = context.watch<Pestanas>();
     if (usaVidrio(context)) {
-      final primary = Theme.of(context).colorScheme.primary;
+      // La pestaña activa va en negro, no en el color de marca
+      const primary = Colores.textoPrimario;
       return Scaffold(
         backgroundColor: Colores.fondoPantalla,
         // El contenido corre por debajo de la barra para que el cristal lo refracte
@@ -88,7 +89,8 @@ class _BarraPestanas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    // La pestaña activa va en negro, no en el color de marca
+    const primary = Colores.textoPrimario;
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: Colores.fondoTarjeta,

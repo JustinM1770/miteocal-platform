@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/painting.dart' show Color;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'modelos/agua.dart';
 import 'modelos/colonia.dart';
@@ -202,17 +203,53 @@ class RepositorioFirestore implements Repositorio {
   @override
   Future<List<Clasificado>> clasificados() async => const [];
 
-  // TODO(feria): la compra simulada escribe en pagos/ con canal 'simulacion'
-  // (ver firestore.rules); requiere la sesion de Firebase Auth.
+  // Compra SIMULADA: sin pasarela de pago todavía, el pase se guarda en el
+  // teléfono. TODO(feria): cuando el vecino tenga sesión de Firebase Auth,
+  // escribir también en pagos/ con canal 'simulacion' para que lo vea la
+  // taquilla del panel.
+  static const _clavePases = 'pases_feria';
+
   @override
-  Future<Pase> comprarBoleto(EventoFeria evento, Perfil comprador) =>
-      Future.error(
-        UnsupportedError(
-          'La compra de boletos con Firebase aún no está conectada.',
-        ),
-      );
+  Future<Pase> comprarBoleto(EventoFeria evento, Perfil comprador) async {
+    final mun = await _raiz.get();
+    final prefijo = mun.exists
+        ? Municipio.desdeMapa(mun.id, mun.data()!).prefijoFolio
+        : 'MUN';
+    final pase = Pase(
+      evento: evento,
+      folio: '$prefijo-${1000 + Random().nextInt(9000)}',
+      pagoId: 'sim-${DateTime.now().millisecondsSinceEpoch}',
+      municipioId: _id,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_clavePases, [
+      jsonEncode({
+        'eventoId': evento.id,
+        'folio': pase.folio,
+        'pagoId': pase.pagoId,
+      }),
+      ...prefs.getStringList(_clavePases) ?? const [],
+    ]);
+    return pase;
+  }
+
   @override
-  Future<List<Pase>> misPases(Perfil vecino) async => const [];
+  Future<List<Pase>> misPases(Perfil vecino) async {
+    final prefs = await SharedPreferences.getInstance();
+    final guardados = prefs.getStringList(_clavePases) ?? const [];
+    if (guardados.isEmpty) return const [];
+    final eventos = {for (final e in await eventosFeria()) e.id: e};
+    return [
+      for (final g in guardados.map((x) => jsonDecode(x) as Map))
+        if (eventos[g['eventoId']] case final evento?)
+          Pase(
+            evento: evento,
+            folio: g['folio'] as String,
+            pagoId: g['pagoId'] as String,
+            municipioId: _id,
+          ),
+    ];
+  }
 
   @override
   Future<List<Candidata>> candidatas(String certamen) async {
@@ -230,24 +267,32 @@ class RepositorioFirestore implements Repositorio {
   }
 
   /// votos/{certamen}_{uid}: el id fijo garantiza un voto por vecino.
-  /// TODO: requiere Firebase Auth (las reglas validan el uid).
+  /// Las reglas exigen sesión de Firebase Auth; mientras no la haya, el voto
+  /// se guarda en el teléfono para que la pantalla funcione igual.
   @override
-  Future<void> votar(Candidata candidata, Perfil vecino) =>
-      _raiz.collection('votos').doc('${candidata.certamen}_${vecino.uid}').set({
-        'certamen': candidata.certamen,
+  Future<void> votar(Candidata candidata, Perfil vecino) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('voto_${candidata.certamen}', candidata.id);
+    try {
+      final enPanel = candidata.certamen == 'miss'
+          ? 'miss_chiquitita'
+          : candidata.certamen;
+      await _raiz.collection('votos').doc('${enPanel}_${vecino.uid}').set({
+        'certamen': enPanel,
         'candidataId': candidata.id,
         'uid': vecino.uid,
         'colonia': vecino.coloniaId,
         'creadoEn': FieldValue.serverTimestamp(),
       });
+    } on FirebaseException {
+      // Sin sesión todavía: queda el voto local
+    }
+  }
 
   @override
   Future<String?> miVoto(String certamen, Perfil vecino) async {
-    final s = await _raiz
-        .collection('votos')
-        .doc('${certamen}_${vecino.uid}')
-        .get();
-    return s.data()?['candidataId'] as String?;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('voto_$certamen');
   }
 
   @override
