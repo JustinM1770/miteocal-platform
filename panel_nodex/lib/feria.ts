@@ -142,7 +142,8 @@ export interface Pago {
 const ev = (id: string, titulo: string, categoria: CategoriaEvento, escenario: string, fecha: string, hora: string, descripcion: string, zonas: Zona[] = [], transmitir = false): Evento =>
   ({ id, titulo, categoria, escenario, fecha, hora, descripcion, zonas, transmitir, publicado: true });
 
-/** Programa real de la Feria de Noviembre 2026 (lo dio el municipio) */
+/** Programa real de la Feria de Noviembre 2026 (lo dio el municipio).
+    Los precios de la Plaza de Toros son DE EJEMPLO para la cuenta de prueba. */
 const EVENTOS: Evento[] = [
   ev("e01", "Inauguración · Certamen Srita. Teocaltiche · Mario Bautista", "certamen", "Plaza principal", "2026-10-30", "21:00", "Arranca la feria con la elección de Srita. Teocaltiche 2026 y la presentación de Mario Bautista.", []),
   ev("e02", "Certamen Miss Chiquitita · Tributo Las Guerreras del K-pop", "certamen", "Plaza principal", "2026-10-31", "21:00", "Las niñas del municipio compiten por la corona de Miss Chiquitita. Después, tributo a Las Guerreras del K-pop.", []),
@@ -150,10 +151,10 @@ const EVENTOS: Evento[] = [
   ev("e04", "Talentos Locales", "cultural", "Plaza principal", "2026-11-02", "21:00", "Artistas de Teocaltiche en el escenario de la plaza.", []),
   ev("e05", "Talentos Locales", "cultural", "Plaza principal", "2026-11-03", "21:00", "Artistas de Teocaltiche en el escenario de la plaza.", []),
   ev("e06", "Talentos Locales", "cultural", "Plaza principal", "2026-11-04", "21:00", "Artistas de Teocaltiche en el escenario de la plaza.", []),
-  ev("e07", "Jaripeo con Ulises Quintero", "toros", "Plaza de Toros", "2026-11-05", "21:00", "Jaripeo y música en la Plaza de Toros.", []),
-  ev("e08", "Lenin Ramírez", "concierto", "Plaza de Toros", "2026-11-06", "21:00", "Concierto en la Plaza de Toros.", []),
-  ev("e09", "La Adictiva", "concierto", "Plaza de Toros", "2026-11-07", "21:00", "Banda sinaloense en la Plaza de Toros.", []),
-  ev("e10", "La Arrolladora Banda El Limón", "concierto", "Plaza de Toros", "2026-11-08", "21:00", "Banda sinaloense en la Plaza de Toros.", []),
+  ev("e07", "Jaripeo con Ulises Quintero", "toros", "Plaza de Toros", "2026-11-05", "21:00", "Jaripeo y música en la Plaza de Toros.", [{ nombre: "General", precio: 250, cupo: 2500 }, { nombre: "Preferente", precio: 450, cupo: 600 }], true),
+  ev("e08", "Lenin Ramírez", "concierto", "Plaza de Toros", "2026-11-06", "21:00", "Concierto en la Plaza de Toros.", [{ nombre: "General", precio: 450, cupo: 2500 }, { nombre: "Preferente", precio: 800, cupo: 600 }, { nombre: "VIP", precio: 1500, cupo: 150 }], true),
+  ev("e09", "La Adictiva", "concierto", "Plaza de Toros", "2026-11-07", "21:00", "Banda sinaloense en la Plaza de Toros.", [{ nombre: "General", precio: 500, cupo: 2500 }, { nombre: "Preferente", precio: 900, cupo: 600 }, { nombre: "VIP", precio: 1600, cupo: 150 }], true),
+  ev("e10", "La Arrolladora Banda El Limón", "concierto", "Plaza de Toros", "2026-11-08", "21:00", "Banda sinaloense en la Plaza de Toros.", [{ nombre: "General", precio: 550, cupo: 2500 }, { nombre: "Preferente", precio: 950, cupo: 600 }, { nombre: "VIP", precio: 1800, cupo: 150 }], true),
   ev("e11", "La Sonora Dinamita", "concierto", "Plaza principal", "2026-11-09", "21:00", "Cumbia en la plaza principal.", []),
   ev("e12", "Banda La Fresa", "concierto", "Plaza principal", "2026-11-10", "21:00", "Banda en la plaza principal.", []),
   ev("e13", "Joss Favela", "concierto", "Plaza principal", "2026-11-11", "21:00", "Concierto en la plaza principal.", []),
