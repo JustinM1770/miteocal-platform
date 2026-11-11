@@ -7,11 +7,11 @@ class Medidas {
   static const paddingTarjeta = 16.0;
   static const separacionSeccion = 24.0;
 
-  static const radioBoton = 14.0;
-  static const radioLista = 12.0;
-  static const radioTarjeta = 16.0;
-  static const radioModulo = 18.0;
-  static const radioHero = 20.0;
+  static const radioBoton = 99.0;
+  static const radioLista = 16.0;
+  static const radioTarjeta = 22.0;
+  static const radioModulo = 22.0;
+  static const radioHero = 28.0;
 
   static const e4 = 4.0;
   static const e8 = 8.0;

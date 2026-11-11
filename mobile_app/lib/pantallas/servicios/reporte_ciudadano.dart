@@ -176,7 +176,6 @@ class ReporteCiudadanoState extends State<ReporteCiudadano> {
       decoration: BoxDecoration(
         color: Colores.fondoTarjeta,
         borderRadius: BorderRadius.circular(Medidas.radioModulo),
-        border: Border.all(color: Colores.borde),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -52,21 +52,7 @@ class HeroAgua extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Medidas.radioHero),
-        color: e.activo
-            ? null
-            : e.sinDato
-            ? Colores.textoSecundario
-            : Colores.fondoInverso,
-        gradient: e.activo
-            ? LinearGradient(
-                begin: const Alignment(-0.6, -1),
-                end: const Alignment(0.6, 1),
-                colors: [
-                  color,
-                  Color.lerp(color, Colores.primaryOscuro, 0.85)!,
-                ],
-              )
-            : null,
+        color: e.sinDato ? Colores.textoSecundario : Colores.fondoInverso,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

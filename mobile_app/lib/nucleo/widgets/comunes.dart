@@ -173,7 +173,6 @@ class FiltroChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
@@ -193,7 +192,7 @@ class FiltroChips extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: activa ? primary : Colores.fondoSutil,
+                      color: activa ? Colores.fondoInverso : Colores.fondoTarjeta,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -243,13 +242,13 @@ class Pastilla extends StatelessWidget {
   }
 }
 
-/// Tarjeta blanca con filete gris.
+/// Tarjeta blanca sin filete sobre el fondo gris (estilo bento).
 class TarjetaBorde extends StatelessWidget {
   const TarjetaBorde({
     super.key,
     required this.child,
     this.relleno = const EdgeInsets.all(16),
-    this.radio = 16,
+    this.radio = 22,
     this.alTocar,
   });
 
@@ -265,7 +264,6 @@ class TarjetaBorde extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radio),
-        side: const BorderSide(color: Colores.borde),
       ),
       child: InkWell(
         onTap: alTocar,

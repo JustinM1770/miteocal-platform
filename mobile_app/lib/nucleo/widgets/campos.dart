@@ -153,11 +153,11 @@ class CuadroIcono extends StatelessWidget {
   const CuadroIcono({
     super.key,
     required this.icono,
-    this.fondo = Colores.soft,
-    this.color,
+    this.fondo = Colores.fondoSutil,
+    this.color = Colores.textoPrimario,
     this.tam = 40,
-    this.tamIcono = 21,
-    this.radio = 13,
+    this.tamIcono = 20,
+    this.radio = 999,
   });
 
   final IconData icono;

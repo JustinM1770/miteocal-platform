@@ -267,13 +267,13 @@ class _Encabezado extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: const BoxDecoration(
-                color: Colores.fondoSutil,
+                color: Colores.fondoTarjeta,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 LucideIcons.landmark,
                 size: 20,
-                color: Theme.of(context).colorScheme.primary,
+                color: Colores.textoPrimario,
               ),
             ),
           ),
@@ -283,7 +283,7 @@ class _Encabezado extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: const BoxDecoration(
-              color: Colores.fondoSutil,
+              color: Colores.fondoTarjeta,
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -319,7 +319,8 @@ class _TituloSeccion extends StatelessWidget {
               child: Text(
                 accion!,
                 style: Tipografia.subtitulo.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Colores.textoSecundario,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -338,7 +339,6 @@ class _Modulos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
       child: LayoutBuilder(
@@ -355,7 +355,6 @@ class _Modulos extends StatelessWidget {
                     color: Colores.fondoTarjeta,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-                      side: const BorderSide(color: Colores.borde),
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
@@ -370,11 +369,15 @@ class _Modulos extends StatelessWidget {
                             Container(
                               width: 40,
                               height: 40,
-                              decoration: BoxDecoration(
-                                color: Colores.soft,
-                                borderRadius: BorderRadius.circular(13),
+                              decoration: const BoxDecoration(
+                                color: Colores.fondoSutil,
+                                shape: BoxShape.circle,
                               ),
-                              child: Icon(m.icono, size: 20, color: primary),
+                              child: Icon(
+                                m.icono,
+                                size: 19,
+                                color: Colores.textoPrimario,
+                              ),
                             ),
                             const SizedBox(height: 9),
                             Text(
@@ -430,31 +433,63 @@ class _AccesosDirectos extends StatelessWidget {
       (LucideIcons.siren, 'Emergencias', () => pestanas.ir(Pestanas.servicios)),
     ];
 
-    Widget acceso((IconData, String, VoidCallback) a) => Expanded(
-      child: Material(
-        color: Colores.fondoSutil,
-        borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-        child: InkWell(
+    final primary = Theme.of(context).colorScheme.primary;
+    Widget acceso((IconData, String, VoidCallback) a) {
+      final destacado = identical(a, accesos.first);
+      final tinta = destacado ? Colores.textoInverso : Colores.textoPrimario;
+      return Expanded(
+        child: Material(
+          color: destacado ? primary : Colores.fondoTarjeta,
           borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-          onTap: a.$3,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  a.$1,
-                  size: 22,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 12),
-                Text(a.$2, style: Tipografia.subtitulo),
-              ],
+          child: InkWell(
+            borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+            onTap: a.$3,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: destacado
+                              ? Colores.fondoTarjeta
+                              : Colores.fondoSutil,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          a.$1,
+                          size: 18,
+                          color: destacado ? primary : Colores.textoPrimario,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        LucideIcons.arrowUpRight,
+                        size: 16,
+                        color: destacado ? tinta : Colores.textoSecundario,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    a.$2,
+                    style: Tipografia.cuerpo.copyWith(
+                      color: tinta,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),

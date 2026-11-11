@@ -77,7 +77,6 @@ class ShimmerTarjeta extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-          border: Border.all(color: Colores.borde),
         ),
         child: Row(
           children: [

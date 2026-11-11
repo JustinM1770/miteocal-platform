@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'colores.dart';
 import 'tipografia.dart';
 
@@ -22,6 +23,7 @@ class TemaMiTeocal {
   }) {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: GoogleFonts.geist().fontFamily,
       scaffoldBackgroundColor: Colores.fondoPantalla,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
@@ -45,8 +47,7 @@ class TemaMiTeocal {
         color: Colores.fondoTarjeta,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Colores.borde),
+          borderRadius: BorderRadius.circular(22),
         ),
       ),
     );

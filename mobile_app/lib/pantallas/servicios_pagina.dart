@@ -289,7 +289,7 @@ class _Servicio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colores.fondoSutil,
+      color: Colores.fondoTarjeta,
       borderRadius: BorderRadius.circular(Medidas.radioModulo),
       child: InkWell(
         borderRadius: BorderRadius.circular(Medidas.radioModulo),
@@ -299,7 +299,7 @@ class _Servicio extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CuadroIcono(icono: icono, fondo: Colores.fondoTarjeta),
+              CuadroIcono(icono: icono),
               const SizedBox(height: 11),
               Text(titulo, style: Tipografia.subtitulo),
               const SizedBox(height: 3),
@@ -407,10 +407,7 @@ class _Contacto extends StatelessWidget {
   final VoidCallback alTocar;
 
   static const _estilos = [
-    (Colores.soft, Colores.primary),
-    (Colores.peligroSuave, Colores.peligro),
-    (Colores.avisoSuave, Colores.aviso),
-    (Colores.exitoSuave, Colores.exito),
+    (Colores.fondoSutil, Colores.textoPrimario),
   ];
 
   @override
@@ -420,7 +417,6 @@ class _Contacto extends StatelessWidget {
       color: Colores.fondoTarjeta,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-        side: const BorderSide(color: Colores.borde),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(Medidas.radioTarjeta),

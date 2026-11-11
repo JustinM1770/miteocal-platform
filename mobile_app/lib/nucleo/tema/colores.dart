@@ -14,21 +14,21 @@ class Colores {
   // Marca
   static const primary = Color(0xFF1552E0);
   static const primaryOscuro = Color(0xFF0B32A5);
-  static const soft = Color(0xFFEDF2FE);
+  static const soft = Color(0xFFF2F2EF);
 
   // Texto
   static const textoPrimario = Color(0xFF0E1116);
-  static const textoSecundario = Color(0xFF6B7280);
+  static const textoSecundario = Color(0xFF7D828B);
   static const textoInverso = Color(0xFFFFFFFF);
 
   // Fondos
   static const fondoTarjeta = Color(0xFFFFFFFF);
-  static const fondoPantalla = Color(0xFFFFFFFF);
-  static const fondoSutil = Color(0xFFF5F6F8);
+  static const fondoPantalla = Color(0xFFF2F2EF);
+  static const fondoSutil = Color(0xFFF2F2EF);
   static const fondoInverso = Color(0xFF0E1116);
 
   // Bordes
-  static const borde = Color(0xFFE8EAEE);
+  static const borde = Color(0xFFECECE8);
   static const bordePunteado = Color(0xFFC7CFD9);
   static const manija = Color(0xFFD1D6DE);
 

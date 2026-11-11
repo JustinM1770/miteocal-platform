@@ -3,21 +3,15 @@ import 'package:flutter/material.dart';
 import '../../../datos/modelos/noticia.dart';
 import '../../../nucleo/tema/tema.dart';
 
-/// Colores de portada y etiqueta por categoria (Figma: Obras, Salud, Cultura).
+/// Portada y etiqueta por categoría. Estilo monocromo: todas iguales, salvo
+/// seguridad y emergencias, que conservan el rojo porque avisan de un riesgo.
 (Color, Color) colorCategoria(String categoria) {
   switch (categoria.toLowerCase()) {
-    case 'salud':
-      return (const Color(0xFFE6F6EE), const Color(0xFF0B7A3E));
-    case 'cultura':
-    case 'feria':
-      return (const Color(0xFFF3EEFC), const Color(0xFF6B36C9));
     case 'seguridad':
     case 'emergencia':
       return (Colores.peligroSuave, Colores.peligro);
-    case 'agua':
-      return (const Color(0xFFE8F4FD), const Color(0xFF1B6FB5));
     default:
-      return (Colores.soft, Colores.primary);
+      return (const Color(0xFFE6E6E2), Colores.textoSecundario);
   }
 }
 
@@ -140,7 +134,6 @@ class _TarjetaNoticia extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colores.fondoTarjeta,
         borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-        border: Border.all(color: Colores.borde),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
