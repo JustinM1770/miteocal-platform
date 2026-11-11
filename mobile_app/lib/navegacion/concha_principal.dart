@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../nucleo/tema/tema.dart';
+import '../nucleo/widgets/comunes.dart';
 import '../nucleo/widgets/vidrio.dart';
 import '../pantallas/comercio_pagina.dart';
 import '../pantallas/inicio_pagina.dart';
@@ -42,7 +43,7 @@ class ConchaPrincipal extends StatelessWidget {
         backgroundColor: Colores.fondoPantalla,
         // El contenido corre por debajo de la barra para que el cristal lo refracte
         extendBody: true,
-        body: _ConVelo(
+        body: VeloSuperior(
           child: IndexedStack(index: pestanas.actual, children: _paginas),
         ),
         bottomNavigationBar: GlassTabBar.bottom(
@@ -61,7 +62,7 @@ class ConchaPrincipal extends StatelessWidget {
     }
     return Scaffold(
       backgroundColor: Colores.fondoPantalla,
-      body: _ConVelo(
+      body: VeloSuperior(
         child: IndexedStack(index: pestanas.actual, children: _paginas),
       ),
       bottomNavigationBar: _BarraPestanas(
@@ -136,45 +137,6 @@ class _BarraPestanas extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Al hacer scroll, el contenido se cortaba en seco bajo la barra de estado.
-/// Este velo cubre esa franja y se desvanece, así el corte no se nota.
-class _ConVelo extends StatelessWidget {
-  const _ConVelo({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final arriba = MediaQuery.paddingOf(context).top;
-    return Stack(
-      children: [
-        child,
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: arriba + 22,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0, arriba / (arriba + 22), 1],
-                  colors: [
-                    Colores.fondoPantalla,
-                    Colores.fondoPantalla,
-                    Colores.fondoPantalla.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

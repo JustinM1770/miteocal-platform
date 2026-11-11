@@ -24,44 +24,46 @@ class PantallaModulo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colores.fondoPantalla,
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(top: 12, bottom: 34),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  Medidas.margenLateral,
-                  0,
-                  Medidas.margenLateral,
-                  0,
-                ),
-                child: Row(
-                  children: [
-                    const BotonVolver(),
-                    const SizedBox(width: 13),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(titulo, style: Tipografia.titulo),
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitulo,
-                            style: Tipografia.micro,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+      body: VeloSuperior(
+        child: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(top: 12, bottom: 34),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Medidas.margenLateral,
+                    0,
+                    Medidas.margenLateral,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      const BotonVolver(),
+                      const SizedBox(width: 13),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(titulo, style: Tipografia.titulo),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitulo,
+                              style: Tipografia.micro,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              for (final h in hijos) ...[const SizedBox(height: 22), h],
-            ],
+                for (final h in hijos) ...[const SizedBox(height: 22), h],
+              ],
+            ),
           ),
         ),
       ),
@@ -192,7 +194,9 @@ class FiltroChips extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: activa ? Colores.fondoInverso : Colores.fondoTarjeta,
+                      color: activa
+                          ? Colores.fondoInverso
+                          : Colores.fondoTarjeta,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -262,9 +266,7 @@ class TarjetaBorde extends StatelessWidget {
     return Material(
       color: Colores.fondoTarjeta,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(radio),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radio)),
       child: InkWell(
         onTap: alTocar,
         child: Padding(padding: relleno, child: child),
@@ -489,7 +491,8 @@ class _CargarState<T> extends State<Cargar<T>> {
     future: _f,
     builder: (context, s) {
       if (s.connectionState == ConnectionState.waiting && !s.hasData) {
-        return widget.placeholder ?? const Lateral(child: ShimmerLista(cantidad: 2));
+        return widget.placeholder ??
+            const Lateral(child: ShimmerLista(cantidad: 2));
       }
       return widget.builder(context, s.data);
     },
@@ -500,4 +503,43 @@ void avisoPronto(BuildContext context, String que) {
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(SnackBar(content: Text('$que estará disponible muy pronto.')));
+}
+
+/// Al hacer scroll, el contenido se cortaba en seco bajo la barra de estado.
+/// Este velo cubre esa franja y se desvanece, así el corte no se nota.
+class VeloSuperior extends StatelessWidget {
+  const VeloSuperior({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final arriba = MediaQuery.paddingOf(context).top;
+    return Stack(
+      children: [
+        child,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: arriba + 22,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0, arriba / (arriba + 22), 1],
+                  colors: [
+                    Colores.fondoPantalla,
+                    Colores.fondoPantalla,
+                    Colores.fondoPantalla.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
