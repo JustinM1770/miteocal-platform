@@ -63,8 +63,11 @@ export default function Shell({ children }: { children: ReactNode }) {
       <Accesibilidad />
       <aside className={`sidebar${menu ? " abierta" : ""}`} aria-label="Secciones">
         <div className="brand">
-          <h1>{cfg().nombre || "Panel"}</h1>
-          <p>Panel del Ayuntamiento</p>
+          <span className="logo" aria-hidden>N<i /></span>
+          <div>
+            <h1>Nodex</h1>
+            <p>{cfg().nombre || "Panel del Ayuntamiento"}</p>
+          </div>
         </div>
 
         {secciones.map((s) => (
