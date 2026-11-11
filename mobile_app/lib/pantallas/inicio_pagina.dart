@@ -16,7 +16,6 @@ import '../nucleo/widgets/hoja_colonias.dart';
 import '../nucleo/widgets/shimmer_placeholders.dart';
 import 'inicio/widgets/carrusel_noticias.dart';
 import 'inicio/widgets/hero_agua.dart';
-import 'selector_municipio.dart';
 
 /// 01 · Inicio
 class InicioPagina extends StatefulWidget {
@@ -261,23 +260,6 @@ class _Encabezado extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () => mostrarSelectorMunicipio(context),
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                color: Colores.fondoTarjeta,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                LucideIcons.landmark,
-                size: 20,
-                color: Colores.textoPrimario,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           // TODO: bandeja de avisos. El punto rojo indica avisos sin leer.
           Container(
             width: 42,

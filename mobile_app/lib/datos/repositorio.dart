@@ -10,7 +10,7 @@ import 'modelos/reporte.dart';
 /// Cual municipio atiende este build. Es el unico valor de arranque que la
 /// app conoce; todo lo demas —nombre, colores, modulos— sale de los datos.
 ///
-///   flutter run --dart-define=MUNICIPIO_ID=villa-hidalgo
+///   flutter run --dart-define=MUNICIPIO_ID=teocaltiche
 const String municipioId = String.fromEnvironment(
   'MUNICIPIO_ID',
   defaultValue: 'teocaltiche',

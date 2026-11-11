@@ -12,7 +12,6 @@ import 'navegacion/pestanas.dart';
 import 'nucleo/firebase/arranque.dart';
 import 'nucleo/tema/tema.dart';
 import 'pantallas/registro/flujo_registro.dart';
-import 'pantallas/selector_municipio.dart';
 
 /// De donde salen los datos:
 ///
@@ -40,9 +39,7 @@ Future<void> main() async {
   final sesion = Sesion();
   await sesion.cargar();
 
-  if (sesion.municipioId != null) {
-    repositorio.cambiarMunicipio(sesion.municipioId!);
-  }
+  repositorio.cambiarMunicipio(municipioId);
 
   runApp(
     LiquidGlassWidgets.wrap(
@@ -88,9 +85,6 @@ class AppMiTeocal extends StatelessWidget {
             theme: tema,
             home: Consumer<Sesion>(
               builder: (context, s, _) {
-                if (!s.municipioElegido) {
-                  return const SelectorMunicipioPagina();
-                }
                 return s.registrado
                     ? const ConchaPrincipal()
                     : const FlujoRegistro();

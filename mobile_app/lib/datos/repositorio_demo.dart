@@ -56,50 +56,20 @@ class RepositorioDemo implements Repositorio {
     prefijoFolio: 'TEC',
   );
 
-  static const _municipioVillaHidalgo = Municipio(
-    id: 'villa-hidalgo',
-    nombre: 'Villa Hidalgo',
-    estado: 'Jalisco',
-    activo: true,
-    modulos: {
-      'agua': true,
-      'noticias': true,
-      'reportes': true,
-      'basura': true,
-      'feria': false,
-      'cierres': true,
-      'escuelas': true,
-      'paisanos': false,
-      'comercio': true,
-    },
-    tema: TemaMunicipio(
-      primary: Color(0xFF0F766E),
-      primarySoft: Color(0xFFE6FFFA),
-      success: Color(0xFF10B981),
-      danger: Color(0xFFEF4444),
-    ),
-    prefijoFolio: 'VHI',
-  );
-
-  String _municipioActualId = 'teocaltiche';
-
-  Municipio get _municipio =>
-      _municipioActualId == 'villa-hidalgo'
-          ? _municipioVillaHidalgo
-          : _municipioTeocaltiche;
+  // Por ahora la app solo atiende Teocaltiche.
+  Municipio get _municipio => _municipioTeocaltiche;
 
   final StreamController<Municipio?> _controladorMunicipio =
       StreamController<Municipio?>.broadcast();
 
   @override
   void cambiarMunicipio(String id) {
-    _municipioActualId = id;
     _controladorMunicipio.add(_municipio);
   }
 
   @override
   Future<List<Municipio>> municipiosDisponibles() =>
-      _tras([_municipioTeocaltiche, _municipioVillaHidalgo]);
+      _tras([_municipioTeocaltiche]);
 
   static const _colonias = [
     Colonia(
