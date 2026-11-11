@@ -5,7 +5,6 @@ import { cfg } from "./config";
 import { actualizar, azar, contar, crear, diaLocal, f, guardarVarios, leer, leerPagina, siguienteFolio, type Fecha, type Pagina } from "./almacen";
 import { aSlug } from "./config";
 import { demoVecinos, ORIGENES } from "./vecinos";
-import { retrato } from "./retratos";
 
 /* ─── Feria ─────────────────────────────────────────────────
    Programa, certámenes, Hijos Ausentes, transmisiones y venta de
