@@ -25,7 +25,8 @@ export async function leer<T extends { id?: string }>(
   if (!firebaseListo || !db) return demo;
   const restricciones: QueryConstraint[] = (opciones.filtros ?? []).map(([c, v]) => where(c, "==", v));
   if (opciones.orden) restricciones.push(orderBy(opciones.orden, "desc"));
-  restricciones.push(limit(opciones.max ?? MAX_LECTURA));
+  // Firestore no acepta límites mayores a 10 000
+  restricciones.push(limit(Math.min(opciones.max ?? MAX_LECTURA, 10_000)));
   const snap = await getDocs(query(coleccion(col), ...restricciones));
   return snap.docs.map((d) => ({ ...d.data(), id: d.id } as T));
 }
@@ -40,7 +41,7 @@ export async function leerPagina<T extends { id?: string }>(
   if (!firebaseListo || !db) return { items: demo, cursor: null, hayMas: false };
   const r: QueryConstraint[] = [...filtros.map(([c, v]) => where(c, "==", v)), orderBy(orden, "desc")];
   if (cursor) r.push(startAfter(cursor));
-  r.push(limit(n));
+  r.push(limit(Math.min(n, 10_000)));
   const snap = await getDocs(query(coleccion(col), ...r));
   return {
     items: snap.docs.map((d) => ({ ...d.data(), id: d.id } as T)),

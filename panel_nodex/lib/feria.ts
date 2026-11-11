@@ -270,7 +270,7 @@ export const listarEventos = async () =>
 export const listarCandidatas = () => leer("candidatas", demoCandidatas);
 export const listarCertamenes = () => leer("certamenes", demoCertamenes);
 /** Votos sueltos (para el desglose por colonia). Los totales usan contarVotos. */
-export const listarVotos = (certamen?: Certamen) => leer("votos", certamen ? demoVotos.filter((v) => v.certamen === certamen) : demoVotos, { max: 20000, filtros: certamen ? [["certamen", certamen]] : [] });
+export const listarVotos = (certamen?: Certamen) => leer("votos", certamen ? demoVotos.filter((v) => v.certamen === certamen) : demoVotos, { max: 10_000, filtros: certamen ? [["certamen", certamen]] : [] });
 /** Total de votos de una candidata, contado en el servidor */
 export const contarVotos = (candidataId: string) => contar("votos", demoVotos, [["candidataId", candidataId]]);
 export const listarTransmisiones = () => leer("transmisiones", demoTransmisiones);
@@ -279,7 +279,7 @@ export const listarPagos = async () =>
   (await leer("pagos", demoPagos, { orden: "creadoEn" })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
 /** Solo boletos: su número está acotado por el cupo de los eventos */
 export const listarBoletos = async () =>
-  (await leer("pagos", demoPagos.filter((p) => p.concepto === "boleto"), { filtros: [["concepto", "boleto"]], max: 20000 })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
+  (await leer("pagos", demoPagos.filter((p) => p.concepto === "boleto"), { filtros: [["concepto", "boleto"]], max: 10_000 })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
 export { demoPagos };
 
 /** Boletos vendidos por evento y zona (cuenta solo pagados) */

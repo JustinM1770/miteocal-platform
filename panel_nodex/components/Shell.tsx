@@ -3,6 +3,7 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { esAdmin, NOMBRE_ROL, useAuth } from "@/lib/auth";
+import { cuentaDePrueba } from "@/lib/firebase";
 import { cfg, moduloActivo } from "@/lib/config";
 import { paginaDe, seccionesVisibles } from "@/lib/navegacion";
 import Accesibilidad from "@/components/Accesibilidad";
@@ -89,6 +90,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             <h2>{actual?.nombre ?? "Panel"}</h2>
           </div>
           <div className="right">
+            {cuentaDePrueba && <span className="pill interno">Cuenta de prueba · datos de ejemplo</span>}
             {sesion?.area && <span className="pill publico solo-escritorio">Área: {sesion.area}</span>}
             <span className="muted solo-escritorio" style={{ fontWeight: 500 }}>
               {sesion?.nombre} · {sesion ? NOMBRE_ROL[sesion.rol] : ""}
