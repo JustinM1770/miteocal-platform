@@ -127,6 +127,7 @@ class _InicioPaginaState extends State<InicioPagina> {
                   const _TituloSeccion(titulo: 'Tu municipio'),
                   const SizedBox(height: 14),
                   _Modulos(
+                    coloniaId: colonia?.id ?? perfil?.coloniaId,
                     modulos: [
                       for (final m in Modulo.values)
                         if (m != Modulo.agua && municipio.tieneModulo(m.clave))
@@ -313,14 +314,103 @@ class _TituloSeccion extends StatelessWidget {
 }
 
 /// Carrusel de los módulos contratados por el municipio. Caben tres a lo
-/// ancho, repartidos de orilla a orilla; si hay más, se deslizan.
-class _Modulos extends StatelessWidget {
-  const _Modulos({required this.modulos, required this.alAbrir});
+/// ancho, repartidos de orilla a orilla; si hay más, se deslizan. Cada
+/// tarjeta trae un dato en vivo de su módulo.
+class _Modulos extends StatefulWidget {
+  const _Modulos({
+    required this.modulos,
+    required this.alAbrir,
+    this.coloniaId,
+  });
 
   final List<Modulo> modulos;
   final ValueChanged<Modulo> alAbrir;
+  final String? coloniaId;
 
+  @override
+  State<_Modulos> createState() => _ModulosState();
+}
+
+class _ModulosState extends State<_Modulos> {
   static const _separacion = 10.0;
+  final _datos = <Modulo, Future<(String, bool)?>>{};
+
+  static const _meses = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+
+  /// (texto, enVivo). null si no hay nada que decir.
+  Future<(String, bool)?> _dato(Modulo m) async {
+    final repo = context.read<Repositorio>();
+    try {
+      switch (m) {
+        case Modulo.basura:
+          final id = widget.coloniaId;
+          if (id == null) return null;
+          final r = await repo.rutaBasura(id);
+          if (r == null || r.minutos == null) return ('Hoy no pasa', false);
+          return r.minutos! <= 2
+              ? ('Llegando a tu calle', true)
+              : ('Llega en ${r.minutos} min', true);
+        case Modulo.cierres:
+          final n = (await repo.cierres()).length;
+          return (
+            n == 0
+                ? 'Sin cierres'
+                : n == 1
+                ? '1 activo'
+                : '$n activos',
+            false,
+          );
+        case Modulo.escuelas:
+          final n = (await repo.avisosEscolares()).length;
+          return (
+            n == 0
+                ? 'Sin avisos'
+                : n == 1
+                ? '1 aviso'
+                : '$n avisos',
+            false,
+          );
+        case Modulo.feria:
+          final hoy = DateUtils.dateOnly(DateTime.now());
+          final eventos = [...await repo.eventosFeria()]
+            ..sort((a, b) => a.fecha.compareTo(b.fecha));
+          final deHoy = eventos.where((e) => DateUtils.isSameDay(e.fecha, hoy));
+          if (deHoy.isNotEmpty) {
+            final e = deHoy.last;
+            return (
+              'Hoy: ${e.artista.isNotEmpty ? e.artista : e.titulo}',
+              true,
+            );
+          }
+          final prox = eventos.where((e) => e.fecha.isAfter(hoy));
+          if (prox.isEmpty) return ('Ver programa', false);
+          final f = prox.first.fecha;
+          return ('Inicia ${f.day} ${_meses[f.month - 1]}', false);
+        case Modulo.paisanos:
+          final t = await repo.transmisionEnVivo();
+          if (t != null && t.enVivo) return ('Transmisión en vivo', true);
+          final c = await repo.comunidadPaisana();
+          return c == null ? null : ('${c.conectados} conectados', false);
+        case Modulo.agua:
+          return null;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -329,69 +419,134 @@ class _Modulos extends StatelessWidget {
         final util = c.maxWidth - Medidas.margenLateral * 2;
         final ancho = (util - _separacion * 2) / 3;
         return SizedBox(
-          height: 118,
+          height: 128,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(
               horizontal: Medidas.margenLateral,
             ),
-            itemCount: modulos.length,
+            itemCount: widget.modulos.length,
             separatorBuilder: (_, _) => const SizedBox(width: _separacion),
             itemBuilder: (context, i) {
-              final m = modulos[i];
+              final m = widget.modulos[i];
+              final dato = _datos.putIfAbsent(m, () => _dato(m));
               return SizedBox(
                 width: ancho,
-                child: Material(
-                  color: Colores.fondoTarjeta,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-                    onTap: () => alAbrir(m),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 14,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: const BoxDecoration(
-                              color: Colores.fondoSutil,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              m.icono,
-                              size: 19,
-                              color: Colores.textoPrimario,
-                            ),
-                          ),
-                          const SizedBox(height: 9),
-                          Text(
-                            m.nombre,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Tipografia.micro.copyWith(
-                              color: Colores.textoPrimario,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                child: _TarjetaModulo(
+                  modulo: m,
+                  dato: dato,
+                  alTocar: () => widget.alAbrir(m),
                 ),
               );
             },
           ),
         );
       },
+    );
+  }
+}
+
+class _TarjetaModulo extends StatelessWidget {
+  const _TarjetaModulo({
+    required this.modulo,
+    required this.dato,
+    required this.alTocar,
+  });
+
+  final Modulo modulo;
+  final Future<(String, bool)?> dato;
+  final VoidCallback alTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Material(
+      color: Colores.fondoTarjeta,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
+        onTap: alTocar,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: const BoxDecoration(
+                      color: Colores.fondoSutil,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      modulo.icono,
+                      size: 17,
+                      color: Colores.textoPrimario,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    LucideIcons.arrowUpRight,
+                    size: 15,
+                    color: Colores.textoSecundario,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                modulo.nombre,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tipografia.cuerpo.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 3),
+              FutureBuilder<(String, bool)?>(
+                future: dato,
+                builder: (context, snap) {
+                  final d = snap.data;
+                  if (d == null) {
+                    return Text(' ', style: Tipografia.micro);
+                  }
+                  final (texto, enVivo) = d;
+                  return Row(
+                    children: [
+                      if (enVivo) ...[
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                      Flexible(
+                        child: Text(
+                          texto,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Tipografia.micro.copyWith(
+                            color: enVivo ? primary : Colores.textoSecundario,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
