@@ -11,7 +11,16 @@
  *
  * Es idempotente: usa ids fijos, correrlo dos veces no duplica nada.
  */
-const admin = require('firebase-admin');
+// firebase-admin v14 ya no trae la API con espacio de nombres; este objeto
+// conserva la forma admin.firestore() / admin.auth() que usan los scripts.
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
+const admin = {
+  initializeApp,
+  firestore: Object.assign(() => getFirestore(), { FieldValue }),
+  auth: () => getAuth(),
+};
 const fs = require('fs');
 const path = require('path');
 
