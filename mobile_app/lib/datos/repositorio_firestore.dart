@@ -181,7 +181,11 @@ class RepositorioFirestore implements Repositorio {
 
   @override
   Future<List<EventoFeria>> eventosFeria() async =>
-      (await _coleccion('eventos', EventoFeria.desdeMapa, max: 200))
+      (await _raiz.collection('eventos').limit(300).get()).docs
+          // Los borradores del panel no salen en la app
+          .where((d) => d.data()['publicado'] != false)
+          .map((d) => EventoFeria.desdeMapa(d.id, d.data()))
+          .toList()
         ..sort((a, b) => a.fecha.compareTo(b.fecha));
 
   @override
@@ -212,11 +216,17 @@ class RepositorioFirestore implements Repositorio {
 
   @override
   Future<List<Candidata>> candidatas(String certamen) async {
+    // El panel nombra al certamen infantil «miss_chiquitita»; la app, «miss»
+    final enPanel = certamen == 'miss' ? 'miss_chiquitita' : certamen;
     final q = await _raiz
         .collection('candidatas')
-        .where('certamen', isEqualTo: certamen)
+        .where('certamen', isEqualTo: enPanel)
         .get();
-    return q.docs.map((d) => Candidata.desdeMapa(d.id, d.data())).toList();
+    return q.docs
+        .map(
+          (d) => Candidata.desdeMapa(d.id, {...d.data(), 'certamen': certamen}),
+        )
+        .toList();
   }
 
   /// votos/{certamen}_{uid}: el id fijo garantiza un voto por vecino.

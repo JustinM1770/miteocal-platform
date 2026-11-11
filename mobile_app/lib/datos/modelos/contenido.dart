@@ -11,6 +11,18 @@ DateTime _fecha(dynamic v) {
   return DateTime.now();
 }
 
+/// Categorías del panel → tipos de la app.
+const _tipoDeCategoria = {
+  'concierto': 'Musical',
+  'toros': 'Jaripeo',
+  'palenque': 'Musical',
+  'religioso': 'Religioso',
+  'cultural': 'Cultural',
+  'infantil': 'Cultural',
+  'certamen': 'Certamen',
+  'hijos_ausentes': 'Cultural',
+};
+
 String _texto(Map<String, dynamic> m, String clave, [String otra = '']) =>
     (m[clave] as String?) ?? (otra.isEmpty ? '' : (m[otra] as String?) ?? '');
 
@@ -180,8 +192,13 @@ class EventoFeria {
       lugar: _texto(m, 'lugar', 'sede'),
       escenario: _texto(m, 'escenario'),
       precio: (m['precio'] as num?)?.toInt(),
-      artista: _texto(m, 'artista'),
-      tipo: _texto(m, 'tipo').isEmpty ? 'Musical' : _texto(m, 'tipo'),
+      // El panel guarda artista = titulo cuando no hay invitado aparte
+      artista: _texto(m, 'artista') == _texto(m, 'titulo', 'artista')
+          ? ''
+          : _texto(m, 'artista'),
+      tipo: _texto(m, 'tipo').isNotEmpty
+          ? _texto(m, 'tipo')
+          : _tipoDeCategoria[_texto(m, 'categoria')] ?? 'Musical',
       descripcion: _texto(m, 'descripcion'),
       foto: m['foto'] as String?,
       disponibilidad: quedan == null

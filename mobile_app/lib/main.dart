@@ -10,6 +10,7 @@ import 'datos/sesion.dart';
 import 'navegacion/concha_principal.dart';
 import 'navegacion/pestanas.dart';
 import 'nucleo/firebase/arranque.dart';
+import 'nucleo/firebase/opciones_reales.dart';
 import 'nucleo/tema/tema.dart';
 import 'pantallas/registro/flujo_registro.dart';
 
@@ -29,7 +30,7 @@ Future<void> main() async {
   await LiquidGlassWidgets.initialize();
 
   final Repositorio repositorio;
-  if (fuente == 'firebase') {
+  if (fuente == 'firebase' && (usarEmuladores || OpcionesReales.configuradas)) {
     await arrancarFirebase();
     repositorio = RepositorioFirestore();
   } else {

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'opciones_demo.dart';
+import 'opciones_reales.dart';
 
 /// Con `--dart-define=USAR_EMULADORES=true` la app habla con los emuladores
 /// locales en vez de con el proyecto real.
@@ -20,9 +21,7 @@ String get _anfitrion {
 
 Future<void> arrancarFirebase() async {
   await Firebase.initializeApp(
-    // TODO: cuando exista firebase_options.dart real, usarlo cuando
-    // usarEmuladores sea falso.
-    options: usarEmuladores ? OpcionesDemo.valores : null,
+    options: usarEmuladores ? OpcionesDemo.valores : OpcionesReales.valores,
   );
 
   if (usarEmuladores) {
