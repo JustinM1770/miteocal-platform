@@ -493,6 +493,19 @@ export async function listarReportes(max = 300): Promise<Reporte[]> {
   return snap.docs.map((d) => normalizarReporte(d.id, d.data()));
 }
 
+/** Reportes que mandó un vecino desde la app (para su ficha en el CRM) */
+export async function reportesDe(uid: string, colonia: string): Promise<Reporte[]> {
+  if (!firebaseListo || !db) {
+    // Demo: los reportes de ejemplo no traen dueño; se le asignan unos de su
+    // colonia de forma estable para que cada ficha se vea igual al recargar
+    const h = [...uid].reduce((s, c) => s + c.charCodeAt(0), 0);
+    const deSuColonia = demoReportes.filter((r) => r.colonia === colonia);
+    return deSuColonia.slice(h % 5, (h % 5) + (h % 4)).sort(porFecha);
+  }
+  const snap = await getDocs(query(coleccion("reportes"), where("uid", "==", uid), limit(30)));
+  return snap.docs.map((d) => normalizarReporte(d.id, d.data())).sort(porFecha);
+}
+
 /** Cuenta en el servidor los reportes sin resolver */
 export async function reportesPorAtender(): Promise<number> {
   if (!firebaseListo || !db) return demoReportes.filter((r) => r.estado !== "resuelto").length;
