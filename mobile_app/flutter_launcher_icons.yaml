@@ -1,8 +1,8 @@
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/imagenes/escudo.jpg"
-  adaptive_icon_background: "#1552E0"
-  adaptive_icon_foreground: "assets/imagenes/escudo.jpg"
+  image_path: "assets/imagenes/nodex-icono.png"
+  adaptive_icon_background: "#0E1116"
+  adaptive_icon_foreground: "assets/imagenes/nodex-marca.png"
   min_sdk_android: 21
   remove_alpha_ios: true
