@@ -81,6 +81,12 @@ service cloud.firestore {
         allow write: if esFuncionario(mid);
       }
 
+      // Transporte público local: recorrido y horario, igual que la basura
+      match /rutasTransporte/{rutaId} {
+        allow read:  if true;
+        allow write: if esFuncionario(mid);
+      }
+
       match /noticias/{noticiaId} {
         allow read:  if true;
         allow write: if esFuncionario(mid);
