@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!firebaseListo || !auth) {
       // La cuenta de prueba entra directo con la sesión de ejemplo
-      if (cuentaDePrueba) setSesion({ ...SESION_DEMO, email: "demo@nodex.mx", nombre: "Cuenta de prueba" });
+      if (cuentaDePrueba) setSesion({ ...SESION_DEMO, email: "demo@nodex.mx" });
       setCargando(false);
       return;
     }

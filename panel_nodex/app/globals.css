@@ -468,3 +468,48 @@ tr.click:focus-visible td { background: var(--brand-soft); }
 /* Columnas numéricas: encabezado y cifras alineados a la derecha, angostas;
    la primera columna (el nombre) se queda con el espacio sobrante */
 .tabla th.num, .tabla td.num { text-align: right; width: 1%; white-space: nowrap; padding-left: 28px; padding-right: 4px; }
+
+/* ─── Escritorio bento (Figma «Panel · Escritorio — Bento») ─── */
+.burbuja { display: inline-grid; place-items: center; border-radius: 50%; background: var(--subtle); color: var(--ink); }
+.nav-item svg { flex: 0 0 auto; }
+.nav-item.secundario { color: var(--sec); }
+.nav-item.secundario.active { color: #fff; }
+.usuario { display: flex; align-items: center; gap: 10px; padding: 12px 6px 0; margin-top: 8px; border-top: 1px solid var(--border); }
+.usuario strong { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usuario span { font-size: 11px; color: var(--sec); }
+.icono-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: none; background: none; color: var(--sec); }
+.icono-btn:hover { background: var(--subtle); color: var(--ink); }
+.icono-btn.grande { width: 44px; height: 44px; background: var(--white); color: var(--ink); }
+.buscador { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 999px; border: none; background: var(--white); color: var(--sec); font-size: 13px; min-width: 300px; }
+.buscador span { flex: 1; text-align: left; }
+.buscador kbd { font-family: var(--mono); font-size: 11px; color: var(--sec); }
+.topbar .section-label { font-size: 12px; letter-spacing: 0.1em; }
+.topbar h2.saludo { font-size: 44px; letter-spacing: -0.045em; line-height: 1.05; }
+.topbar:has(h2.saludo) { height: 112px; flex-basis: 112px; }
+.sidebar .nav-item { padding: 12px 14px; font-size: 15px; gap: 12px; border-radius: 14px; }
+
+.bento-fila { display: flex; gap: 12px; align-items: stretch; }
+.bento-lado { width: 30%; flex: 0 0 30%; min-width: 300px; display: flex; flex-direction: column; gap: 12px; }
+.hero-agua { background: var(--ink); color: #fff; border-radius: 28px; padding: 26px 30px; display: flex; flex-direction: column; gap: 14px; flex: 1; min-width: 0; }
+.hero-agua .k { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+.hero-agua .v { font-size: 52px; font-weight: 600; letter-spacing: -0.045em; line-height: 1; margin: 6px 0 0; }
+.hero-agua .m { font-size: 15px; opacity: 0.7; margin: 0; }
+.hero-agua .btn.oscuro { background: rgba(255,255,255,0.1); color: #fff; }
+.hero-agua .btn.oscuro:hover { background: rgba(255,255,255,0.18); }
+.punto { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.kpi-bento { flex: 1; min-width: 0; background: var(--white); border-radius: var(--r-lg); padding: 22px; display: flex; flex-direction: column; gap: 4px; text-align: left; border: none; color: inherit; font: inherit; }
+button.kpi-bento:hover { box-shadow: inset 0 0 0 1px var(--border); }
+.kpi-bento .n { font-size: 44px; font-weight: 600; letter-spacing: -0.045em; line-height: 1.05; }
+.kpi-bento .s { font-size: 13px; color: var(--sec); display: inline-flex; align-items: center; gap: 6px; }
+.tarjeta-top { display: flex; justify-content: space-between; align-items: center; color: var(--sec); }
+.mov { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid var(--border); }
+.mov .t { font-size: 15px; font-weight: 500; }
+.mov .s { font-size: 13px; color: var(--sec); }
+.mini-mapa { position: relative; height: 160px; border-radius: 18px; background: #e6e6e2; overflow: hidden; }
+.mini-mapa i { position: absolute; width: 10px; height: 10px; border-radius: 50%; transform: translate(-50%, -50%); }
+.mini-mapa span { position: absolute; left: 16px; bottom: 12px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sec); }
+@media (max-width: 1100px) {
+  .bento-fila { flex-direction: column; }
+  .bento-lado { width: 100%; flex-basis: auto; min-width: 0; }
+  .buscador { min-width: 0; }
+}

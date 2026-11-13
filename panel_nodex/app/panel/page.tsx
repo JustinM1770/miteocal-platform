@@ -4,15 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { esAdmin, useAuth } from "@/lib/auth";
 import ModalCorregir from "@/components/ModalCorregir";
-import { Kpi } from "@/components/graficas";
 import {
-  ETIQUETA_ESTADO, actividadReciente, aguaDeHoy, haceTexto, horasDesde, metricas, programadas,
-  publicar, reportesPorAtender, ultimaDeTipo, type Auditoria, type Publicacion,
+  ETIQUETA_ESTADO, actividadReciente, aguaDeHoy, haceTexto, horasDesde, listarReportes, metricas, programadas,
+  publicar, ultimaDeTipo, type Auditoria, type Publicacion, type Reporte,
 } from "@/lib/datos";
 import { cfg, moduloActivo } from "@/lib/config";
 import { f } from "@/lib/almacen";
 import { listarSolicitudes } from "@/lib/tramites";
-import { listarTransmisiones, type Transmision } from "@/lib/feria";
+import Icono, { Burbuja, type NombreIcono } from "@/components/Icono";
+import { abierto, urgenciaDe } from "@/lib/centro";
 
 /** A partir de aquí la app deja de mostrar el dato y dice «sin información» */
 const CADUCIDAD_HORAS = 24;
@@ -23,9 +23,8 @@ interface Resumen {
   corte: Publicacion | null;
   audit: Auditoria[];
   nums: { vecinos: number | null; publicaciones: number; notificaciones: number };
-  reportes: number | null;
+  reportes: Reporte[] | null;
   solicitudes: number | null;
-  enVivo: Transmision[];
   pendientes: Publicacion[];
 }
 
@@ -39,22 +38,20 @@ export default function Escritorio() {
   const [corrigiendo, setCorrigiendo] = useState(false);
 
   const cargar = useCallback(async () => {
-    const [agua, hoy, corte, audit, nums, reportes, sols, trans, pendientes] = await Promise.all([
+    const [agua, hoy, corte, audit, nums, reportes, sols, pendientes] = await Promise.all([
       o(ultimaDeTipo("agua"), null),
       o(aguaDeHoy(), null),
       o(ultimaDeTipo("corte"), null),
       o(actividadReciente(6), []),
       o(metricas(), { vecinos: null, publicaciones: 0, notificaciones: 0 }),
-      moduloActivo("reportes") ? o(reportesPorAtender(), null) : Promise.resolve(null),
+      moduloActivo("reportes") ? o(listarReportes(300), null) : Promise.resolve(null),
       moduloActivo("tramites") ? o(listarSolicitudes(), null) : Promise.resolve(null),
-      moduloActivo("feria") || moduloActivo("paisanos") ? o(listarTransmisiones(), []) : Promise.resolve([]),
-      o(programadas(5), []),
+      o(programadas(3), []),
     ]);
     setR({
       agua, corte, audit, nums, reportes, pendientes,
       coloniasSinAgua: Object.entries(hoy?.colonias ?? {}).filter(([, v]) => v.estado === "sin-servicio").map(([k]) => k),
       solicitudes: sols ? sols.filter((s) => s.estado === "recibida").length : null,
-      enVivo: trans.filter((t) => t.estado === "en_vivo"),
     });
   }, []);
 
@@ -67,6 +64,9 @@ export default function Escritorio() {
   const vencido = horas !== null && horas >= 12;
   const restantes = horas === null ? 0 : Math.max(0, CADUCIDAD_HORAS - horas);
   const faltan = cfg().faltantes;
+  const abiertos = (r.reportes ?? []).filter(abierto);
+  const urgentes = abiertos.filter((x) => urgenciaDe(x) === "alta").length;
+  const puntos = miniMapa(abiertos);
 
   return (
     <>
@@ -87,16 +87,6 @@ export default function Escritorio() {
         </div>
       )}
 
-      {r.enVivo.map((t) => (
-        <div key={t.id} className="banner" style={{ background: "var(--danger-soft)" }}>
-          <div className="row" style={{ gap: 10, alignItems: "center" }}>
-            <span className="pill" style={{ background: "var(--danger)", color: "#fff" }}>● EN VIVO</span>
-            <strong>{t.titulo}</strong>
-          </div>
-          <button className="btn ghost" type="button" onClick={() => router.push("/panel/feria/transmisiones")}>Ver</button>
-        </div>
-      ))}
-
       {moduloActivo("agua") && vencido && agua && (
         <div className="banner warn">
           <div className="col" style={{ gap: 3 }}>
@@ -111,97 +101,130 @@ export default function Escritorio() {
         </div>
       )}
 
-      <div className="section-label">LO QUE LOS CIUDADANOS ESTÁN VIENDO AHORA</div>
-
-      <div className="row">
+      <div className="bento-fila">
         {moduloActivo("agua") && (
-          <div className="card grow col" style={{ gap: 12 }}>
+          <div className="hero-agua">
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <span className="k">Lo que ven los vecinos · Agua</span>
+              {agua && (
+                <span className="row" style={{ gap: 7, alignItems: "center", fontSize: 13, fontWeight: 500 }}>
+                  <span className="punto" style={{ background: agua.estado === "activo" ? "#30a46c" : agua.estado === "sin_servicio" ? "#ff5a5a" : "#8a8f98" }} />
+                  {ETIQUETA_ESTADO[agua.estado ?? "sin_dato"]} · {agua.colonia ?? "Todo el municipio"}
+                </span>
+              )}
+            </div>
             {agua ? (
               <>
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 className="h3">{agua.titulo}</h3>
-                  <span className={`pill ${agua.estado ?? "sin_dato"}`}>{ETIQUETA_ESTADO[agua.estado ?? "sin_dato"].toUpperCase()}</span>
-                </div>
-                <p className="big">
+                <p className="v">
                   {agua.estado === "sin_servicio"
                     ? agua.horaEstimada ? `Vuelve hoy ~${agua.horaEstimada}` : "Sin estimación de regreso"
-                    : agua.estado === "activo" ? "El servicio está funcionando"
+                    : agua.estado === "activo" ? "Servicio funcionando"
                     : "Sin información del pozo"}
                 </p>
-                <span className="muted" style={{ fontSize: 12, fontWeight: 500 }}>Publicado {haceTexto(agua.publicarEn)} por {agua.autorNombre}</span>
-                {r.coloniasSinAgua.length > 0 && (
-                  <span className="tag rojo">Sin servicio hoy: {r.coloniasSinAgua.join(", ")}</span>
-                )}
-                <div className="row" style={{ gap: 10, paddingTop: 4 }}>
-                  <button className="btn primary" onClick={() => router.push("/panel/agua")} type="button">Actualizar estado</button>
-                  <button className="btn ghost" onClick={() => setCorrigiendo(true)} type="button">Corregir dato publicado</button>
+                {agua.mensaje && <p className="m">{agua.mensaje}</p>}
+                {r.coloniasSinAgua.length > 0 && <p className="m">Sin servicio hoy: {r.coloniasSinAgua.join(", ")}</p>}
+                <div className="row" style={{ gap: 10, alignItems: "center", marginTop: "auto", paddingTop: 6 }}>
+                  <button className="btn primary" onClick={() => router.push("/panel/agua")} type="button">Actualizar estado <Icono n="flecha" tam={14} grosor={2} /></button>
+                  <button className="btn oscuro" onClick={() => setCorrigiendo(true)} type="button">Corregir dato publicado</button>
+                  <span className="grow" />
+                  <span style={{ fontSize: 13, opacity: 0.45 }}>Publicado {haceTexto(agua.publicarEn)}</span>
                 </div>
               </>
             ) : (
-              <div className="col" style={{ gap: 12, padding: "20px 0", alignItems: "flex-start" }}>
-                <h3 className="h3">Todavía no has publicado el estado del agua</h3>
-                <span className="muted">Mientras no publiques, la app muestra «sin información actualizada» en lugar de inventar un dato.</span>
-                <button className="btn primary" onClick={() => router.push("/panel/agua")} type="button">Publicar el primer estado</button>
-              </div>
+              <>
+                <p className="v" style={{ fontSize: 34 }}>Todavía no publicas el estado del agua</p>
+                <p className="m">Mientras no publiques, la app muestra «sin información actualizada» en lugar de inventar un dato.</p>
+                <div className="row" style={{ marginTop: "auto" }}>
+                  <button className="btn primary" onClick={() => router.push("/panel/agua")} type="button">Publicar el primer estado <Icono n="flecha" tam={14} grosor={2} /></button>
+                </div>
+              </>
             )}
           </div>
         )}
 
-        <div className="card col" style={{ gap: 10, width: 400, flex: "0 0 400px" }}>
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-            <h3 className="h3">Corte programado</h3>
-            {r.corte && <span className="pill programado">PROGRAMADO</span>}
-          </div>
-          {r.corte ? (
-            <>
-              <strong style={{ fontWeight: 500 }}>{r.corte.titulo}</strong>
-              <span className="muted">{r.corte.mensaje}</span>
-            </>
-          ) : <span className="muted">No hay cortes programados.</span>}
-          <button className="btn ghost" style={{ alignSelf: "flex-start", padding: "8px 12px" }} onClick={() => router.push("/panel/cortes")} type="button">Programar corte</button>
+        <div className="bento-lado">
+          <button type="button" className="card col" style={{ gap: 6, flex: 1, textAlign: "left", border: "none", font: "inherit", color: "inherit" }} onClick={() => router.push("/panel/cortes")}>
+            <div className="tarjeta-top"><Burbuja n="calendario" tam={44} /><Icono n="flecha" tam={16} /></div>
+            <span style={{ flex: 1, minHeight: 18 }} />
+            <span className="section-label">Corte programado</span>
+            {r.corte ? (
+              <>
+                <span className="big">{diaCorto(r.corte.datos?.fecha) ?? r.corte.titulo}</span>
+                <span className="muted" style={{ fontSize: 14 }}>
+                  {[r.corte.datos?.horario, r.corte.datos?.fecha ? r.corte.titulo : r.corte.mensaje].filter(Boolean).join(" · ")}
+                </span>
+              </>
+            ) : <span className="big" style={{ fontSize: 26 }}>Sin cortes</span>}
+            <span className="btn ghost" style={{ alignSelf: "flex-start", marginTop: 8 }}>Programar corte</span>
+          </button>
         </div>
       </div>
 
-      <div className="row">
-        <Kpi n={r.nums.vecinos ?? "—"} t="Vecinos con la app" s={r.nums.vecinos === null ? "Falta config/estadisticas" : "en todo el municipio"} />
-        <Kpi n={r.nums.publicaciones} t="Publicaciones esta semana" s="en los últimos 7 días" />
-        <Kpi n={r.nums.notificaciones} t="Notificaciones enviadas" s="en los últimos 7 días" />
-        {r.reportes !== null && <Kpi n={r.reportes} t="Reportes por atender" s="de los vecinos" onClick={() => router.push("/panel/reportes")} />}
-        {r.solicitudes !== null && <Kpi n={r.solicitudes} t="Trámites por revisar" s="solicitudes nuevas" onClick={() => router.push("/panel/tramites")} />}
+      <div className="bento-fila">
+        <Indicador icono="personas" t="Vecinos con la app" n={r.nums.vecinos} s={r.nums.vecinos === null ? "Sin estadísticas todavía" : "en todo el municipio"} />
+        {r.reportes !== null && (
+          <Indicador icono="alerta" t="Reportes por atender" n={abiertos.length} rojo={urgentes > 0}
+            s={urgentes === 1 ? "1 urgente" : urgentes > 0 ? `${urgentes} urgentes` : "ninguno urgente"} onClick={() => router.push("/panel/reportes")} />
+        )}
+        {r.solicitudes !== null && (
+          <Indicador icono="documento" t="Trámites por revisar" n={r.solicitudes} rojo={r.solicitudes > 0}
+            s="solicitudes nuevas" onClick={() => router.push("/panel/tramites")} />
+        )}
+        <Indicador icono="campana" t="Notificaciones" n={r.nums.notificaciones} s="Esta semana" />
       </div>
 
-      <div className="row">
-        <div className="card grow col" style={{ gap: 0, paddingBottom: 8 }}>
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", paddingBottom: 12 }}>
-            <h3 className="h3">Actividad reciente</h3>
+      <div className="bento-fila">
+        <div className="card col" style={{ gap: 0, flex: 1, minWidth: 0, paddingBottom: 10 }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", paddingBottom: 14 }}>
+            <h3 className="h3" style={{ fontSize: 22 }}>Actividad reciente</h3>
             {esAdmin(sesion) && (
               <button type="button" onClick={() => router.push("/panel/auditoria")}
-                style={{ color: "var(--brand)", fontWeight: 600, fontSize: 13, background: "none", border: "none", padding: 0 }}>
-                Ver bitácora completa
+                style={{ color: "var(--sec)", fontWeight: 500, fontSize: 14, background: "none", border: "none", padding: 0 }}>
+                Ver auditoría
               </button>
             )}
           </div>
           {r.audit.length === 0 && <span className="muted" style={{ paddingBottom: 12 }}>Sin movimientos todavía.</span>}
           {r.audit.map((a, i) => (
-            <div className="list-row" key={a.id ?? i}>
-              <span className="muted" style={{ width: 70, fontSize: 12, flex: "0 0 70px" }}>{haceTexto(a.creadoEn)}</span>
-              <strong style={{ width: 90, flex: "0 0 90px", fontSize: 13 }}>{a.autorNombre}</strong>
-              <span className="muted grow" style={{ fontSize: 13 }}>{a.accion} · {a.detalle}</span>
-              <span className={`pill ${a.canal}`}>{a.canal === "interno" ? "INTERNO" : "PÚBLICO"}</span>
+            <div className="mov" key={a.id ?? i}>
+              <Burbuja n={iconoDe(a)} tam={38} />
+              <div className="col grow" style={{ gap: 2, minWidth: 0 }}>
+                <span className="t">{a.accion} · {a.detalle}</span>
+                <span className="s">{a.autorNombre} · {haceTexto(a.creadoEn)}</span>
+              </div>
+              <span className={`pill ${a.canal}`}>{a.canal === "interno" ? "Interno" : "Público"}</span>
             </div>
           ))}
         </div>
 
-        <div className="card col" style={{ gap: 8, width: 400, flex: "0 0 400px" }}>
-          <h3 className="h3">Programadas</h3>
-          <span className="muted" style={{ fontSize: 12 }}>Salen solas a su hora. Todavía no las ven los vecinos.</span>
-          {r.pendientes.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No hay publicaciones programadas.</span>}
-          {r.pendientes.map((p) => (
-            <div key={p.id} className="acard flat">
-              <span className="t" style={{ fontSize: 13 }}>{p.titulo}</span>
-              <span className="s">{f(p.publicarEn).toLocaleString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{p.notificar ? " · con notificación" : ""}</span>
+        <div className="bento-lado">
+          {moduloActivo("reportes") && (
+            <div className="card col" style={{ gap: 12 }}>
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <h3 className="h3" style={{ fontSize: 22 }}>Centro de mando</h3>
+                <span className="row" style={{ gap: 6, alignItems: "center", color: "var(--brand)", fontSize: 13, fontWeight: 500 }}>
+                  <span className="punto" style={{ background: "var(--brand)" }} /> En vivo
+                </span>
+              </div>
+              <div className="mini-mapa" aria-hidden>
+                {puntos.map((p, i) => <i key={i} style={{ left: `${p.x}%`, top: `${p.y}%`, background: p.urgente ? "#e5484d" : "var(--ink)" }} />)}
+                <span>Mapa 3D · Mapbox</span>
+              </div>
+              <button className="btn" style={{ background: "var(--ink)", color: "#fff", alignSelf: "flex-start" }} type="button" onClick={() => router.push("/panel/centro")}>
+                Abrir centro de mando <Icono n="flecha" tam={14} grosor={2} />
+              </button>
             </div>
-          ))}
+          )}
+          <div className="card col" style={{ gap: 12, flex: 1 }}>
+            <h3 className="h3" style={{ fontSize: 22 }}>Programadas</h3>
+            {r.pendientes.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No hay publicaciones programadas.</span>}
+            {r.pendientes.map((p) => (
+              <div key={p.id} className="col" style={{ gap: 3 }}>
+                <span className="section-label">{f(p.publicarEn).toLocaleString("es-MX", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <span style={{ fontSize: 15 }}>{p.titulo}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -225,4 +248,53 @@ export default function Escritorio() {
       )}
     </>
   );
+}
+
+/** "Mar 18" a partir de "2026-11-18" */
+function diaCorto(fecha?: string) {
+  if (!fecha) return null;
+  const d = new Date(`${fecha}T12:00:00`);
+  if (isNaN(+d)) return null;
+  const dia = d.toLocaleDateString("es-MX", { weekday: "short" }).replace(".", "");
+  return `${dia[0].toUpperCase()}${dia.slice(1)} ${d.getDate()}`;
+}
+
+/** 12.4k para cifras grandes */
+const cifra = (n: number) => (n >= 10_000 ? `${(n / 1000).toFixed(1)}k` : n.toLocaleString("es-MX"));
+
+function Indicador({ icono, t, n, s, rojo, onClick }: { icono: NombreIcono; t: string; n: number | null; s: string; rojo?: boolean; onClick?: () => void }) {
+  const Caja = onClick ? "button" : "div";
+  return (
+    <Caja type={onClick ? "button" : undefined} className="kpi-bento" onClick={onClick}>
+      <div className="tarjeta-top"><Burbuja n={icono} tam={44} />{onClick && <Icono n="flecha" tam={16} />}</div>
+      <span style={{ height: 30 }} />
+      <span className="section-label">{t}</span>
+      <span className="n">{n === null ? "—" : cifra(n)}</span>
+      <span className="s">{rojo && <span className="punto" style={{ background: "#e5484d", width: 6, height: 6 }} />}{s}</span>
+    </Caja>
+  );
+}
+
+/** Ícono de cada movimiento según de qué trata */
+function iconoDe(a: Auditoria): NombreIcono {
+  const t = `${a.accion} ${a.detalle}`.toLowerCase();
+  if (/agua|pozo|corte/.test(t)) return "gota";
+  if (/reporte|fuga|bache/.test(t)) return "alerta";
+  if (/feria|taquilla|boleto|evento/.test(t)) return "boleto";
+  if (/acta|trámite|tramite|solicitud/.test(t)) return "documento";
+  if (/vecino|usuario|personal/.test(t)) return "personas";
+  return "periodico";
+}
+
+/** Reportes abiertos repartidos en el recuadro del mini mapa */
+function miniMapa(rs: Reporte[]) {
+  const con = rs.filter((x) => x.lat != null && x.lng != null).slice(0, 14);
+  if (!con.length) return [];
+  const lats = con.map((x) => x.lat!), lngs = con.map((x) => x.lng!);
+  const [a, b, c, d] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
+  return con.map((x) => ({
+    x: 10 + ((x.lng! - c) / (d - c || 1)) * 80,
+    y: 12 + (1 - (x.lat! - a) / (b - a || 1)) * 62,
+    urgente: urgenciaDe(x) === "alta",
+  }));
 }
