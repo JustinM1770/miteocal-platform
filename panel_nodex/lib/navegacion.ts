@@ -18,10 +18,11 @@ const mod = (slug: string, nombre?: string, modulo?: Modulo): Pagina => {
 
 export const SECCIONES: Seccion[] = [
   { nombre: "Escritorio", paginas: [{ href: "/panel", nombre: "Escritorio" }] },
-  { nombre: "Centro de mando", paginas: [{ href: "/panel/centro", nombre: "Centro de mando", modulo: "reportes" }] },
+  // El centro de mando (/panel/centro) sigue en el código, fuera del menú para la entrega
+  { nombre: "Rutas", paginas: [{ href: "/panel/basura", nombre: "Rutas del camión", modulo: "basura" }] },
   { nombre: "Servicios", paginas: [
     { href: "/panel/agua", nombre: "Agua", modulo: "agua" }, mod("cortes", "Cortes", "agua"), mod("incidente", "Incidente", "agua"),
-    { href: "/panel/basura", nombre: "Basura", modulo: "basura" }, mod("cierres", "Cierres y obras"),
+    mod("cierres", "Cierres y obras"),
     { href: "/panel/planteles", nombre: "Escuelas", modulo: "escuelas" }, mod("escuelas", "Avisos escolares", "escuelas"),
     { href: "/panel/directorio", nombre: "Emergencias" },
   ] },
@@ -51,7 +52,7 @@ export const SECCIONES: Seccion[] = [
     { href: "/panel/reportes", nombre: "Reportes", modulo: "reportes" },
     { href: "/panel/reportes/zonas", nombre: "Zonas críticas", modulo: "reportes" },
     { href: "/panel/crm", nombre: "CRM", admin: true },
-    { href: "/panel/pagos", nombre: "Pagos en línea" },
+    { href: "/panel/pagos", nombre: "Pagos en línea", modulo: "tramites" },
   ] },
   { nombre: "Interno", interno: true, paginas: [mod("avisos-internos", "Avisos"), mod("dependencias", "Dependencias")] },
   { nombre: "Administración", paginas: [

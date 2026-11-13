@@ -62,7 +62,13 @@ export const colonias = () => actual.colonias;
 export const zonas = () => [...new Set(actual.colonias.map((c) => c.zona || "Sin zona"))];
 export const coloniasDeZona = (z: string) => actual.colonias.filter((c) => (c.zona || "Sin zona") === z);
 /** Un módulo apagado no se muestra (regla 5). Si el municipio no lo declara, se asume encendido. */
-export const moduloActivo = (m: Modulo) => actual.modulos[m] !== false;
+/* Entrega del Hackathon Jalisco 2026 (Reto Ciudades Inteligentes): el panel
+   muestra solo lo del pitch —agua, basura, cierres viales, avisos escolares y
+   reportes—. Comercio, Feria y Trámites siguen en el código; se vuelven a
+   encender quitándolos de aquí. */
+const ENTREGA: Partial<Record<Modulo, boolean>> = { feria: false, comercio: false, tramites: false, escuelas: true };
+
+export const moduloActivo = (m: Modulo) => ENTREGA[m] ?? actual.modulos[m] !== false;
 
 /** Vecinos con la app en una colonia (o en todo el municipio). null = no se sabe todavía. */
 export function alcanceDe(colonia: string | null): number | null {

@@ -10,7 +10,7 @@ import Accesibilidad from "@/components/Accesibilidad";
 import Icono, { type NombreIcono } from "@/components/Icono";
 
 const ICONO_SECCION: Record<string, NombreIcono> = {
-  Escritorio: "casa", "Centro de mando": "radar", Servicios: "llave", Comunidad: "periodico",
+  Escritorio: "casa", "Centro de mando": "radar", Rutas: "camion", Servicios: "llave", Comunidad: "periodico",
   Comercio: "bolsa", Feria: "boleto", Trámites: "documento", Vecinos: "personas",
   Interno: "candado", Administración: "ajustes",
 };
@@ -130,9 +130,9 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
           <div className="right">
             {cuentaDePrueba && <span className="pill interno solo-escritorio">Cuenta de prueba</span>}
-            <button type="button" className="buscador solo-escritorio" onClick={() => router.push("/panel/centro")}>
+            <button type="button" className="buscador solo-escritorio" onClick={() => router.push("/panel/reportes")}>
               <Icono n="buscar" tam={15} />
-              <span>Buscar o dar una orden…</span>
+              <span>Buscar reportes, colonias…</span>
               <kbd>⌘K</kbd>
             </button>
             <button type="button" className="icono-btn grande" aria-label="Avisos" onClick={() => router.push("/panel/auditoria")}>

@@ -13,6 +13,7 @@ import { f } from "@/lib/almacen";
 import { listarSolicitudes } from "@/lib/tramites";
 import Icono, { Burbuja, type NombreIcono } from "@/components/Icono";
 import { abierto, urgenciaDe } from "@/lib/centro";
+import { listarRutas, type RutaBasura } from "@/lib/basura";
 
 /** A partir de aquí la app deja de mostrar el dato y dice «sin información» */
 const CADUCIDAD_HORAS = 24;
@@ -26,6 +27,7 @@ interface Resumen {
   reportes: Reporte[] | null;
   solicitudes: number | null;
   pendientes: Publicacion[];
+  rutas: RutaBasura[];
 }
 
 /** Una tarjeta que falla (permiso, red) no tumba todo el escritorio */
@@ -38,7 +40,7 @@ export default function Escritorio() {
   const [corrigiendo, setCorrigiendo] = useState(false);
 
   const cargar = useCallback(async () => {
-    const [agua, hoy, corte, audit, nums, reportes, sols, pendientes] = await Promise.all([
+    const [agua, hoy, corte, audit, nums, reportes, sols, pendientes, rutas] = await Promise.all([
       o(ultimaDeTipo("agua"), null),
       o(aguaDeHoy(), null),
       o(ultimaDeTipo("corte"), null),
@@ -47,9 +49,10 @@ export default function Escritorio() {
       moduloActivo("reportes") ? o(listarReportes(300), null) : Promise.resolve(null),
       moduloActivo("tramites") ? o(listarSolicitudes(), null) : Promise.resolve(null),
       o(programadas(3), []),
+      moduloActivo("basura") ? o(listarRutas(), []) : Promise.resolve([]),
     ]);
     setR({
-      agua, corte, audit, nums, reportes, pendientes,
+      agua, corte, audit, nums, reportes, pendientes, rutas,
       coloniasSinAgua: Object.entries(hoy?.colonias ?? {}).filter(([, v]) => v.estado === "sin-servicio").map(([k]) => k),
       solicitudes: sols ? sols.filter((s) => s.estado === "recibida").length : null,
     });
@@ -66,7 +69,6 @@ export default function Escritorio() {
   const faltan = cfg().faltantes;
   const abiertos = (r.reportes ?? []).filter(abierto);
   const urgentes = abiertos.filter((x) => urgenciaDe(x) === "alta").length;
-  const puntos = miniMapa(abiertos);
 
   return (
     <>
@@ -198,20 +200,27 @@ export default function Escritorio() {
         </div>
 
         <div className="bento-lado">
-          {moduloActivo("reportes") && (
+          {moduloActivo("basura") && (
             <div className="card col" style={{ gap: 12 }}>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <h3 className="h3" style={{ fontSize: 22 }}>Centro de mando</h3>
+                <h3 className="h3" style={{ fontSize: 22 }}>Rutas del camión</h3>
                 <span className="row" style={{ gap: 6, alignItems: "center", color: "var(--brand)", fontSize: 13, fontWeight: 500 }}>
-                  <span className="punto" style={{ background: "var(--brand)" }} /> En vivo
+                  <span className="punto" style={{ background: "var(--brand)" }} /> {r.rutas.filter((x) => x.activa).length} activas
                 </span>
               </div>
-              <div className="mini-mapa" aria-hidden>
-                {puntos.map((p, i) => <i key={i} style={{ left: `${p.x}%`, top: `${p.y}%`, background: p.urgente ? "#e5484d" : "var(--ink)" }} />)}
-                <span>Mapa 3D · Mapbox</span>
+              <MiniRutas rutas={r.rutas} />
+              <div className="col" style={{ gap: 6 }}>
+                {r.rutas.slice(0, 3).map((x) => (
+                  <div key={x.id ?? x.nombre} className="row" style={{ gap: 8, alignItems: "center", fontSize: 14 }}>
+                    <span className="punto" style={{ background: x.color }} />
+                    <span className="grow">{x.nombre}</span>
+                    <span className="muted" style={{ fontSize: 12 }}>{x.dias.join(" · ")} · {x.inicio}</span>
+                  </div>
+                ))}
+                {r.rutas.length === 0 && <span className="muted" style={{ fontSize: 13 }}>Todavía no hay rutas trazadas.</span>}
               </div>
-              <button className="btn" style={{ background: "var(--ink)", color: "#fff", alignSelf: "flex-start" }} type="button" onClick={() => router.push("/panel/centro")}>
-                Abrir centro de mando <Icono n="flecha" tam={14} grosor={2} />
+              <button className="btn" style={{ background: "var(--ink)", color: "#fff", alignSelf: "flex-start" }} type="button" onClick={() => router.push("/panel/basura")}>
+                {r.rutas.length ? "Ver rutas" : "Trazar una ruta"} <Icono n="flecha" tam={14} grosor={2} />
               </button>
             </div>
           )}
@@ -286,15 +295,24 @@ function iconoDe(a: Auditoria): NombreIcono {
   return "periodico";
 }
 
-/** Reportes abiertos repartidos en el recuadro del mini mapa */
-function miniMapa(rs: Reporte[]) {
-  const con = rs.filter((x) => x.lat != null && x.lng != null).slice(0, 14);
-  if (!con.length) return [];
-  const lats = con.map((x) => x.lat!), lngs = con.map((x) => x.lng!);
+/** Las rutas del camión dibujadas a escala en un recuadro */
+function MiniRutas({ rutas }: { rutas: RutaBasura[] }) {
+  const todas = rutas.flatMap((x) => (x.trazo.length ? x.trazo : x.puntos));
+  if (!todas.length) return <div className="mini-mapa"><span>Rutas · Mapbox</span></div>;
+  const lats = todas.map((p) => p.lat), lngs = todas.map((p) => p.lng);
   const [a, b, c, d] = [Math.min(...lats), Math.max(...lats), Math.min(...lngs), Math.max(...lngs)];
-  return con.map((x) => ({
-    x: 10 + ((x.lng! - c) / (d - c || 1)) * 80,
-    y: 12 + (1 - (x.lat! - a) / (b - a || 1)) * 62,
-    urgente: urgenciaDe(x) === "alta",
-  }));
+  const x = (lng: number) => 8 + ((lng - c) / (d - c || 1)) * 84;
+  const y = (lat: number) => 10 + (1 - (lat - a) / (b - a || 1)) * 68;
+  return (
+    <div className="mini-mapa" aria-hidden>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        {rutas.map((r, i) => {
+          const pts = r.trazo.length ? r.trazo : r.puntos;
+          return <polyline key={i} points={pts.map((p) => `${x(p.lng)},${y(p.lat)}`).join(" ")} fill="none" stroke={r.color} strokeWidth={2.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />;
+        })}
+      </svg>
+      <span>Rutas · Mapbox</span>
+    </div>
+  );
 }
+
