@@ -13,7 +13,7 @@ import { f } from "@/lib/almacen";
 import { listarSolicitudes } from "@/lib/tramites";
 import Icono, { Burbuja, type NombreIcono } from "@/components/Icono";
 import { abierto, urgenciaDe } from "@/lib/centro";
-import { listarRutas, type RutaBasura } from "@/lib/basura";
+import { listarRutasDe, type RutaBasura } from "@/lib/basura";
 
 /** A partir de aquí la app deja de mostrar el dato y dice «sin información» */
 const CADUCIDAD_HORAS = 24;
@@ -27,7 +27,7 @@ interface Resumen {
   reportes: Reporte[] | null;
   solicitudes: number | null;
   pendientes: Publicacion[];
-  rutas: RutaBasura[];
+  rutas: (RutaBasura & { clase: string })[];
 }
 
 /** Una tarjeta que falla (permiso, red) no tumba todo el escritorio */
@@ -49,7 +49,10 @@ export default function Escritorio() {
       moduloActivo("reportes") ? o(listarReportes(300), null) : Promise.resolve(null),
       moduloActivo("tramites") ? o(listarSolicitudes(), null) : Promise.resolve(null),
       o(programadas(3), []),
-      moduloActivo("basura") ? o(listarRutas(), []) : Promise.resolve([]),
+      Promise.all([
+        moduloActivo("basura") ? o(listarRutasDe("basura"), []) : Promise.resolve([]),
+        o(listarRutasDe("transporte"), []),
+      ]).then(([b, t]) => [...b.map((x) => ({ ...x, clase: "Basura" })), ...t.map((x) => ({ ...x, clase: "Transporte" }))]),
     ]);
     setR({
       agua, corte, audit, nums, reportes, pendientes, rutas,
@@ -200,26 +203,26 @@ export default function Escritorio() {
         </div>
 
         <div className="bento-lado">
-          {moduloActivo("basura") && (
+          {(
             <div className="card col" style={{ gap: 12 }}>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <h3 className="h3" style={{ fontSize: 22 }}>Rutas del camión</h3>
+                <h3 className="h3" style={{ fontSize: 22 }}>Rutas</h3>
                 <span className="row" style={{ gap: 6, alignItems: "center", color: "var(--brand)", fontSize: 13, fontWeight: 500 }}>
                   <span className="punto" style={{ background: "var(--brand)" }} /> {r.rutas.filter((x) => x.activa).length} activas
                 </span>
               </div>
               <MiniRutas rutas={r.rutas} />
               <div className="col" style={{ gap: 6 }}>
-                {r.rutas.slice(0, 3).map((x) => (
-                  <div key={x.id ?? x.nombre} className="row" style={{ gap: 8, alignItems: "center", fontSize: 14 }}>
+                {r.rutas.slice(0, 4).map((x) => (
+                  <div key={`${x.clase}-${x.id ?? x.nombre}`} className="row" style={{ gap: 8, alignItems: "center", fontSize: 14 }}>
                     <span className="punto" style={{ background: x.color }} />
-                    <span className="grow">{x.nombre}</span>
-                    <span className="muted" style={{ fontSize: 12 }}>{x.dias.join(" · ")} · {x.inicio}</span>
+                    <span className="grow" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.nombre}</span>
+                    <span className="tag gris">{x.clase}</span>
                   </div>
                 ))}
                 {r.rutas.length === 0 && <span className="muted" style={{ fontSize: 13 }}>Todavía no hay rutas trazadas.</span>}
               </div>
-              <button className="btn" style={{ background: "var(--ink)", color: "#fff", alignSelf: "flex-start" }} type="button" onClick={() => router.push("/panel/basura")}>
+              <button className="btn" style={{ background: "var(--ink)", color: "#fff", alignSelf: "flex-start" }} type="button" onClick={() => router.push(moduloActivo("basura") ? "/panel/basura" : "/panel/transporte")}>
                 {r.rutas.length ? "Ver rutas" : "Trazar una ruta"} <Icono n="flecha" tam={14} grosor={2} />
               </button>
             </div>

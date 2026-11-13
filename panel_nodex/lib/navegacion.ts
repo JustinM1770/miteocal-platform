@@ -19,7 +19,10 @@ const mod = (slug: string, nombre?: string, modulo?: Modulo): Pagina => {
 export const SECCIONES: Seccion[] = [
   { nombre: "Escritorio", paginas: [{ href: "/panel", nombre: "Escritorio" }] },
   // El centro de mando (/panel/centro) sigue en el código, fuera del menú para la entrega
-  { nombre: "Rutas", paginas: [{ href: "/panel/basura", nombre: "Rutas del camión", modulo: "basura" }] },
+  { nombre: "Rutas", paginas: [
+    { href: "/panel/basura", nombre: "Basura", modulo: "basura" },
+    { href: "/panel/transporte", nombre: "Transporte público" },
+  ] },
   { nombre: "Servicios", paginas: [
     { href: "/panel/agua", nombre: "Agua", modulo: "agua" }, mod("cortes", "Cortes", "agua"), mod("incidente", "Incidente", "agua"),
     mod("cierres", "Cierres y obras"),
