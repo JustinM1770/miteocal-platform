@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import Modal from "@/components/Modal";
 import { Barras, Kpi, Pestanas } from "@/components/graficas";
 import { ETIQUETA_ESTADO_REPORTE, ETIQUETA_REPORTE, enviarAviso, haceTexto, registrar, reportesDe, type Reporte, type Segmento } from "@/lib/datos";
-import { alcanceDe, cfg, colonias, coloniasDeZona, zonas } from "@/lib/config";
+import { alcanceDe, cfg, colonias, coloniasDeZona, moduloActivo, zonas } from "@/lib/config";
 import { f, pesos } from "@/lib/almacen";
 import {
   calificacionDe, contarVecinos, listarCalificaciones, paginaVecinos, responderCalificacion,
@@ -83,7 +83,10 @@ function Vecinos() {
   });
   useEffect(() => setMostrar(25), [buscar, colonia, tipo, compro, calif]);
 
+  // Con la Feria apagada (entrega del hackathon) no se habla de boletos
+  const conFeria = moduloActivo("feria");
   const activos = vecinos.filter((v) => Date.now() - +f(v.ultimaVez) < 7 * 86400_000).length;
+  const calificaron = vecinos.filter((v) => v.resumen?.estrellas);
   const compradores = vecinos.filter((v) => (v.resumen?.boletos ?? 0) > 0);
 
   // Con estadísticas del servidor se grafica todo el municipio; si no, lo cargado
@@ -101,11 +104,11 @@ function Vecinos() {
   };
 
   async function exportar() {
-    const filas = [["Nombre", "Teléfono", "Colonia", "Tipo", "Origen", "Plataforma", "Registro", "Última vez", "Calificación", "Boletos", "Gasto boletos"]];
+    const filas = [["Nombre", "Teléfono", "Colonia", "Tipo", "Origen", "Plataforma", "Registro", "Última vez", "Calificación", ...(conFeria ? ["Boletos", "Gasto boletos"] : [])]];
     for (const v of visibles) {
       filas.push([v.nombre, v.telefono, v.colonia, v.tipo, v.origen ?? "", v.plataforma,
         f(v.registradoEn).toLocaleDateString("es-MX"), f(v.ultimaVez).toLocaleDateString("es-MX"),
-        String(v.resumen?.estrellas ?? ""), String(v.resumen?.boletos ?? 0), String(v.resumen?.gasto ?? 0)]);
+        String(v.resumen?.estrellas ?? ""), ...(conFeria ? [String(v.resumen?.boletos ?? 0), String(v.resumen?.gasto ?? 0)] : [])]);
     }
     const csv = filas.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
@@ -120,7 +123,9 @@ function Vecinos() {
       <div className="row">
         <Kpi n={totales?.todos ?? "…"} t="Vecinos registrados" s={totales ? `${totales.paisanos} paisanos en EE. UU.` : "contando…"} />
         <Kpi n={vecinos.length ? `${Math.round((activos / vecinos.length) * 100)}%` : "—"} t="Activos esta semana" s={`${activos} de ${vecinos.length} cargados`} />
-        <Kpi n={compradores.length} t="Compraron boletos" s={`${pesos(compradores.reduce((s, v) => s + (v.resumen?.gasto ?? 0), 0))} · de los cargados`} />
+        {conFeria
+          ? <Kpi n={compradores.length} t="Compraron boletos" s={`${pesos(compradores.reduce((s, v) => s + (v.resumen?.gasto ?? 0), 0))} · de los cargados`} />
+          : <Kpi n={calificaron.length ? (calificaron.reduce((s, v) => s + (v.resumen?.estrellas ?? 0), 0) / calificaron.length).toFixed(1) : "—"} t="Calificación de la app" s={`${calificaron.length} de ${vecinos.length} cargados calificaron`} />}
         <Kpi n={vecinos.length ? `${Math.round((vecinos.filter((v) => v.notificaciones).length / vecinos.length) * 100)}%` : "—"} t="Con notificaciones" s="les llegan los avisos" />
       </div>
 
@@ -140,9 +145,11 @@ function Vecinos() {
             <select className="select" style={{ width: 150 }} value={tipo} aria-label="Tipo" onChange={(e) => setTipo(e.target.value)}>
               <option value="">Locales y paisanos</option><option value="local">Locales</option><option value="paisano">Paisanos</option>
             </select>
-            <select className="select" style={{ width: 170 }} value={compro} aria-label="Boletos" onChange={(e) => setCompro(e.target.value)}>
-              <option value="">Con y sin boletos</option><option value="si">Compraron boletos</option><option value="no">No han comprado</option>
-            </select>
+            {conFeria && (
+              <select className="select" style={{ width: 170 }} value={compro} aria-label="Boletos" onChange={(e) => setCompro(e.target.value)}>
+                <option value="">Con y sin boletos</option><option value="si">Compraron boletos</option><option value="no">No han comprado</option>
+              </select>
+            )}
             <select className="select" style={{ width: 170 }} value={calif} aria-label="Calificación" onChange={(e) => setCalif(e.target.value)}>
               <option value="">Cualquier calificación</option><option value="alta">4 – 5 estrellas</option><option value="baja">1 – 2 estrellas</option><option value="sin">Sin calificar</option>
             </select>
@@ -150,7 +157,7 @@ function Vecinos() {
             <button className="btn primary" type="button" onClick={() => setAvisando(true)}>Avisar a este grupo</button>
           </div>
           <table className="tabla">
-            <thead><tr><th>VECINO</th><th>COLONIA</th><th>TIPO</th><th>REGISTRO</th><th>ÚLTIMA VEZ</th><th>CALIFICÓ</th><th className="num">BOLETOS</th></tr></thead>
+            <thead><tr><th>VECINO</th><th>COLONIA</th><th>TIPO</th><th>REGISTRO</th><th>ÚLTIMA VEZ</th><th>CALIFICÓ</th>{conFeria && <th className="num">BOLETOS</th>}</tr></thead>
             <tbody>
               {visibles.slice(0, mostrar).map((v) => (
                 <tr key={v.id} className={`click${sel?.id === v.id ? " sel" : ""}`} onClick={() => setSel(v)}>
@@ -163,7 +170,7 @@ function Vecinos() {
                   <td className="muted">{f(v.registradoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" })}</td>
                   <td className="muted">{haceTexto(v.ultimaVez)}</td>
                   <td>{v.resumen?.estrellas ? <span className="stars">{estrellas(v.resumen.estrellas)}</span> : <span className="muted">—</span>}</td>
-                  <td className="num">{v.resumen?.boletos ? <><strong>{v.resumen.boletos}</strong><div className="muted" style={{ fontSize: 11 }}>{pesos(v.resumen.gasto)}</div></> : <span className="muted">—</span>}</td>
+                  {conFeria && <td className="num">{v.resumen?.boletos ? <><strong>{v.resumen.boletos}</strong><div className="muted" style={{ fontSize: 11 }}>{pesos(v.resumen.gasto)}</div></> : <span className="muted">—</span>}</td>}
                 </tr>
               ))}
             </tbody>
@@ -237,6 +244,9 @@ function Ficha({ v, onCerrar }: { v: Vecino; onCerrar: () => void }) {
       .then(([compras, tramites, votos, cal, reportes]) => setD({ compras, tramites, votos, cal, reportes }));
   }, [v.id, v.colonia]);
   const total = d?.compras.filter((p) => p.estado === "pagado").reduce((s, p) => s + p.monto, 0) ?? 0;
+  const conFeria = moduloActivo("feria"), conTramites = moduloActivo("tramites");
+  // Pagos en línea (agua, predial, actas) viven con Trámites; boletos y votos con la Feria
+  const conPagos = conFeria || conTramites;
   const col = colonias().find((c) => c.nombre === v.colonia);
 
   // Horas entre que llegó cada reporte y su primera atención
@@ -249,10 +259,10 @@ function Ficha({ v, onCerrar }: { v: Vecino; onCerrar: () => void }) {
   const linea = d ? [
     { fecha: v.registradoEn, texto: "Se registró en la app y aceptó el aviso de privacidad" },
     ...d.reportes.map((r) => ({ fecha: r.creadoEn, texto: `Reportó ${ETIQUETA_REPORTE[r.tipo].toLowerCase()} · ${r.folio}` })),
-    ...d.compras.map((p) => ({ fecha: p.creadoEn, texto: `Pagó ${p.descripcion} · ${pesos(p.monto)}` })),
-    ...d.compras.filter((p) => p.usado && p.usadoEn).map((p) => ({ fecha: p.usadoEn!, texto: `Entró con su pase · ${p.descripcion}` })),
-    ...d.tramites.map((t) => ({ fecha: t.creadoEn, texto: `Solicitó ${t.tramite}` })),
-    ...d.votos.map((x) => ({ fecha: x.creadoEn, texto: `Votó en ${CERTAMENES[x.certamen]}` })),
+    ...(conPagos ? d.compras.map((p) => ({ fecha: p.creadoEn, texto: `Pagó ${p.descripcion} · ${pesos(p.monto)}` })) : []),
+    ...(conFeria ? d.compras.filter((p) => p.usado && p.usadoEn).map((p) => ({ fecha: p.usadoEn!, texto: `Entró con su pase · ${p.descripcion}` })) : []),
+    ...(conTramites ? d.tramites.map((t) => ({ fecha: t.creadoEn, texto: `Solicitó ${t.tramite}` })) : []),
+    ...(conFeria ? d.votos.map((x) => ({ fecha: x.creadoEn, texto: `Votó en ${CERTAMENES[x.certamen]}` })) : []),
     ...(d.cal ? [{ fecha: d.cal.creadoEn, texto: `Calificó la app con ${d.cal.estrellas} estrellas` }] : []),
   ].sort((a, b) => +f(b.fecha) - +f(a.fecha)) : [];
 
@@ -317,7 +327,7 @@ function Ficha({ v, onCerrar }: { v: Vecino; onCerrar: () => void }) {
             ) : <span className="muted" style={{ fontSize: 13 }}>No ha calificado.</span>}
           </div>
 
-          <div className="col" style={{ gap: 6 }}>
+          {conPagos && <div className="col" style={{ gap: 6 }}>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <span className="section-label">COMPRAS Y PAGOS · {d.compras.length}</span>
               <strong style={{ fontSize: 13 }}>{pesos(total)}</strong>
@@ -340,9 +350,9 @@ function Ficha({ v, onCerrar }: { v: Vecino; onCerrar: () => void }) {
                 </div>
               </div>
             ))}
-          </div>
+          </div>}
 
-          <div className="col" style={{ gap: 6 }}>
+          {conTramites && <div className="col" style={{ gap: 6 }}>
             <span className="section-label">TRÁMITES · {d.tramites.length}</span>
             {d.tramites.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No ha hecho trámites desde la app.</span>}
             {d.tramites.map((t) => (
@@ -354,13 +364,13 @@ function Ficha({ v, onCerrar }: { v: Vecino; onCerrar: () => void }) {
                 <span className={`tag ${ESTADOS[t.estado].color}`}>{ESTADOS[t.estado].nombre}</span>
               </div>
             ))}
-          </div>
+          </div>}
 
           <div className="col" style={{ gap: 6 }}>
-            <span className="section-label">PARTICIPACIÓN</span>
-            {d.votos.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No ha votado en los certámenes.</span>}
+            <span className="section-label">{conFeria ? "PARTICIPACIÓN" : "AVISOS"}</span>
+            {conFeria && d.votos.length === 0 && <span className="muted" style={{ fontSize: 13 }}>No ha votado en los certámenes.</span>}
             {/* Solo si participó: por quién votó no se muestra a nadie (voto libre) */}
-            {d.votos.map((x) => (
+            {conFeria && d.votos.map((x) => (
               <span key={x.id} style={{ fontSize: 13 }}>Participó en la votación de {CERTAMENES[x.certamen]}</span>
             ))}
             <span className="muted" style={{ fontSize: 12 }}>{v.notificaciones ? "Recibe notificaciones" : "Tiene las notificaciones apagadas"}</span>
