@@ -67,10 +67,14 @@ export const SECCIONES: Seccion[] = [
   ] },
 ];
 
+/* Entrega del hackathon: páginas fuera del menú (el código sigue). Vecinos
+   queda solo con Reportes y Zonas críticas. Ver también ENTREGA en config.ts. */
+const OCULTAS_ENTREGA = new Set(["/panel/crm"]);
+
 /** Secciones con solo las páginas que esta persona y este municipio pueden ver */
 export function seccionesVisibles(esAdmin: boolean, activo: (m: Modulo) => boolean): Seccion[] {
   return SECCIONES
-    .map((s) => ({ ...s, paginas: s.paginas.filter((p) => (!p.admin || esAdmin) && (!p.modulo || activo(p.modulo))) }))
+    .map((s) => ({ ...s, paginas: s.paginas.filter((p) => !OCULTAS_ENTREGA.has(p.href) && (!p.admin || esAdmin) && (!p.modulo || activo(p.modulo))) }))
     .filter((s) => s.paginas.length > 0);
 }
 
