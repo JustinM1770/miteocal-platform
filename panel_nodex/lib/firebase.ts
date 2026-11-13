@@ -11,8 +11,24 @@ const config = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-/** true cuando .env.local todavía no está lleno — el panel corre en modo demo */
-export const firebaseListo = Boolean(config.apiKey && config.projectId);
+/* Cuenta de prueba: con Firebase conectado, quien entra como demo@nodex.mx
+   recorre el panel con los datos de ejemplo en memoria, sin tocar la base. */
+const CLAVE_DEMO = "nodex-demo";
+export const CORREO_DEMO = "demo@nodex.mx";
+export const cuentaDePrueba = typeof window !== "undefined" && (() => {
+  try { return localStorage.getItem(CLAVE_DEMO) === "1"; } catch { return false; }
+})();
+export function entrarAlDemo() {
+  try { localStorage.setItem(CLAVE_DEMO, "1"); } catch { /* sin almacenamiento no hay demo */ }
+  window.location.href = "/panel";
+}
+export function salirDelDemo() {
+  try { localStorage.removeItem(CLAVE_DEMO); } catch { /* nada que limpiar */ }
+  window.location.href = "/login";
+}
+
+/** false cuando .env.local no está lleno o se entró con la cuenta de prueba — el panel corre en modo demo */
+export const firebaseListo = Boolean(config.apiKey && config.projectId) && !cuentaDePrueba;
 
 let app: FirebaseApp | null = null;
 let _auth: Auth | null = null;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, CORREO_DEMO, entrarAlDemo } from "@/lib/firebase";
 
 // Antes de iniciar sesión no se sabe el municipio (sale del token); el subtítulo es opcional por instalación
 const SUBTITULO = process.env.NEXT_PUBLIC_PANEL_SUBTITULO || "Panel del Ayuntamiento";
@@ -34,6 +34,7 @@ export default function Login() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (email.trim().toLowerCase() === CORREO_DEMO) { entrarAlDemo(); return; }
     setEnviando(true);
     try {
       await entrar(email.trim(), pass);
@@ -99,6 +100,12 @@ export default function Login() {
         <button className="btn primary block" type="submit" disabled={enviando || !email || !pass}>
           {enviando ? "Entrando…" : "Entrar"}
         </button>
+
+        {!modoDemo && (
+          <button className="btn ghost block" type="button" onClick={entrarAlDemo}>
+            Entrar a la cuenta de prueba
+          </button>
+        )}
 
         <div className="col" style={{ gap: 14, alignItems: "center" }}>
           <a href="#" onClick={restablecer} style={{ fontSize: 13, fontWeight: 600 }}>¿Olvidaste tu contraseña?</a>

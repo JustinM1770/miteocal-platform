@@ -3,9 +3,20 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { esAdmin, NOMBRE_ROL, useAuth } from "@/lib/auth";
+import { cuentaDePrueba } from "@/lib/firebase";
 import { cfg, moduloActivo } from "@/lib/config";
 import { paginaDe, seccionesVisibles } from "@/lib/navegacion";
 import Accesibilidad from "@/components/Accesibilidad";
+import Icono, { type NombreIcono } from "@/components/Icono";
+
+const ICONO_SECCION: Record<string, NombreIcono> = {
+  Escritorio: "casa", "Centro de mando": "radar", Rutas: "camion", Servicios: "llave", Comunidad: "periodico",
+  Comercio: "bolsa", Feria: "boleto", Trámites: "documento", Vecinos: "personas",
+  Interno: "candado", Administración: "ajustes",
+};
+
+const saludo = () => { const h = new Date().getHours(); return h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches"; };
+const hoyLargo = () => new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
 /** Mensaje entendible para los errores de Firebase más comunes */
 function explicar(e: unknown): string {
@@ -45,6 +56,10 @@ export default function Shell({ children }: { children: ReactNode }) {
   const admin = esAdmin(sesion);
   const secciones = seccionesVisibles(admin, moduloActivo);
   const actual = secciones.find((s) => s.paginas.some((p) => p.href === path)) ?? null;
+  // Interno y Administración van abajo, separados del trabajo diario
+  const principales = secciones.filter((s) => !s.interno && s.nombre !== "Administración");
+  const abajo = secciones.filter((s) => s.interno || s.nombre === "Administración");
+  const escritorio = path === "/panel";
   const pagina = paginaDe(path);
   // Una página puede estar en el código y no ser accesible: por rol o por módulo apagado
   const bloqueada = pagina && !actual ? (pagina.admin && !admin ? "admin" : "modulo") : null;
@@ -63,19 +78,44 @@ export default function Shell({ children }: { children: ReactNode }) {
       <Accesibilidad />
       <aside className={`sidebar${menu ? " abierta" : ""}`} aria-label="Secciones">
         <div className="brand">
-          <h1>{cfg().nombre || "Panel"}</h1>
-          <p>Panel del Ayuntamiento</p>
+          <span className="logo" aria-hidden>N<i /></span>
+          <div>
+            <h1>Nodex</h1>
+            <p>{cfg().nombre || "Panel del Ayuntamiento"}</p>
+          </div>
         </div>
 
-        {secciones.map((s) => (
+        {principales.map((s) => (
           <button key={s.nombre} type="button"
-            className={`nav-item${actual === s ? " active" : ""}${s.interno ? " internal" : ""}`}
+            className={`nav-item${actual === s ? " active" : ""}`}
             aria-current={actual === s ? "page" : undefined}
             onClick={() => router.push(s.paginas[0].href)}>
-            <span className="dot" />
+            <Icono n={ICONO_SECCION[s.nombre] ?? "documento"} tam={18} />
             {s.nombre}
           </button>
         ))}
+
+        <div style={{ flex: 1 }} />
+        {abajo.map((s) => (
+          <button key={s.nombre} type="button"
+            className={`nav-item secundario${actual === s ? " active" : ""}`}
+            aria-current={actual === s ? "page" : undefined}
+            onClick={() => router.push(s.paginas[0].href)}>
+            <Icono n={ICONO_SECCION[s.nombre] ?? "ajustes"} tam={18} />
+            {s.nombre}
+          </button>
+        ))}
+        <div className="usuario">
+          <span className="burbuja" style={{ width: 34, height: 34, flex: "0 0 34px" }}><Icono n="personas" tam={16} /></span>
+          <div className="col" style={{ minWidth: 0, flex: 1 }}>
+            <strong>{sesion?.nombre ?? ""}</strong>
+            <span>{sesion ? (sesion.area ? `${NOMBRE_ROL[sesion.rol]} · ${sesion.area}` : NOMBRE_ROL[sesion.rol]) : ""}</span>
+          </div>
+          <button type="button" className="icono-btn" aria-label="Salir" title="Salir"
+            onClick={async () => { await salir(); router.push("/login"); }}>
+            <Icono n="salir" tam={16} />
+          </button>
+        </div>
       </aside>
       {menu && <div className="sidebar-fondo" onClick={() => setMenu(false)} aria-hidden />}
 
@@ -83,16 +123,20 @@ export default function Shell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <div className="row" style={{ gap: 10, alignItems: "center" }}>
             <button type="button" className="btn ghost hamburguesa" aria-label="Abrir menú" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>☰</button>
-            <h2>{actual?.nombre ?? "Panel"}</h2>
+            <div className="col" style={{ gap: 2 }}>
+              <span className="section-label">{escritorio ? hoyLargo() : actual?.nombre === "Escritorio" ? "" : cfg().nombre}</span>
+              <h2 className={escritorio ? "saludo" : undefined}>{escritorio ? `${saludo()}, ${(sesion?.nombre ?? "").split(" ")[0]}` : actual?.nombre ?? "Panel"}</h2>
+            </div>
           </div>
           <div className="right">
-            {sesion?.area && <span className="pill publico solo-escritorio">Área: {sesion.area}</span>}
-            <span className="muted solo-escritorio" style={{ fontWeight: 500 }}>
-              {sesion?.nombre} · {sesion ? NOMBRE_ROL[sesion.rol] : ""}
-            </span>
-            <button className="btn ghost" style={{ padding: "8px 12px" }} type="button"
-              onClick={async () => { await salir(); router.push("/login"); }}>
-              Salir
+            {cuentaDePrueba && <span className="pill interno solo-escritorio">Cuenta de prueba</span>}
+            <button type="button" className="buscador solo-escritorio" onClick={() => router.push("/panel/reportes")}>
+              <Icono n="buscar" tam={15} />
+              <span>Buscar reportes, colonias…</span>
+              <kbd>⌘K</kbd>
+            </button>
+            <button type="button" className="icono-btn grande" aria-label="Avisos" onClick={() => router.push("/panel/auditoria")}>
+              <Icono n="campana" tam={18} />
             </button>
           </div>
         </header>

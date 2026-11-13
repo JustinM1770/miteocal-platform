@@ -6,7 +6,7 @@ import {
   type User,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db, firebaseListo, fijarMunicipio } from "./firebase";
+import { auth, cuentaDePrueba, db, firebaseListo, fijarMunicipio, salirDelDemo } from "./firebase";
 import { cargarConfig } from "./config";
 
 /* El municipio y el rol salen de los custom claims del token. Solo los
@@ -88,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!firebaseListo || !auth) {
+      // La cuenta de prueba entra directo con la sesión de ejemplo
+      if (cuentaDePrueba) setSesion({ ...SESION_DEMO, email: "demo@nodex.mx" });
       setCargando(false);
       return;
     }
@@ -113,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function salir() {
     setSinAcceso(null);
+    if (cuentaDePrueba) { salirDelDemo(); return; }
     if (!firebaseListo || !auth) { setSesion(null); return; }
     await fbSignOut(auth);
   }

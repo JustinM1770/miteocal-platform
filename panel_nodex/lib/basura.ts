@@ -47,7 +47,40 @@ const demoRutas: RutaBasura[] = firebaseListo ? [] : [
   },
 ];
 
-export const listarRutas = () => leer("rutasBasura", demoRutas);
+/* Transporte público local: mismas piezas que la basura (trazo por calles,
+   días y horario), en su propia colección. */
+const demoTransporte: RutaBasura[] = firebaseListo ? [] : [
+  {
+    id: "tp1", nombre: "Ruta 1 · Centro – Lomas", unidad: "Camión urbano 1", chofer: "Cada 20 min", color: COLORES_RUTA[3], dias: ["L", "M", "X", "J", "V", "S"],
+    inicio: "06:00", fin: "21:00", colonias: ["Teocaltiche Centro", "Lomas de Teocaltiche"], activa: true, trazo: [], metros: 0,
+    puntos: [p(-0.006, 0.0), p(-0.002, 0.001), p(0.002, 0.001), p(0.005, -0.002), p(0.007, -0.005)],
+  },
+  {
+    id: "tp2", nombre: "Ruta 2 · San Miguel – El Santuario", unidad: "Camión urbano 2", chofer: "Cada 30 min", color: COLORES_RUTA[2], dias: ["L", "M", "X", "J", "V", "S", "D"],
+    inicio: "06:30", fin: "20:30", colonias: ["San Miguel Norte", "San Miguel Sur", "El Santuario"], activa: true, trazo: [], metros: 0,
+    puntos: [p(0.002, 0.007), p(0.001, 0.003), p(-0.001, -0.001), p(-0.003, -0.005)],
+  },
+];
+
+export type ClaseRuta = "basura" | "transporte";
+const COLECCION: Record<ClaseRuta, string> = { basura: "rutasBasura", transporte: "rutasTransporte" };
+const NOMBRE: Record<ClaseRuta, string> = { basura: "ruta de basura", transporte: "ruta de transporte" };
+const demoDe = (c: ClaseRuta) => (c === "basura" ? demoRutas : demoTransporte);
+
+export const listarRutasDe = (c: ClaseRuta) => leer(COLECCION[c], demoDe(c));
+export const listarRutas = () => listarRutasDe("basura");
+
+export async function guardarRutaDe(c: ClaseRuta, r: RutaBasura, autor: string) {
+  const detalle = `${r.nombre} · ${r.dias.join(" ")} · ${r.inicio}–${r.fin}`;
+  if (r.id) {
+    const { id, ...resto } = r;
+    await actualizar(COLECCION[c], demoDe(c), id, resto);
+    await registrar(`Editó ${NOMBRE[c]}`, detalle, "publico", autor);
+  } else {
+    await crear(COLECCION[c], demoDe(c), r);
+    await registrar(`Creó ${NOMBRE[c]}`, detalle, "publico", autor);
+  }
+}
 
 export async function guardarRuta(r: RutaBasura, autor: string) {
   if (r.id) {

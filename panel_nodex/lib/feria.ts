@@ -5,7 +5,6 @@ import { cfg } from "./config";
 import { actualizar, azar, contar, crear, diaLocal, f, guardarVarios, leer, leerPagina, siguienteFolio, type Fecha, type Pagina } from "./almacen";
 import { aSlug } from "./config";
 import { demoVecinos, ORIGENES } from "./vecinos";
-import { retrato } from "./retratos";
 
 /* ─── Feria ─────────────────────────────────────────────────
    Programa, certámenes, Hijos Ausentes, transmisiones y venta de
@@ -143,33 +142,36 @@ export interface Pago {
 const ev = (id: string, titulo: string, categoria: CategoriaEvento, escenario: string, fecha: string, hora: string, descripcion: string, zonas: Zona[] = [], transmitir = false): Evento =>
   ({ id, titulo, categoria, escenario, fecha, hora, descripcion, zonas, transmitir, publicado: true });
 
+/** Programa real de la Feria de Noviembre 2026 (lo dio el municipio).
+    Los precios de la Plaza de Toros son DE EJEMPLO para la cuenta de prueba. */
 const EVENTOS: Evento[] = [
-  ev("e15", "Desfile inaugural de la feria", "cultural", "Plaza principal", "2026-10-30", "18:00", "Carros alegóricos y bandas de las escuelas.", [], true),
-  ev("e16", "Serenata y baile de inauguración", "concierto", "Teatro del Pueblo", "2026-10-31", "21:00", "Entrada libre."),
-  ev("e1", "Banda El Recodo", "concierto", "Plaza de Toros", "2026-11-01", "22:00", "Inauguración de la feria.", [{ nombre: "General", precio: 450, cupo: 1800 }, { nombre: "Preferente", precio: 800, cupo: 600 }, { nombre: "VIP", precio: 1500, cupo: 150 }], true),
-  ev("e2", "Coronación de la Reina de la Feria", "certamen", "Teatro del Pueblo", "2026-11-01", "20:00", "Coronación y desfile de candidatas.", [], true),
-  ev("e3", "Christian Nodal", "concierto", "Plaza de Toros", "2026-11-03", "22:00", "", [{ nombre: "General", precio: 890, cupo: 1800 }, { nombre: "Preferente", precio: 1400, cupo: 600 }, { nombre: "VIP", precio: 2500, cupo: 150 }], true),
-  ev("e4", "Corrida de toros · Gran Feria", "toros", "Plaza de Toros", "2026-11-04", "16:30", "Cartel con tres matadores.", [{ nombre: "Sol", precio: 350, cupo: 1500 }, { nombre: "Sombra", precio: 600, cupo: 900 }]),
-  ev("e5", "Pepe Aguilar", "concierto", "Plaza de Toros", "2026-11-05", "21:30", "", [{ nombre: "General", precio: 750, cupo: 1800 }, { nombre: "Preferente", precio: 1200, cupo: 600 }], true),
-  ev("e6", "Misa de Hijos Ausentes", "religioso", "Parroquia de San Miguel", "2026-11-06", "10:00", "Misa por los paisanos que regresan."),
-  ev("e7", "Desfile de Hijos Ausentes", "hijos_ausentes", "Plaza principal", "2026-11-06", "12:00", "Peregrinación de paisanos por la calle Hidalgo.", [], true),
-  ev("e8", "Coronación de Miss Chiquitita", "certamen", "Teatro del Pueblo", "2026-11-07", "18:00", "Certamen infantil."),
-  ev("e9", "Jaripeo baile", "toros", "Lienzo Charro", "2026-11-08", "17:00", "", [{ nombre: "General", precio: 250, cupo: 1200 }]),
-  ev("e10", "Palenque · Pelea de gallos", "palenque", "Palenque", "2026-11-09", "21:00", "", [{ nombre: "General", precio: 300, cupo: 700 }, { nombre: "Ruedo", precio: 700, cupo: 120 }]),
-  ev("e11", "Ballet folclórico de Jalisco", "cultural", "Teatro del Pueblo", "2026-11-10", "19:00", "Entrada libre."),
-  ev("e12", "Kermés infantil y juegos", "infantil", "Plaza principal", "2026-11-11", "16:00", "Lotería, jaripeo de becerros y payasos."),
-  ev("e13", "Procesión de San Miguel", "religioso", "Parroquia de San Miguel", "2026-11-15", "18:00", "", [], true),
-  ev("e14", "Quema del Castillo", "religioso", "Parroquia de San Miguel", "2026-11-15", "22:00", "Cierre con fuegos artificiales.", [], true),
+  ev("e01", "Inauguración · Certamen Srita. Teocaltiche · Mario Bautista", "certamen", "Plaza principal", "2026-10-30", "21:00", "Arranca la feria con la elección de Srita. Teocaltiche 2026 y la presentación de Mario Bautista.", []),
+  ev("e02", "Certamen Miss Chiquitita · Tributo Las Guerreras del K-pop", "certamen", "Plaza principal", "2026-10-31", "21:00", "Las niñas del municipio compiten por la corona de Miss Chiquitita. Después, tributo a Las Guerreras del K-pop.", []),
+  ev("e03", "Los Cadetes de Linares", "concierto", "Plaza principal", "2026-11-01", "21:00", "Música norteña en la plaza principal.", []),
+  ev("e04", "Talentos Locales", "cultural", "Plaza principal", "2026-11-02", "21:00", "Artistas de Teocaltiche en el escenario de la plaza.", []),
+  ev("e05", "Talentos Locales", "cultural", "Plaza principal", "2026-11-03", "21:00", "Artistas de Teocaltiche en el escenario de la plaza.", []),
+  ev("e06", "Talentos Locales", "cultural", "Plaza principal", "2026-11-04", "21:00", "Artistas de Teocaltiche en el escenario de la plaza.", []),
+  ev("e07", "Jaripeo con Ulises Quintero", "toros", "Plaza de Toros", "2026-11-05", "21:00", "Jaripeo y música en la Plaza de Toros.", [{ nombre: "General", precio: 250, cupo: 2500 }, { nombre: "Preferente", precio: 450, cupo: 600 }], true),
+  ev("e08", "Lenin Ramírez", "concierto", "Plaza de Toros", "2026-11-06", "21:00", "Concierto en la Plaza de Toros.", [{ nombre: "General", precio: 450, cupo: 2500 }, { nombre: "Preferente", precio: 800, cupo: 600 }, { nombre: "VIP", precio: 1500, cupo: 150 }], true),
+  ev("e09", "La Adictiva", "concierto", "Plaza de Toros", "2026-11-07", "21:00", "Banda sinaloense en la Plaza de Toros.", [{ nombre: "General", precio: 500, cupo: 2500 }, { nombre: "Preferente", precio: 900, cupo: 600 }, { nombre: "VIP", precio: 1600, cupo: 150 }], true),
+  ev("e10", "La Arrolladora Banda El Limón", "concierto", "Plaza de Toros", "2026-11-08", "21:00", "Banda sinaloense en la Plaza de Toros.", [{ nombre: "General", precio: 550, cupo: 2500 }, { nombre: "Preferente", precio: 950, cupo: 600 }, { nombre: "VIP", precio: 1800, cupo: 150 }], true),
+  ev("e11", "La Sonora Dinamita", "concierto", "Plaza principal", "2026-11-09", "21:00", "Cumbia en la plaza principal.", []),
+  ev("e12", "Banda La Fresa", "concierto", "Plaza principal", "2026-11-10", "21:00", "Banda en la plaza principal.", []),
+  ev("e13", "Joss Favela", "concierto", "Plaza principal", "2026-11-11", "21:00", "Concierto en la plaza principal.", []),
+  ev("e14", "Talentos Locales", "cultural", "Plaza principal", "2026-11-12", "21:00", "Cierre de la feria con artistas de Teocaltiche.", []),
 ];
 
+/** Candidatas reales de la Feria 2026 */
 const CANDIDATAS: Candidata[] = [
-  { id: "k1", certamen: "reina", nombre: "Daniela Ramírez", edad: 19, representa: "Teocaltiche Centro", semblanza: "Estudiante de enfermería, voluntaria en Cruz Roja.", color: "#f6d5e4", foto: retrato(1, true, false) },
-  { id: "k2", certamen: "reina", nombre: "Valeria Torres", edad: 21, representa: "San Miguel Norte", semblanza: "Bailarina del ballet folclórico municipal.", color: "#dfe7fb", foto: retrato(2, true, false) },
-  { id: "k3", certamen: "reina", nombre: "Ximena Delgado", edad: 18, representa: "El Tanque", semblanza: "Charra, campeona estatal de escaramuza.", color: "#fde8cf", foto: retrato(3, true, false) },
-  { id: "k4", certamen: "reina", nombre: "Fernanda Aguilar", edad: 20, representa: "Hijos Ausentes · Chicago", semblanza: "Nació en Chicago, sus papás son de El Santuario.", color: "#dcf2e4", foto: retrato(4, true, false) },
-  { id: "k5", certamen: "miss_chiquitita", nombre: "Regina López", edad: 6, representa: "Bellavista", semblanza: "Le gusta cantar y bailar jarabe.", color: "#f6d5e4", foto: retrato(5, false, true) },
-  { id: "k6", certamen: "miss_chiquitita", nombre: "Camila Flores", edad: 7, representa: "Teocaltiche Centro", semblanza: "Primaria Benito Juárez, 2º grado.", color: "#ece4fb", foto: retrato(6, false, true) },
-  { id: "k7", certamen: "miss_chiquitita", nombre: "Renata Muñoz", edad: 5, representa: "El Santuario", semblanza: "Jardín de Niños Rosaura Zapata.", color: "#fde8cf", foto: retrato(7, false, true) },
+  { id: "r1", certamen: "reina", nombre: "Nicole Ramírez", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "r2", certamen: "reina", nombre: "Allison Ramírez", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "r3", certamen: "reina", nombre: "Alondra Ruvalcaba", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "r4", certamen: "reina", nombre: "Daira Espinola", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "m1", certamen: "miss_chiquitita", nombre: "Alexa", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "m2", certamen: "miss_chiquitita", nombre: "Paulina", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "m3", certamen: "miss_chiquitita", nombre: "Geisel", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "m4", certamen: "miss_chiquitita", nombre: "Victoria", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
+  { id: "m5", certamen: "miss_chiquitita", nombre: "Irlanda", edad: 0, representa: "Teocaltiche", semblanza: "", color: "#f2f2ef" },
 ];
 
 const hace = (dias: number, horas = 0) => new Date(Date.now() - dias * 86400_000 - horas * 3600_000);
@@ -191,7 +193,8 @@ function generar() {
   // Boletos: los paisanos compran más y casi siempre con tarjeta
   const comprador = (v: (typeof demoVecinos)[number]) => ({ compradorNombre: v.nombre, compradorColonia: v.colonia, compradorTipo: v.tipo, compradorOrigen: v.origen });
   for (const v of demoVecinos) {
-    const compras = v.tipo === "paisano" ? (a.r() < 0.55 ? a.int(1, 3) : 0) : (a.r() < 0.28 ? a.int(1, 2) : 0);
+    // Sin precios capturados todavía no hay boletos que simular
+    const compras = !conBoletos.length ? 0 : v.tipo === "paisano" ? (a.r() < 0.55 ? a.int(1, 3) : 0) : (a.r() < 0.28 ? a.int(1, 2) : 0);
     for (let i = 0; i < compras; i++) {
       const e = a.de(conBoletos);
       const z = a.r() < 0.6 ? e.zonas[0] : a.de(e.zonas);
@@ -211,7 +214,7 @@ function generar() {
     if (a.r() < 0.04) pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, uid: v.id!, concepto: "acta", descripcion: "Acta de nacimiento certificada", monto: 160, moneda: "MXN", metodo: "tarjeta", canal: "app", estado: "pagado", creadoEn: hace(a.int(0, 60)), ...comprador(v) });
   }
   // Ventas en taquilla, sin cuenta en la app
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < (conBoletos.length ? 90 : 0); i++) {
     const e = a.de(conBoletos); const z = e.zonas[0]; const cantidad = a.int(1, 5);
     pagos.push({ id: `p${++folio}`, folio: `TEC-${folio}`, uid: null, concepto: "boleto", descripcion: `${e.titulo} · ${z.nombre}`, monto: z.precio * cantidad, moneda: "MXN", metodo: "taquilla", canal: "taquilla", estado: "pagado", creadoEn: hace(a.int(0, 15), a.int(0, 10)), eventoId: e.id, zona: z.nombre, cantidad, usado: false, usadoEn: null, compradorNombre: "Taquilla", compradorTipo: null });
   }
@@ -268,7 +271,7 @@ export const listarEventos = async () =>
 export const listarCandidatas = () => leer("candidatas", demoCandidatas);
 export const listarCertamenes = () => leer("certamenes", demoCertamenes);
 /** Votos sueltos (para el desglose por colonia). Los totales usan contarVotos. */
-export const listarVotos = (certamen?: Certamen) => leer("votos", certamen ? demoVotos.filter((v) => v.certamen === certamen) : demoVotos, { max: 20000, filtros: certamen ? [["certamen", certamen]] : [] });
+export const listarVotos = (certamen?: Certamen) => leer("votos", certamen ? demoVotos.filter((v) => v.certamen === certamen) : demoVotos, { max: 10_000, filtros: certamen ? [["certamen", certamen]] : [] });
 /** Total de votos de una candidata, contado en el servidor */
 export const contarVotos = (candidataId: string) => contar("votos", demoVotos, [["candidataId", candidataId]]);
 export const listarTransmisiones = () => leer("transmisiones", demoTransmisiones);
@@ -277,7 +280,7 @@ export const listarPagos = async () =>
   (await leer("pagos", demoPagos, { orden: "creadoEn" })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
 /** Solo boletos: su número está acotado por el cupo de los eventos */
 export const listarBoletos = async () =>
-  (await leer("pagos", demoPagos.filter((p) => p.concepto === "boleto"), { filtros: [["concepto", "boleto"]], max: 20000 })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
+  (await leer("pagos", demoPagos.filter((p) => p.concepto === "boleto"), { filtros: [["concepto", "boleto"]], max: 10_000 })).sort((x, y) => +f(y.creadoEn) - +f(x.creadoEn));
 export { demoPagos };
 
 /** Boletos vendidos por evento y zona (cuenta solo pagados) */

@@ -18,9 +18,14 @@ const mod = (slug: string, nombre?: string, modulo?: Modulo): Pagina => {
 
 export const SECCIONES: Seccion[] = [
   { nombre: "Escritorio", paginas: [{ href: "/panel", nombre: "Escritorio" }] },
+  // El centro de mando (/panel/centro) sigue en el código, fuera del menú para la entrega
+  { nombre: "Rutas", paginas: [
+    { href: "/panel/basura", nombre: "Basura", modulo: "basura" },
+    { href: "/panel/transporte", nombre: "Transporte público" },
+  ] },
   { nombre: "Servicios", paginas: [
     { href: "/panel/agua", nombre: "Agua", modulo: "agua" }, mod("cortes", "Cortes", "agua"), mod("incidente", "Incidente", "agua"),
-    { href: "/panel/basura", nombre: "Basura", modulo: "basura" }, mod("cierres", "Cierres y obras"),
+    mod("cierres", "Cierres y obras"),
     { href: "/panel/planteles", nombre: "Escuelas", modulo: "escuelas" }, mod("escuelas", "Avisos escolares", "escuelas"),
     { href: "/panel/directorio", nombre: "Emergencias" },
   ] },
@@ -50,7 +55,7 @@ export const SECCIONES: Seccion[] = [
     { href: "/panel/reportes", nombre: "Reportes", modulo: "reportes" },
     { href: "/panel/reportes/zonas", nombre: "Zonas críticas", modulo: "reportes" },
     { href: "/panel/crm", nombre: "CRM", admin: true },
-    { href: "/panel/pagos", nombre: "Pagos en línea" },
+    { href: "/panel/pagos", nombre: "Pagos en línea", modulo: "tramites" },
   ] },
   { nombre: "Interno", interno: true, paginas: [mod("avisos-internos", "Avisos"), mod("dependencias", "Dependencias")] },
   { nombre: "Administración", paginas: [
@@ -62,10 +67,14 @@ export const SECCIONES: Seccion[] = [
   ] },
 ];
 
+/* Entrega del hackathon: páginas fuera del menú (el código sigue). Vecinos
+   queda solo con Reportes y Zonas críticas. Ver también ENTREGA en config.ts. */
+const OCULTAS_ENTREGA = new Set(["/panel/crm"]);
+
 /** Secciones con solo las páginas que esta persona y este municipio pueden ver */
 export function seccionesVisibles(esAdmin: boolean, activo: (m: Modulo) => boolean): Seccion[] {
   return SECCIONES
-    .map((s) => ({ ...s, paginas: s.paginas.filter((p) => (!p.admin || esAdmin) && (!p.modulo || activo(p.modulo))) }))
+    .map((s) => ({ ...s, paginas: s.paginas.filter((p) => !OCULTAS_ENTREGA.has(p.href) && (!p.admin || esAdmin) && (!p.modulo || activo(p.modulo))) }))
     .filter((s) => s.paginas.length > 0);
 }
 

@@ -1,0 +1,62 @@
+/* Centro de mando con el diseño del panel. Solo lo que globals.css no tiene. */
+
+.mapaCaja {
+  position: relative;
+  height: 620px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--subtle);
+}
+/* En pantalla completa (para la pantalla grande de la oficina) */
+.mapaCaja:fullscreen { height: 100vh; border-radius: 0; border: 0; }
+.mapa { position: absolute; inset: 0; }
+
+.sobreMapa {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.sobreMapa > * { pointer-events: auto; }
+
+.flotante {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 16px rgba(14, 17, 22, 0.08);
+  padding: 8px;
+}
+
+.leyenda {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--sec);
+}
+.punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+.lista { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 520px; padding-right: 2px; }
+.item { text-align: left; font: inherit; color: inherit; cursor: pointer; border-left-width: 3px !important; }
+.item:hover { border-color: var(--brand); }
+.nuevo { animation: entrar 0.5s ease-out, resalte 2.4s ease-in-out 2; }
+@keyframes entrar { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes resalte { 50% { background: var(--brand-soft); } }
+
+.escuchando { background: var(--danger) !important; color: #fff !important; animation: latido 1s ease-in-out infinite; }
+@keyframes latido { 50% { box-shadow: 0 0 0 6px var(--danger-soft); } }
+
+.marco { width: 100%; height: 70vh; border: 0; border-radius: var(--r-md); background: #000; }
+
+@media (max-width: 1100px) {
+  .lateral { width: 100% !important; flex: 1 1 100% !important; }
+  .mapaCaja { height: 460px; }
+}
