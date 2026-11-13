@@ -1,225 +1,160 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../datos/modelos/agua.dart';
 import '../../../datos/modelos/colonia.dart';
 import '../../../nucleo/tema/tema.dart';
+import '../../../nucleo/widgets/bento.dart';
 
-/// Tarjeta principal de Inicio ("Hero · Agua"). Es lo primero que ve un
-/// vecino al abrir la app, asi que tiene que verse bien tambien sin dato.
+/// Tarjeta principal de Inicio (Figma «01 · Inicio — Bento»): negra, con el
+/// estado del agua de la zona del vecino. Tiene que verse bien también sin dato.
 class HeroAgua extends StatelessWidget {
   const HeroAgua({
     super.key,
     required this.estado,
     required this.color,
     this.colonia,
+    this.alDetalle,
   });
 
-  /// null = el municipio todavia no publico el estado de hoy.
+  /// null = el municipio todavía no publicó el estado de hoy.
   final EstadoAgua? estado;
   final Color color;
-
-  /// Colonia del vecino: su horario y su pozo, si el municipio los capturo.
   final Colonia? colonia;
+  final VoidCallback? alDetalle;
 
   @override
   Widget build(BuildContext context) {
     final e = estado;
-    if (e == null) return const _SinPublicar();
-
     final c = colonia;
+    final zona = (c?.zona.isNotEmpty ?? false)
+        ? c!.zona.split(' ').first
+        : c?.nombre ?? 'Tu zona';
+
+    final (punto, estadoTxt) = e == null || e.sinDato
+        ? (Colores.textoSecundario, 'Sin dato')
+        : e.activo
+        ? (const Color(0xFF4ADE80), 'Servicio activo')
+        : (const Color(0xFFFF5A5A), 'Sin servicio');
+
     final horario = c != null && c.horarioAgua.isNotEmpty
         ? c.horarioAgua
-        : e.horario;
-    final origen = c == null
-        ? ''
-        : c.pozo.isNotEmpty
-        ? 'Pozo ${c.pozo} · abastece ${c.nombre}'
-        : c.nombre;
-
-    final titulo = e.activo
-        ? horario
+        : e?.horario ?? '';
+    final titulo = e == null
+        ? 'Sin publicar hoy'
         : e.sinDato
-        ? 'Sin informacion del pozo'
+        ? 'Sin información del pozo'
+        : e.activo
+        ? (horario.isEmpty ? 'Hay agua' : horario)
         : e.horaEstimada != null
-        ? 'Vuelve hoy ~${e.horaEstimada}'
+        ? 'Vuelve hoy\n~${e.horaEstimada}'
         : 'Sin servicio';
-
-    final hayMetricas =
-        e.activo &&
-        (e.presion > 0 || e.calidad.isNotEmpty || e.cobertura.isNotEmpty);
+    final detalle = e == null
+        ? 'El municipio todavía no publica el estado de hoy.'
+        : e.mensaje.isNotEmpty
+        ? e.mensaje
+        : c != null && c.pozo.isNotEmpty
+        ? 'Pozo ${c.pozo} · abastece ${c.nombre}'
+        : '';
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(Medidas.radioHero),
-        color: e.sinDato ? Colores.textoSecundario : Colores.fondoInverso,
+        color: Colores.fondoInverso,
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
+              Expanded(
+                child: Kicker(
+                  'Agua · Zona $zona',
+                  color: Colores.textoInverso.withValues(alpha: 0.6),
+                ),
+              ),
+              Punto(punto),
+              const SizedBox(width: 6),
+              Text(
+                estadoTxt,
+                style: Tipografia.subtitulo.copyWith(
+                  color: Colores.textoInverso,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            titulo,
+            style: Tipografia.display.copyWith(
+              color: Colores.textoInverso,
+              fontSize: 40,
+              height: 1.0,
+              letterSpacing: -1.6,
+            ),
+          ),
+          if (detalle.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              detalle,
+              style: Tipografia.cuerpoNormal.copyWith(
+                color: Colores.textoInverso.withValues(alpha: 0.65),
+                fontSize: 14,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  'AGUA POTABLE',
-                  overflow: TextOverflow.ellipsis,
-                  style: Tipografia.etiqueta.copyWith(
-                    color: Colors.white.withValues(alpha: 0.62),
+                  e?.actualizadoEn != null
+                      ? 'Actualizado ${haceTiempo(e!.actualizadoEn!)}'
+                      : horario.isNotEmpty
+                      ? 'Horario $horario'
+                      : '',
+                  style: Tipografia.leyenda.copyWith(
+                    color: Colores.textoInverso.withValues(alpha: 0.45),
+                    fontSize: 12,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              _Insignia(activo: e.activo, sinDato: e.sinDato),
+              if (alDetalle != null)
+                Material(
+                  color: color,
+                  borderRadius: BorderRadius.circular(99),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(99),
+                    onTap: alDetalle,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Ver detalle',
+                            style: Tipografia.subtitulo.copyWith(
+                              color: Colores.textoInverso,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            LucideIcons.arrowUpRight,
+                            size: 14,
+                            color: Colores.textoInverso,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 18),
-          Text(titulo, style: Tipografia.display.copyWith(color: Colors.white)),
-          if (e.activo && origen.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(
-              origen,
-              style: Tipografia.leyenda.copyWith(
-                color: Colors.white.withValues(alpha: 0.68),
-              ),
-            ),
-          ],
-          if (e.mensaje.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              e.mensaje,
-              style: Tipografia.leyenda.copyWith(
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-            ),
-          ],
-          if (hayMetricas) ...[
-            const SizedBox(height: 18),
-            Container(height: 1, color: Colors.white.withValues(alpha: 0.18)),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                _Metrica(
-                  etiqueta: 'Presión',
-                  valor: e.presion > 0 ? '${e.presion} bar' : '—',
-                ),
-                _Metrica(
-                  etiqueta: 'Calidad',
-                  valor: e.calidad.isNotEmpty ? e.calidad : '—',
-                ),
-                _Metrica(
-                  etiqueta: 'Cobertura',
-                  valor: e.cobertura.isNotEmpty ? e.cobertura : '—',
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Insignia extends StatelessWidget {
-  const _Insignia({required this.activo, this.sinDato = false});
-
-  final bool activo;
-  final bool sinDato;
-
-  @override
-  Widget build(BuildContext context) {
-    final punto = activo
-        ? const Color(0xFF4ADE80)
-        : sinDato
-        ? Colors.white70
-        : const Color(0xFFF87171);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(9, 5, 11, 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: punto, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            activo
-                ? 'Servicio activo'
-                : sinDato
-                ? 'Sin dato'
-                : 'Sin servicio',
-            style: Tipografia.micro.copyWith(
-              color: Colors.white.withValues(alpha: 0.95),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Metrica extends StatelessWidget {
-  const _Metrica({required this.etiqueta, required this.valor});
-
-  final String etiqueta;
-  final String valor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            valor,
-            style: Tipografia.titulo.copyWith(color: Colors.white),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            etiqueta,
-            style: Tipografia.micro.copyWith(
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Estado vacio honesto: la app va a lanzar con datos incompletos, y una
-/// tarjeta en blanco se lee como app rota.
-class _SinPublicar extends StatelessWidget {
-  const _SinPublicar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colores.fondoSutil,
-        borderRadius: BorderRadius.circular(Medidas.radioHero),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('AGUA POTABLE', style: Tipografia.etiqueta),
-          const SizedBox(height: 10),
-          Text(
-            'El municipio aun no publica el estado de hoy.',
-            style: Tipografia.cuerpo,
-          ),
-          const SizedBox(height: 4),
-          Text('Te avisamos en cuanto lo publique.', style: Tipografia.micro),
         ],
       ),
     );

@@ -40,7 +40,15 @@ class Municipio {
   }
 
   /// Ningun modulo puede asumir que otro esta encendido. Ver seccion 3.
-  bool tieneModulo(String nombre) => modulos[nombre] ?? false;
+  /// Entrega del Hackathon Jalisco 2026: la app solo muestra agua, basura,
+  /// cierres y escuelas. Feria, comercio, noticias y paisanos siguen en el
+  /// código; se vuelven a encender quitándolos de aquí.
+  static const _apagadosEntrega = {'feria', 'comercio', 'noticias', 'paisanos', 'tramites'};
+  static const _encendidosEntrega = {'escuelas', 'cierres'};
+
+  bool tieneModulo(String nombre) => _apagadosEntrega.contains(nombre)
+      ? false
+      : _encendidosEntrega.contains(nombre) || (modulos[nombre] ?? false);
 
   factory Municipio.desdeMapa(String id, Map<String, dynamic> m) {
     return Municipio(

@@ -5,7 +5,6 @@ import 'package:miteocal/datos/repositorio.dart';
 import 'package:miteocal/datos/repositorio_demo.dart';
 import 'package:miteocal/datos/sesion.dart';
 import 'package:miteocal/navegacion/concha_principal.dart';
-import 'package:miteocal/navegacion/modulos.dart';
 import 'package:miteocal/navegacion/pestanas.dart';
 import 'package:miteocal/pantallas/modulos/feria_pagina.dart';
 import 'package:provider/provider.dart';
@@ -73,28 +72,12 @@ void main() {
     expect(find.text('Tacos El Portal'), findsOneWidget);
   });
 
-  testWidgets('Inicio muestra los modulos contratados y abre Escuelas', (
+  testWidgets('Inicio muestra los avisos escolares y Gestionar abre Escuelas', (
     tester,
   ) async {
     await montar(tester, const ConchaPrincipal());
-    // Los módulos van en un carrusel horizontal: se desliza hasta cada uno
-    final carrusel = find.byWidgetPredicate(
-      (w) => w is Scrollable && w.axisDirection == AxisDirection.right,
-    );
-    for (final m in Modulo.values.where((m) => m != Modulo.agua)) {
-      await tester.scrollUntilVisible(
-        find.text(m.nombre),
-        80,
-        scrollable: carrusel.first,
-      );
-      expect(find.text(m.nombre), findsOneWidget, reason: m.nombre);
-    }
-    await tester.scrollUntilVisible(
-      find.text('Escuelas'),
-      -80,
-      scrollable: carrusel.first,
-    );
-    await tester.tap(find.text('Escuelas'));
+    await tester.scrollUntilVisible(find.text('Tus escuelas'), 200);
+    await tester.tap(find.text('Gestionar'));
     await tester.pumpAndSettle();
     expect(find.text('TUS ESCUELAS'), findsOneWidget);
     expect(find.text('Preparatoria Regional'), findsWidgets);

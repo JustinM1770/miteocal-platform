@@ -11,6 +11,7 @@ import 'navegacion/concha_principal.dart';
 import 'navegacion/pestanas.dart';
 import 'nucleo/firebase/arranque.dart';
 import 'nucleo/firebase/opciones_reales.dart';
+import 'nucleo/servicios/notificaciones.dart';
 import 'nucleo/tema/tema.dart';
 import 'pantallas/registro/flujo_registro.dart';
 
@@ -83,6 +84,7 @@ class AppMiTeocal extends StatelessWidget {
           return MaterialApp(
             title: m?.nombre ?? 'MiTeocal',
             debugShowCheckedModeBanner: false,
+            navigatorKey: llaveNavegador,
             theme: tema,
             home: Consumer<Sesion>(
               builder: (context, s, _) {

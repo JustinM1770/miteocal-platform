@@ -4,7 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../datos/modelos/colonia.dart';
 import '../datos/modelos/municipio.dart';
 import '../datos/modelos/perfil.dart';
-import '../pantallas/modulos/agua_pagina.dart';
+import '../pantallas/modulos/detalle_agua_pagina.dart';
 import '../pantallas/modulos/basura_pagina.dart';
 import '../pantallas/modulos/cierres_pagina.dart';
 import '../pantallas/modulos/escuelas_pagina.dart';
@@ -39,7 +39,7 @@ void abrirModulo(
   final nombre = municipio?.nombre ?? '';
   final direccion = perfil?.direccion ?? '';
   final Widget pagina = switch (modulo) {
-    Modulo.agua => AguaPagina(colonia: colonia),
+    Modulo.agua => DetalleAguaPagina(colonia: colonia),
     Modulo.basura => BasuraPagina(
       colonia: colonia,
       direccion: direccion,

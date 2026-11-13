@@ -3,21 +3,23 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../datos/modelos/agua.dart';
+import '../datos/modelos/aviso.dart';
 import '../datos/modelos/colonia.dart';
+import '../datos/modelos/contenido.dart';
 import '../datos/modelos/municipio.dart';
-import '../datos/modelos/noticia.dart';
 import '../datos/repositorio.dart';
 import '../datos/sesion.dart';
 import '../navegacion/modulos.dart';
 import '../navegacion/pestanas.dart';
 import '../nucleo/tema/tema.dart';
-import '../nucleo/widgets/animaciones.dart';
-import '../nucleo/widgets/hoja_colonias.dart';
+import '../nucleo/widgets/bento.dart';
 import '../nucleo/widgets/shimmer_placeholders.dart';
-import 'inicio/widgets/carrusel_noticias.dart';
+import 'avisos/avisos_pagina.dart';
+import 'elegir_colonia_pagina.dart';
 import 'inicio/widgets/hero_agua.dart';
 
-/// 01 · Inicio
+/// 01 · Inicio (Figma «01 · Inicio — Bento»): agua, basura y corte, cierres
+/// cerca, escuelas y accesos directos. Solo los cuatro servicios del reto.
 class InicioPagina extends StatefulWidget {
   const InicioPagina({super.key});
 
@@ -29,8 +31,17 @@ class _InicioPaginaState extends State<InicioPagina> {
   late final Repositorio _repo = context.read<Repositorio>();
   late final Stream<Municipio?> _municipio = _repo.municipio();
   late final Stream<EstadoAgua?> _agua = _repo.aguaDeHoy();
-  late final Stream<List<Noticia>> _noticias = _repo.noticias(max: 5);
+  late final Stream<List<Aviso>> _avisos = _repo.avisos();
+  late final Future<List<CorteProgramado>> _cortes = _repo.cortesProgramados();
+  late final Future<List<Cierre>> _cierres = _repo.cierres();
+  late final Future<(List<Escuela>, List<AvisoEscolar>)> _escuelas =
+      Future.wait([
+        _repo.escuelas(),
+        _repo.avisosEscolares(),
+      ]).then((r) => (r[0] as List<Escuela>, r[1] as List<AvisoEscolar>));
   List<Colonia> _colonias = const [];
+  Future<RutaBasura?>? _ruta;
+  String? _rutaDe;
 
   @override
   void initState() {
@@ -40,15 +51,19 @@ class _InicioPaginaState extends State<InicioPagina> {
     });
   }
 
-  Future<void> _cambiarColonia() async {
-    final sesion = context.read<Sesion>();
-    if (_colonias.isEmpty) return;
-    final elegida = await elegirColonia(
+  void _abrir(Modulo m, Municipio? municipio, Colonia? colonia) {
+    final perfil = context.read<Sesion>().perfil;
+    abrirModulo(
       context,
-      colonias: _colonias,
-      actualId: sesion.perfil?.coloniaId,
+      m,
+      municipio: municipio,
+      colonia: colonia,
+      perfil: perfil,
+      alReportarBasura: () {
+        Navigator.of(context).pop();
+        context.read<Pestanas>().ir(Pestanas.servicios);
+      },
     );
-    if (elegida != null) await sesion.cambiarColonia(elegida.id);
   }
 
   @override
@@ -57,388 +72,369 @@ class _InicioPaginaState extends State<InicioPagina> {
     final colonia = _colonias
         .where((c) => c.id == perfil?.coloniaId)
         .firstOrNull;
+    final coloniaId = colonia?.id ?? perfil?.coloniaId;
+    if (coloniaId != null && coloniaId != _rutaDe) {
+      _rutaDe = coloniaId;
+      _ruta = _repo.rutaBasura(coloniaId);
+    }
+    final primary = Theme.of(context).colorScheme.primary;
 
     return StreamBuilder<Municipio?>(
       stream: _municipio,
-      builder: (context, snapMunicipio) {
-        final municipio = snapMunicipio.data;
+      builder: (context, snapM) {
+        final municipio = snapM.data;
+        bool activo(Modulo m) => municipio?.tieneModulo(m.clave) ?? true;
 
         return SafeArea(
           bottom: false,
-          child: SingleChildScrollView(
-            // En iPhone la barra de pestañas flota sobre el contenido
-            padding: EdgeInsets.only(
-              top: 12,
-              bottom: 24 + MediaQuery.paddingOf(context).bottom,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              14,
+              8,
+              14,
+              110 + MediaQuery.paddingOf(context).bottom,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Encabezado(
-                  saludo: perfil != null
-                      ? 'Hola, ${perfil.nombreCorto}'
-                      : (municipio?.nombre ?? ''),
-                  ubicacion: [
-                    if (perfil != null && perfil.direccion.isNotEmpty)
-                      perfil.direccion,
-                    if (colonia != null) colonia.nombre,
-                    if (perfil == null && municipio != null) municipio.estado,
-                  ].join(' · '),
-                  alTocarUbicacion: perfil != null ? _cambiarColonia : null,
-                ),
-                const SizedBox(height: Medidas.separacionSeccion),
-
-                // Un modulo apagado no se dibuja y sus datos no se consultan.
-                // Ver docs/arquitectura-multimunicipio.md seccion 3.
-                if (municipio?.tieneModulo('agua') ?? false) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Medidas.margenLateral,
-                    ),
-                    child: StreamBuilder<EstadoAgua?>(
-                      stream: _agua,
-                      builder: (context, snapAgua) {
-                        if (snapAgua.connectionState ==
-                                ConnectionState.waiting &&
-                            !snapAgua.hasData) {
-                          return const ShimmerHeroAgua();
-                        }
-                        return GestureDetector(
-                          onTap: () => abrirModulo(
-                            context,
-                            Modulo.agua,
-                            municipio: municipio,
-                            colonia: colonia,
-                            perfil: perfil,
-                          ),
-                          child: HeroAgua(
-                            estado: snapAgua.data,
-                            color: municipio!.tema.primary,
-                            colonia: colonia,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: Medidas.separacionSeccion),
-                ],
-
-                if (municipio != null) ...[
-                  const _TituloSeccion(titulo: 'Tu municipio'),
-                  const SizedBox(height: 14),
-                  _Modulos(
-                    coloniaId: colonia?.id ?? perfil?.coloniaId,
-                    modulos: [
-                      for (final m in Modulo.values)
-                        if (m != Modulo.agua && municipio.tieneModulo(m.clave))
-                          m,
-                    ],
-                    alAbrir: (m) => abrirModulo(
-                      context,
-                      m,
-                      municipio: municipio,
-                      colonia: colonia,
-                      perfil: perfil,
-                      alReportarBasura: () {
-                        Navigator.of(context).pop();
-                        context.read<Pestanas>().ir(Pestanas.servicios);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: Medidas.separacionSeccion),
-                ] else ...[
-                  const ShimmerModulos(),
-                  const SizedBox(height: Medidas.separacionSeccion),
-                ],
-
-                StreamBuilder<List<Noticia>>(
-                  stream: _noticias,
-                  builder: (context, snap) {
-                    if (snap.connectionState == ConnectionState.waiting &&
-                        !snap.hasData) {
-                      return const Padding(
-                        padding: EdgeInsets.only(
-                          bottom: Medidas.separacionSeccion,
-                        ),
-                        child: ShimmerNoticias(),
-                      );
-                    }
-                    final noticias = snap.data ?? const [];
-                    if (noticias.isEmpty) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: Medidas.separacionSeccion,
-                      ),
+            children: [
+              // ── Encabezado
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 6, 0, 16),
+                child: Row(
+                  children: [
+                    Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _TituloSeccion(
-                            titulo: 'Noticias',
-                            accion: 'Ver todas',
-                            alTocar: () =>
-                                context.read<Pestanas>().ir(Pestanas.noticias),
+                          Text(
+                            perfil != null
+                                ? 'Hola, ${perfil.nombreCorto}'
+                                : (municipio?.nombre ?? ''),
+                            style: Tipografia.display,
                           ),
-                          const SizedBox(height: 14),
-                          CarruselNoticias(noticias: noticias),
+                          const SizedBox(height: 4),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ElegirColoniaPagina(),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.mapPin,
+                                  size: 14,
+                                  color: Colores.textoSecundario,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    [
+                                      if (perfil?.direccion.isNotEmpty ?? false)
+                                        perfil!.direccion,
+                                      if (colonia != null)
+                                        colonia.nombre.replaceFirst(
+                                          'Teocaltiche ',
+                                          '',
+                                        ),
+                                    ].join(' · '),
+                                    style: Tipografia.leyenda,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
+                    ),
+                    StreamBuilder<List<Aviso>>(
+                      stream: _avisos,
+                      builder: (context, s) => BotonCirculo(
+                        LucideIcons.bell,
+                        punto: (s.data ?? const <Aviso>[]).any(
+                          (a) => a.esPara(colonia?.nombre),
+                        ),
+                        alTocar: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                AvisosPagina(colonia: colonia?.nombre),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Agua
+              if (activo(Modulo.agua))
+                StreamBuilder<EstadoAgua?>(
+                  stream: _agua,
+                  builder: (context, s) {
+                    if (s.connectionState == ConnectionState.waiting &&
+                        !s.hasData) {
+                      return const ShimmerHeroAgua();
+                    }
+                    return HeroAgua(
+                      estado: s.data,
+                      color: primary,
+                      colonia: colonia,
+                      alDetalle: () => _abrir(Modulo.agua, municipio, colonia),
+                    );
+                  },
+                ),
+              const SizedBox(height: 10),
+
+              // ── Basura y corte programado
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (activo(Modulo.basura))
+                      Expanded(
+                        child: FutureBuilder<RutaBasura?>(
+                          future: _ruta,
+                          builder: (context, s) {
+                            final r = s.data;
+                            final llega = r?.minutos == null
+                                ? null
+                                : DateTime.now().add(
+                                    Duration(minutes: r!.minutos!),
+                                  );
+                            return _Mitad(
+                              icono: LucideIcons.truck,
+                              enVivo: llega != null,
+                              kicker: 'Basura · hoy',
+                              titulo: llega == null
+                                  ? 'Hoy no pasa'
+                                  : r!.cuadras <= 0
+                                  ? 'En tu calle'
+                                  : 'A ${r.cuadras} cuadras',
+                              detalle: llega == null
+                                  ? (r == null
+                                        ? 'Sin ruta asignada'
+                                        : 'Revisa los días de tu ruta')
+                                  : 'Llega ~${llega.hour}:${llega.minute.toString().padLeft(2, '0')} hrs',
+                              alTocar: () =>
+                                  _abrir(Modulo.basura, municipio, colonia),
+                            );
+                          },
+                        ),
+                      ),
+                    if (activo(Modulo.basura) && activo(Modulo.agua))
+                      const SizedBox(width: 10),
+                    if (activo(Modulo.agua))
+                      Expanded(
+                        child: FutureBuilder<List<CorteProgramado>>(
+                          future: _cortes,
+                          builder: (context, s) {
+                            final hoy = DateUtils.dateOnly(DateTime.now());
+                            final corte = (s.data ?? const <CorteProgramado>[])
+                                .where((c) => !c.fecha.isBefore(hoy))
+                                .firstOrNull;
+                            const dias = [
+                              'Lun',
+                              'Mar',
+                              'Mié',
+                              'Jue',
+                              'Vie',
+                              'Sáb',
+                              'Dom',
+                            ];
+                            return _Mitad(
+                              icono: LucideIcons.calendar,
+                              kicker: 'Corte programado',
+                              titulo: corte == null
+                                  ? 'Sin cortes'
+                                  : '${dias[corte.fecha.weekday - 1]} ${corte.fecha.day}',
+                              detalle: corte == null
+                                  ? 'Nada programado'
+                                  : '${corte.horario} · ${corte.titulo}',
+                              alTocar: () =>
+                                  _abrir(Modulo.agua, municipio, colonia),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // ── Cierres cerca
+              if (activo(Modulo.cierres))
+                FutureBuilder<List<Cierre>>(
+                  future: _cierres,
+                  builder: (context, s) {
+                    final cierres = [...(s.data ?? const <Cierre>[])]
+                      ..sort(
+                        (a, b) => (a.distanciaM ?? 1 << 30).compareTo(
+                          b.distanciaM ?? 1 << 30,
+                        ),
+                      );
+                    if (cierres.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TituloBento(
+                          'Cerca de ti',
+                          accion: 'Ver mapa',
+                          alTocar: () =>
+                              _abrir(Modulo.cierres, municipio, colonia),
+                        ),
+                        Bento(
+                          relleno: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          alTocar: () =>
+                              _abrir(Modulo.cierres, municipio, colonia),
+                          child: Column(
+                            children: [
+                              for (final (i, c) in cierres.take(2).indexed)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: i == 0
+                                        ? null
+                                        : const Border(
+                                            top: BorderSide(
+                                              color: Colores.borde,
+                                            ),
+                                          ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Burbuja(LucideIcons.trafficCone),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              c.calle,
+                                              style: Tipografia.cuerpo,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              [c.detalle, c.vigencia]
+                                                  .where((x) => x.isNotEmpty)
+                                                  .join(' · '),
+                                              style: Tipografia.leyenda
+                                                  .copyWith(fontSize: 12),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (c.distanciaM != null) ...[
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          c.distanciaM! >= 1000
+                                              ? '${(c.distanciaM! / 1000).toStringAsFixed(1)} km'
+                                              : '${c.distanciaM} m',
+                                          style: Tipografia.etiqueta.copyWith(
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
 
-                const _TituloSeccion(titulo: 'Accesos directos'),
-                const SizedBox(height: 14),
-                const ListaEscalonada(children: [_AccesosDirectos()]),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _Encabezado extends StatelessWidget {
-  const _Encabezado({
-    required this.saludo,
-    required this.ubicacion,
-    this.alTocarUbicacion,
-  });
-
-  final String saludo;
-  final String ubicacion;
-  final VoidCallback? alTocarUbicacion;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Medidas.margenLateral,
-        8,
-        Medidas.margenLateral,
-        0,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(saludo, style: Tipografia.tituloPantalla),
-                if (ubicacion.isNotEmpty) ...[
-                  const SizedBox(height: 5),
-                  GestureDetector(
-                    onTap: alTocarUbicacion,
-                    behavior: HitTestBehavior.opaque,
-                    child: Row(
+              // ── Escuelas
+              if (activo(Modulo.escuelas))
+                FutureBuilder<(List<Escuela>, List<AvisoEscolar>)>(
+                  future: _escuelas,
+                  builder: (context, s) {
+                    final escuelas = s.data?.$1 ?? const <Escuela>[];
+                    final avisos = [...(s.data?.$2 ?? const <AvisoEscolar>[])]
+                      ..sort((a, b) => b.fecha.compareTo(a.fecha));
+                    if (avisos.isEmpty) return const SizedBox.shrink();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(
-                          LucideIcons.mapPin,
-                          size: 14,
-                          color: Colores.textoSecundario,
+                        TituloBento(
+                          'Tus escuelas',
+                          accion: 'Gestionar',
+                          alTocar: () =>
+                              _abrir(Modulo.escuelas, municipio, colonia),
                         ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            ubicacion,
-                            style: Tipografia.leyenda,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final (i, a) in avisos.take(2).indexed) ...[
+                                if (i > 0) const SizedBox(width: 10),
+                                Expanded(
+                                  child: _AvisoEscuela(
+                                    aviso: a,
+                                    escuela:
+                                        escuelas
+                                            .where((e) => e.id == a.escuelaId)
+                                            .firstOrNull
+                                            ?.nombre ??
+                                        '',
+                                    alTocar: () => _abrir(
+                                      Modulo.escuelas,
+                                      municipio,
+                                      colonia,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (avisos.length == 1)
+                                const Expanded(child: SizedBox.shrink()),
+                            ],
                           ),
                         ),
-                        if (alTocarUbicacion != null) ...[
-                          const SizedBox(width: 5),
-                          const Icon(
-                            LucideIcons.chevronRight,
-                            size: 13,
-                            color: Colores.textoSecundario,
-                          ),
-                        ],
                       ],
+                    );
+                  },
+                ),
+
+              // ── Accesos directos
+              const TituloBento('Accesos directos'),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Acceso(
+                      icono: LucideIcons.bellRing,
+                      texto: 'Mis avisos',
+                      destacado: true,
+                      alTocar: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AvisosPagina(colonia: colonia?.nombre),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _Acceso(
+                      icono: LucideIcons.triangleAlert,
+                      texto: 'Reportar falla',
+                      alTocar: () =>
+                          context.read<Pestanas>().ir(Pestanas.servicios),
                     ),
                   ),
                 ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // TODO: bandeja de avisos. El punto rojo indica avisos sin leer.
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              color: Colores.fondoTarjeta,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              LucideIcons.bell,
-              size: 20,
-              color: Colores.textoPrimario,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TituloSeccion extends StatelessWidget {
-  const _TituloSeccion({required this.titulo, this.accion, this.alTocar});
-
-  final String titulo;
-  final String? accion;
-  final VoidCallback? alTocar;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(titulo, style: Tipografia.titulo),
-          if (accion != null)
-            GestureDetector(
-              onTap: alTocar,
-              child: Text(
-                accion!,
-                style: Tipografia.subtitulo.copyWith(
-                  color: Colores.textoSecundario,
-                  fontWeight: FontWeight.w500,
-                ),
               ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Carrusel de los módulos contratados por el municipio. Caben tres a lo
-/// ancho, repartidos de orilla a orilla; si hay más, se deslizan. Cada
-/// tarjeta trae un dato en vivo de su módulo.
-class _Modulos extends StatefulWidget {
-  const _Modulos({
-    required this.modulos,
-    required this.alAbrir,
-    this.coloniaId,
-  });
-
-  final List<Modulo> modulos;
-  final ValueChanged<Modulo> alAbrir;
-  final String? coloniaId;
-
-  @override
-  State<_Modulos> createState() => _ModulosState();
-}
-
-class _ModulosState extends State<_Modulos> {
-  static const _separacion = 10.0;
-  final _datos = <Modulo, Future<(String, bool)?>>{};
-
-  static const _meses = [
-    'ene',
-    'feb',
-    'mar',
-    'abr',
-    'may',
-    'jun',
-    'jul',
-    'ago',
-    'sep',
-    'oct',
-    'nov',
-    'dic',
-  ];
-
-  /// (texto, enVivo). null si no hay nada que decir.
-  Future<(String, bool)?> _dato(Modulo m) async {
-    final repo = context.read<Repositorio>();
-    try {
-      switch (m) {
-        case Modulo.basura:
-          final id = widget.coloniaId;
-          if (id == null) return null;
-          final r = await repo.rutaBasura(id);
-          if (r == null || r.minutos == null) return ('Hoy no pasa', false);
-          return r.minutos! <= 2
-              ? ('Llegando a tu calle', true)
-              : ('Llega en ${r.minutos} min', true);
-        case Modulo.cierres:
-          final n = (await repo.cierres()).length;
-          return (
-            n == 0
-                ? 'Sin cierres'
-                : n == 1
-                ? '1 activo'
-                : '$n activos',
-            false,
-          );
-        case Modulo.escuelas:
-          final n = (await repo.avisosEscolares()).length;
-          return (
-            n == 0
-                ? 'Sin avisos'
-                : n == 1
-                ? '1 aviso'
-                : '$n avisos',
-            false,
-          );
-        case Modulo.feria:
-          final hoy = DateUtils.dateOnly(DateTime.now());
-          final eventos = [...await repo.eventosFeria()]
-            ..sort((a, b) => a.fecha.compareTo(b.fecha));
-          final deHoy = eventos.where((e) => DateUtils.isSameDay(e.fecha, hoy));
-          if (deHoy.isNotEmpty) {
-            final e = deHoy.last;
-            return (
-              'Hoy: ${e.artista.isNotEmpty ? e.artista : e.titulo}',
-              true,
-            );
-          }
-          final prox = eventos.where((e) => e.fecha.isAfter(hoy));
-          if (prox.isEmpty) return ('Ver programa', false);
-          final f = prox.first.fecha;
-          return ('Inicia ${f.day} ${_meses[f.month - 1]}', false);
-        case Modulo.paisanos:
-          final t = await repo.transmisionEnVivo();
-          if (t != null && t.enVivo) return ('Transmisión en vivo', true);
-          final c = await repo.comunidadPaisana();
-          return c == null ? null : ('${c.conectados} conectados', false);
-        case Modulo.agua:
-          return null;
-      }
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        final util = c.maxWidth - Medidas.margenLateral * 2;
-        final ancho = (util - _separacion * 2) / 3;
-        return SizedBox(
-          height: 128,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: Medidas.margenLateral,
-            ),
-            itemCount: widget.modulos.length,
-            separatorBuilder: (_, _) => const SizedBox(width: _separacion),
-            itemBuilder: (context, i) {
-              final m = widget.modulos[i];
-              final dato = _datos.putIfAbsent(m, () => _dato(m));
-              return SizedBox(
-                width: ancho,
-                child: _TarjetaModulo(
-                  modulo: m,
-                  dato: dato,
-                  alTocar: () => widget.alAbrir(m),
-                ),
-              );
-            },
+            ],
           ),
         );
       },
@@ -446,218 +442,177 @@ class _ModulosState extends State<_Modulos> {
   }
 }
 
-class _TarjetaModulo extends StatelessWidget {
-  const _TarjetaModulo({
-    required this.modulo,
-    required this.dato,
+/// Media tarjeta: ícono, dato en vivo, etiqueta, cifra grande y detalle.
+class _Mitad extends StatelessWidget {
+  const _Mitad({
+    required this.icono,
+    required this.kicker,
+    required this.titulo,
+    required this.detalle,
     required this.alTocar,
+    this.enVivo = false,
   });
 
-  final Modulo modulo;
-  final Future<(String, bool)?> dato;
+  final IconData icono;
+  final String kicker;
+  final String titulo;
+  final String detalle;
+  final VoidCallback alTocar;
+  final bool enVivo;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Bento(
+      alTocar: alTocar,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Burbuja(icono),
+              const Spacer(),
+              if (enVivo) ...[
+                Punto(primary, tam: 6),
+                const SizedBox(width: 5),
+                Text(
+                  'En vivo',
+                  style: Tipografia.micro.copyWith(color: primary),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 22),
+          Kicker(kicker),
+          const SizedBox(height: 4),
+          Text(
+            titulo,
+            style: Tipografia.titulo.copyWith(
+              fontSize: 22,
+              letterSpacing: -0.6,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            detalle,
+            style: Tipografia.leyenda.copyWith(fontSize: 12),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvisoEscuela extends StatelessWidget {
+  const _AvisoEscuela({
+    required this.aviso,
+    required this.escuela,
+    required this.alTocar,
+  });
+  final AvisoEscolar aviso;
+  final String escuela;
   final VoidCallback alTocar;
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Material(
-      color: Colores.fondoTarjeta,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-        onTap: alTocar,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 13),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final (texto, color) = switch (aviso.tipo) {
+      TipoAvisoEscolar.suspension => ('Suspensión', Colores.peligro),
+      TipoAvisoEscolar.examen => ('Examen', Colores.aviso),
+      TipoAvisoEscolar.aviso => ('Aviso', Colores.textoSecundario),
+    };
+    return Bento(
+      alTocar: alTocar,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: const BoxDecoration(
-                      color: Colores.fondoSutil,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      modulo.icono,
-                      size: 17,
-                      color: Colores.textoPrimario,
-                    ),
-                  ),
-                  const Spacer(),
-                  const Icon(
-                    LucideIcons.arrowUpRight,
-                    size: 15,
-                    color: Colores.textoSecundario,
-                  ),
-                ],
-              ),
+              const Burbuja(LucideIcons.graduationCap),
               const Spacer(),
               Text(
-                modulo.nombre,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Tipografia.cuerpo.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 3),
-              FutureBuilder<(String, bool)?>(
-                future: dato,
-                builder: (context, snap) {
-                  final d = snap.data;
-                  if (d == null) {
-                    return Text(' ', style: Tipografia.micro);
-                  }
-                  final (texto, enVivo) = d;
-                  return Row(
-                    children: [
-                      if (enVivo) ...[
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                      Flexible(
-                        child: Text(
-                          texto,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Tipografia.micro.copyWith(
-                            color: enVivo ? primary : Colores.textoSecundario,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                haceTiempo(aviso.fecha).replaceFirst('hace ', 'Hace '),
+                style: Tipografia.micro,
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Punto(color, tam: 6),
+              const SizedBox(width: 5),
+              Flexible(child: Kicker(texto, color: color)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            escuela,
+            style: Tipografia.cuerpo.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            aviso.texto,
+            style: Tipografia.leyenda.copyWith(fontSize: 12),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _AccesosDirectos extends StatelessWidget {
-  const _AccesosDirectos();
-
-  void _pronto(BuildContext context, String que) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$que estará disponible muy pronto.')),
-    );
-  }
+class _Acceso extends StatelessWidget {
+  const _Acceso({
+    required this.icono,
+    required this.texto,
+    required this.alTocar,
+    this.destacado = false,
+  });
+  final IconData icono;
+  final String texto;
+  final VoidCallback alTocar;
+  final bool destacado;
 
   @override
   Widget build(BuildContext context) {
-    final pestanas = context.read<Pestanas>();
-    final accesos = <(IconData, String, VoidCallback)>[
-      (
-        LucideIcons.wallet,
-        'Pagar agua',
-        () => _pronto(context, 'El pago de agua'),
-      ),
-      (
-        LucideIcons.triangleAlert,
-        'Reportar falla',
-        () => pestanas.ir(Pestanas.servicios),
-      ),
-      (
-        LucideIcons.fileText,
-        'Trámites',
-        () => _pronto(context, 'Trámites en línea'),
-      ),
-      (LucideIcons.siren, 'Emergencias', () => pestanas.ir(Pestanas.servicios)),
-    ];
-
     final primary = Theme.of(context).colorScheme.primary;
-    Widget acceso((IconData, String, VoidCallback) a) {
-      final destacado = identical(a, accesos.first);
-      final tinta = destacado ? Colores.textoInverso : Colores.textoPrimario;
-      return Expanded(
-        child: Material(
-          color: destacado ? primary : Colores.fondoTarjeta,
-          borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(Medidas.radioTarjeta),
-            onTap: a.$3,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: destacado
-                              ? Colores.fondoTarjeta
-                              : Colores.fondoSutil,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          a.$1,
-                          size: 18,
-                          color: destacado ? primary : Colores.textoPrimario,
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        LucideIcons.arrowUpRight,
-                        size: 16,
-                        color: destacado ? tinta : Colores.textoSecundario,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    a.$2,
-                    style: Tipografia.cuerpo.copyWith(
-                      color: tinta,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Medidas.margenLateral),
+    final tinta = destacado ? Colores.textoInverso : Colores.textoPrimario;
+    return Bento(
+      color: destacado ? primary : Colores.fondoTarjeta,
+      alTocar: alTocar,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              acceso(accesos[0]),
-              const SizedBox(width: 10),
-              acceso(accesos[1]),
+              Burbuja(
+                icono,
+                fondo: destacado ? Colores.fondoTarjeta : Colores.fondoSutil,
+                color: destacado ? primary : Colores.textoPrimario,
+              ),
+              const Spacer(),
+              Icon(
+                LucideIcons.arrowUpRight,
+                size: 16,
+                color: destacado ? tinta : Colores.textoSecundario,
+              ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              acceso(accesos[2]),
-              const SizedBox(width: 10),
-              acceso(accesos[3]),
-            ],
+          const SizedBox(height: 26),
+          Text(
+            texto,
+            style: Tipografia.cuerpo.copyWith(
+              color: tinta,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

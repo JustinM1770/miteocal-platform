@@ -50,6 +50,7 @@ dependencies:
   http: ^1.6.0
   shimmer: ^3.0.0
   liquid_glass_widgets: ^1.17.1
+  flutter_local_notifications: ^22.3.3
 
 dev_dependencies:
   flutter_test:

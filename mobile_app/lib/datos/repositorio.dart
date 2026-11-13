@@ -1,4 +1,5 @@
 import 'modelos/agua.dart';
+import 'modelos/aviso.dart';
 import 'modelos/colonia.dart';
 import 'modelos/contacto.dart';
 import 'modelos/contenido.dart';
@@ -46,6 +47,10 @@ abstract class Repositorio {
   Future<List<Colonia>> colonias();
 
   Stream<List<Noticia>> noticias({int max = 10});
+
+  /// Avisos vigentes de los cuatro servicios (agua, basura, cierres,
+  /// escuelas), los más recientes primero. Salen de lo que publica el panel.
+  Stream<List<Aviso>> avisos();
 
   Future<List<ContactoEmergencia>> emergencias();
 

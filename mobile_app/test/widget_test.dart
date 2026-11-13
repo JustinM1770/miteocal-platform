@@ -1,12 +1,14 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:miteocal/datos/repositorio.dart';
 import 'package:miteocal/datos/repositorio_firestore.dart';
 import 'package:miteocal/datos/sesion.dart';
 import 'package:miteocal/navegacion/concha_principal.dart';
 import 'package:miteocal/navegacion/pestanas.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Widget concha() => MultiProvider(
   providers: [
@@ -20,25 +22,27 @@ Widget concha() => MultiProvider(
 );
 
 void main() {
-  testWidgets('la concha muestra las cuatro pestanas', (tester) async {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('la píldora muestra Inicio activo y Servicios como ícono', (tester) async {
     await tester.pumpWidget(concha());
     await tester.pumpAndSettle();
 
     expect(find.text('Inicio'), findsOneWidget);
-    expect(find.text('Noticias'), findsOneWidget);
-    expect(find.text('Comercio'), findsOneWidget);
-    expect(find.text('Servicios'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.layoutGrid), findsOneWidget);
+    // Entrega del hackathon: sin Noticias ni Comercio en la barra
+    expect(find.byIcon(LucideIcons.newspaper), findsNothing);
+    expect(find.byIcon(LucideIcons.shoppingBag), findsNothing);
   });
 
-  testWidgets('cambiar de pestana muestra la pantalla correspondiente', (
-    tester,
-  ) async {
+  testWidgets('tocar Servicios cambia de pantalla', (tester) async {
     await tester.pumpWidget(concha());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Comercio'));
+    await tester.tap(find.byIcon(LucideIcons.layoutGrid));
     await tester.pumpAndSettle();
 
-    expect(find.text('Comercio'), findsNWidgets(2)); // pestana y titulo
+    expect(find.text('Servicios'), findsWidgets);
+    expect(find.text('Reporte de fallas'), findsOneWidget);
   });
 }

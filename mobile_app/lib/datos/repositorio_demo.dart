@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart' show Color;
 import 'package:latlong2/latlong.dart';
 
 import 'modelos/agua.dart';
+import 'modelos/aviso.dart';
 import 'modelos/colonia.dart';
 import 'modelos/contacto.dart';
 import 'modelos/contenido.dart';
@@ -290,17 +291,86 @@ class RepositorioDemo implements Repositorio {
 
   @override
   Stream<EstadoAgua?> aguaDeHoy() => _flujo(
-    () => const EstadoAgua(
+    // El caso que muestra el Figma: corte por falla, con hora de regreso
+    () => EstadoAgua(
       horario: '6:00 – 14:00 hrs',
-      presion: 4.2,
+      presion: 0,
       calidad: 'Óptima',
       cobertura: '98%',
-      activo: true,
+      activo: false,
+      mensaje:
+          'Falla en la bomba del pozo El Salitre. Cuadrilla en sitio desde las 11:40.',
+      horaEstimada: '16:00',
+      actualizadoEn: DateTime.now().subtract(const Duration(minutes: 12)),
     ),
   );
 
   @override
   Future<List<Colonia>> colonias() => _tras(_colonias);
+
+  @override
+  Stream<List<Aviso>> avisos() {
+    final ahora = DateTime.now();
+    DateTime hoyA(int h, [int m = 0]) =>
+        DateTime(ahora.year, ahora.month, ahora.day, h, m);
+    return _flujo(
+      () => [
+        Aviso(
+          id: 'a1',
+          servicio: Servicio.agua,
+          tipo: 'agua',
+          titulo: 'Sin servicio de agua',
+          mensaje:
+              'Falla en la bomba del pozo El Salitre. Cuadrilla en sitio desde las 11:40.',
+          colonia: 'Teocaltiche Centro',
+          estado: 'sin_servicio',
+          horaEstimada: '16:00',
+          publicadoEn: ahora.subtract(const Duration(minutes: 12)),
+          caducaEn: hoyA(23, 59),
+        ),
+        Aviso(
+          id: 'a2',
+          servicio: Servicio.basura,
+          tipo: 'basura',
+          titulo: 'El camión va con 30 minutos de retraso',
+          mensaje: 'La Ruta Centro salió tarde por carga de combustible.',
+          colonia: 'Teocaltiche Centro',
+          publicadoEn: ahora.subtract(const Duration(minutes: 40)),
+          caducaEn: hoyA(12),
+        ),
+        Aviso(
+          id: 'a3',
+          servicio: Servicio.cierres,
+          tipo: 'cierre',
+          titulo: 'Calle Herrera I. Cairo cerrada',
+          mensaje:
+              'Entre Morelos e Hidalgo por cambio de tubería. Usa Morelos como ruta alterna.',
+          publicadoEn: ahora.subtract(const Duration(hours: 5)),
+          caducaEn: ahora.add(const Duration(days: 9)),
+        ),
+        Aviso(
+          id: 'a4',
+          servicio: Servicio.escuelas,
+          tipo: 'escuela',
+          titulo: 'CBTIS 247 · Suspensión de clases',
+          mensaje: 'Viernes sin clases por junta de consejo técnico escolar.',
+          publicadoEn: ahora.subtract(const Duration(hours: 3)),
+          caducaEn: ahora.add(const Duration(days: 2)),
+        ),
+        Aviso(
+          id: 'a5',
+          servicio: Servicio.agua,
+          tipo: 'corte',
+          titulo: 'Corte programado · martes 18',
+          mensaje:
+              'De 8:00 a 16:00 hrs por cambio de tubería en calle Zaragoza. Junta agua desde un día antes.',
+          colonia: 'Teocaltiche Centro',
+          publicadoEn: ahora.subtract(const Duration(days: 1)),
+          caducaEn: ahora.add(const Duration(days: 6)),
+        ),
+      ],
+    );
+  }
 
   @override
   Stream<List<Noticia>> noticias({int max = 10}) {

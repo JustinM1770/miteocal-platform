@@ -106,7 +106,7 @@ class _ServiciosPaginaState extends State<ServiciosPagina> {
                       Text('Servicios', style: Tipografia.tituloPantalla),
                       const SizedBox(height: 3),
                       Text(
-                        'Trámites, pagos y atención ciudadana',
+                        'Reportes y servicios de tu colonia',
                         style: Tipografia.leyenda,
                       ),
                     ],
@@ -119,13 +119,23 @@ class _ServiciosPaginaState extends State<ServiciosPagina> {
                   ),
                   child: _Cuadricula(
                     hijos: [
+                      // Trámites y pagos: apagado para la entrega del hackathon
                       _Servicio(
-                        icono: LucideIcons.fileText,
-                        titulo: 'Trámites y pagos',
-                        detalle: 'Actas, licencias, predial',
-                        alTocar: () => _aviso(
-                          'Trámites en línea estará disponible muy pronto.',
-                        ),
+                        icono: LucideIcons.droplet,
+                        titulo: 'Agua potable',
+                        detalle: 'Estado, horario y cortes',
+                        alTocar: () {
+                          final perfil = context.read<Sesion>().perfil;
+                          abrirModulo(
+                            context,
+                            Modulo.agua,
+                            municipio: municipio,
+                            perfil: perfil,
+                            colonia: _colonias
+                                .where((c) => c.id == perfil?.coloniaId)
+                                .firstOrNull,
+                          );
+                        },
                       ),
                       _Servicio(
                         icono: LucideIcons.triangleAlert,

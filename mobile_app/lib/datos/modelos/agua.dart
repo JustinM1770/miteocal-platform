@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Estado del servicio de agua de un dia.
 /// Documento: municipios/{municipioId}/agua/{yyyy-mm-dd}
 class EstadoAgua {
@@ -10,6 +12,7 @@ class EstadoAgua {
     this.sinDato = false,
     this.mensaje = '',
     this.horaEstimada,
+    this.actualizadoEn,
   });
 
   final String horario;
@@ -28,6 +31,9 @@ class EstadoAgua {
   /// "16:00" cuando hay corte con hora estimada de regreso; null si no se sabe.
   final String? horaEstimada;
 
+  /// Cuándo lo publicó el municipio; null si el dato no lo trae.
+  final DateTime? actualizadoEn;
+
   factory EstadoAgua.desdeMapa(Map<String, dynamic> m) {
     return EstadoAgua(
       horario: (m['horario'] as String?) ?? '',
@@ -40,6 +46,11 @@ class EstadoAgua {
       sinDato: m['estado'] == 'sin-dato',
       mensaje: (m['mensaje'] as String?) ?? '',
       horaEstimada: m['horaEstimada'] as String?,
+      actualizadoEn: switch (m['actualizadoEn']) {
+        final Timestamp t => t.toDate(),
+        final String t => DateTime.tryParse(t),
+        _ => null,
+      },
     );
   }
 }

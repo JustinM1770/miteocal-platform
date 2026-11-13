@@ -51,8 +51,8 @@ void main() {
     await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
     await tester.pumpAndSettle();
 
+    // Sin perfil, el encabezado saluda con el nombre del municipio
     expect(find.text('Teocaltiche'), findsOneWidget);
-    expect(find.text('Jalisco'), findsOneWidget);
   });
 
   testWidgets('pinta el estado del agua del dia', (tester) async {
@@ -69,7 +69,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('06:00 - 12:00'), findsOneWidget);
-    expect(find.text('2.4 bar'), findsOneWidget);
     expect(find.text('Servicio activo'), findsOneWidget);
   });
 
@@ -80,7 +79,7 @@ void main() {
     await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('aun no publica'), findsOneWidget);
+    expect(find.textContaining('todavía no publica'), findsOneWidget);
   });
 
   testWidgets('marca el corte cuando no hay servicio', (tester) async {
@@ -98,7 +97,7 @@ void main() {
     await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sin informacion del pozo'), findsOneWidget);
+    expect(find.text('Sin información del pozo'), findsOneWidget);
     expect(find.text('Sin dato'), findsOneWidget);
     expect(find.text('Servicio activo'), findsNothing);
   });
@@ -116,7 +115,7 @@ void main() {
     await tester.pumpWidget(envolver(RepositorioFirestore(bd: bd)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Vuelve hoy ~16:00'), findsOneWidget);
+    expect(find.text('Vuelve hoy\n~16:00'), findsOneWidget);
     expect(find.textContaining('Falla en el pozo'), findsOneWidget);
   });
 

@@ -6,6 +6,7 @@ import 'package:flutter/painting.dart' show Color;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'modelos/agua.dart';
+import 'modelos/aviso.dart';
 import 'modelos/colonia.dart';
 import 'modelos/contacto.dart';
 import 'modelos/contenido.dart';
@@ -104,6 +105,25 @@ class RepositorioFirestore implements Repositorio {
   @override
   Future<List<ContactoEmergencia>> emergencias() async =>
       (await _lista('emergencias')).map(ContactoEmergencia.desdeMapa).toList();
+
+  /// Las reglas solo dejan leer publicaciones públicas ya publicadas, así
+  /// que la consulta pide exactamente eso (índice canal + publicarEn).
+  @override
+  Stream<List<Aviso>> avisos() => _raiz
+      .collection('publicaciones')
+      .where('canal', isEqualTo: 'publico')
+      .where('publicarEn', isLessThanOrEqualTo: Timestamp.now())
+      .orderBy('publicarEn', descending: true)
+      .limit(60)
+      .snapshots()
+      .map((q) {
+        final ahora = DateTime.now();
+        return [
+          for (final d in q.docs)
+            if (Aviso.desdeMapa(d.id, d.data()) case final a?)
+              if (a.vigenteEn(ahora)) a,
+        ];
+      });
 
   @override
   Stream<List<Noticia>> noticias({int max = 10}) {
